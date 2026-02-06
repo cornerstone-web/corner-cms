@@ -4,6 +4,7 @@ import { forwardRef, useState, useEffect, useMemo, useCallback, useRef } from "r
 import { useParams } from "next/navigation";
 import { useFormContext } from "react-hook-form";
 import { useConfig } from "@/contexts/config-context";
+import { getSchemaByName, initializeState } from "@/lib/schema";
 import Select, { components } from "react-select";
 import { ChevronDown, X } from "lucide-react";
 import {
@@ -56,6 +57,13 @@ const EditComponent = forwardRef((props: any, ref: any) => {
   const currentCollection = useMemo(() => {
     return params?.name ? decodeURIComponent(params.name as string) : null;
   }, [params?.name]);
+
+  // Get the blocks field definition from the collection schema
+  const blocksFieldDef = useMemo(() => {
+    if (!config || !currentCollection) return null;
+    const collectionSchema = getSchemaByName(config.object, currentCollection);
+    return collectionSchema?.fields?.find((f: any) => f.name === "blocks");
+  }, [config, currentCollection]);
 
   useEffect(() => setIsMounted(true), []);
 
@@ -142,9 +150,20 @@ const EditComponent = forwardRef((props: any, ref: any) => {
     onChange(pendingTemplate.value);
     previousValueRef.current = pendingTemplate.value;
 
-    // Update the blocks field with the template's blocks
+    // Update the blocks field with the template's blocks, initializing with schema defaults
     if (form && pendingTemplate.blocks) {
-      form.setValue("blocks", pendingTemplate.blocks, {
+      // Initialize each block with defaults from the schema
+      // This ensures toggle fields (showBackgroundImage, showSubheadline, etc.) get their default values
+      const initializedBlocks = pendingTemplate.blocks.map((block: any) => {
+        const blockType = block.type; // blockKey is 'type' for pages
+        const blockDef = blocksFieldDef?.blocks?.find((b: any) => b.name === blockType);
+        if (blockDef?.fields) {
+          return initializeState(blockDef.fields, block);
+        }
+        return block;
+      });
+
+      form.setValue("blocks", initializedBlocks, {
         shouldDirty: true,
         shouldValidate: true
       });
@@ -152,7 +171,7 @@ const EditComponent = forwardRef((props: any, ref: any) => {
 
     setShowConfirmDialog(false);
     setPendingTemplate(null);
-  }, [pendingTemplate, onChange, form]);
+  }, [pendingTemplate, onChange, form, blocksFieldDef]);
 
   const handleCancel = useCallback(() => {
     setShowConfirmDialog(false);
