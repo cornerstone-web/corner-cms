@@ -882,6 +882,8 @@ const EntryForm = ({
 
   // Watch block values for preview
   const blocksValue = blockFieldInfo ? form.watch(blockFieldInfo.name) : null;
+  // Serialize blocksValue to detect mutations (react-hook-form mutates arrays in place)
+  const blocksValueKey = JSON.stringify(blocksValue);
   const currentBlockData = useMemo(() => {
     if (!blockFieldInfo || !blocksValue || !Array.isArray(blocksValue) || blocksValue.length === 0) {
       return null;
@@ -897,7 +899,8 @@ const EntryForm = ({
       type: blockType,
       data: block,
     };
-  }, [blocksValue, previewBlockIndex, blockFieldInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- blocksValueKey is serialized blocksValue to detect mutations
+  }, [blocksValueKey, previewBlockIndex, blockFieldInfo]);
 
   // Mobile preview URL and data
   const mobilePreviewData = useMemo(() => {
@@ -990,10 +993,10 @@ const EntryForm = ({
                   </Button>
                   {options ? options : null}
                 </div>
-                {previewUrl && currentBlockData && (
+                {previewUrl && (
                   <BlockPreview
-                    blockType={currentBlockData.type}
-                    blockData={currentBlockData.data}
+                    blockType={currentBlockData?.type}
+                    blockData={currentBlockData?.data}
                     previewBaseUrl={previewUrl}
                     currentIndex={previewBlockIndex ?? 0}
                     totalBlocks={blocksValue?.length ?? 0}

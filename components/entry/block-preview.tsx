@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfig } from "@/contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
@@ -20,8 +20,8 @@ interface CollectionDependency {
 }
 
 interface BlockPreviewProps {
-  blockType: string;
-  blockData: Record<string, unknown>;
+  blockType?: string;
+  blockData?: Record<string, unknown>;
   previewBaseUrl: string;
   currentIndex?: number;
   totalBlocks?: number;
@@ -80,11 +80,11 @@ export function BlockPreview({
   }, []);
 
   // Normalize block type: convert underscores to hyphens
-  const normalizedBlockType = blockType.replace(/_/g, "-");
+  const normalizedBlockType = blockType?.replace(/_/g, "-");
 
   // Get the block's component definition from config to find collection dependencies
   const blockCollections = useMemo((): CollectionDependency[] => {
-    if (!config?.object?.components) return [];
+    if (!config?.object?.components || !normalizedBlockType) return [];
 
     // Find the component definition for this block type
     // Block types like "sermon-grid" map to components like "sermonGridBlock"
@@ -132,7 +132,7 @@ export function BlockPreview({
               if (dep.limit) {
                 const limitValue =
                   typeof dep.limit === "string"
-                    ? (blockData[dep.limit] as number) || 10
+                    ? (blockData?.[dep.limit] as number) || 10
                     : dep.limit;
                 items = items.slice(0, limitValue);
               }
@@ -163,10 +163,16 @@ export function BlockPreview({
   // Do NOT memoize this - we need fresh serialization each render
   const blockDataKey = JSON.stringify(blockData);
   const transformedData = useMemo(
-    () => transformImagePaths(blockData),
+    () => (blockData ? transformImagePaths(blockData) : {}),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- blockDataKey is the serialized blockData, intentionally used to detect object mutations
     [blockDataKey],
   );
+
+  // Check if we have block data to display
+  const hasBlockData = Boolean(blockType && blockData);
+
+  // Track previous hasBlockData to detect transitions
+  const prevHasBlockDataRef = useRef(hasBlockData);
 
   // Store initial data for iframe URL (stable - doesn't change on edits)
   // This prevents iframe reloading on every keystroke
@@ -195,6 +201,21 @@ export function BlockPreview({
       );
     }
   }, [transformedData, collectionData, isLoaded]);
+
+  // When blocks are added back after being empty, refresh the iframe with new data
+  useEffect(() => {
+    const wasEmpty = !prevHasBlockDataRef.current;
+    const isNowFilled = hasBlockData;
+
+    if (wasEmpty && isNowFilled && hasEverOpened) {
+      // Blocks were added after being empty - update initial data and refresh
+      initialDataRef.current = transformedData;
+      setIsLoaded(false);
+      setKey((k) => k + 1);
+    }
+
+    prevHasBlockDataRef.current = hasBlockData;
+  }, [hasBlockData, hasEverOpened, transformedData]);
 
   // Handle iframe load
   const handleLoad = () => {
@@ -263,8 +284,16 @@ export function BlockPreview({
     }
   };
 
+  // Empty state content
+  const emptyStateContent = (
+    <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+      <Layers className="h-12 w-12 mb-3 opacity-50" />
+      <span className="text-sm">Nothing to display</span>
+    </div>
+  );
+
   // Header with block type and navigation
-  const headerControls = (
+  const headerControls = hasBlockData ? (
     <div className="flex items-center justify-between px-3 py-2 bg-background/80 backdrop-blur-sm border-b">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-muted-foreground">
@@ -304,10 +333,10 @@ export function BlockPreview({
         isLoaded={isLoaded}
       />
     </div>
-  );
+  ) : null;
 
-  // The iframe content - only render if hasEverOpened
-  const iframeContent = hasEverOpened ? (
+  // The iframe content - only render if hasEverOpened and we have block data
+  const iframeContent = hasEverOpened && hasBlockData ? (
     <IFrameWrapper
       url={iframeUrl}
       title={`${normalizedBlockType} preview`}
@@ -319,7 +348,7 @@ export function BlockPreview({
   ) : null;
 
   // Expanded view rendered in a portal for proper z-index - DESKTOP SIZE
-  if (isExpanded && mounted && hasEverOpened) {
+  if (isExpanded && mounted && hasEverOpened && hasBlockData) {
     return (
       <>
         {/* Placeholder to maintain layout */}
@@ -341,7 +370,7 @@ export function BlockPreview({
       onToggle={handleToggleCollapse}
     >
       {headerControls}
-      <PreviewFrame>{iframeContent}</PreviewFrame>
+      <PreviewFrame>{hasBlockData ? iframeContent : emptyStateContent}</PreviewFrame>
     </CollapsiblePreviewSection>
   );
 }
