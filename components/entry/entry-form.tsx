@@ -63,6 +63,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   ChevronLeft,
+  Copy,
   GripVertical,
   Loader,
   Plus,
@@ -130,15 +131,17 @@ const ListField = ({
   field,
   fieldName,
   renderFields,
+  isTemplateMode = false,
 }: {
   field: Field;
   fieldName: string;
   renderFields: Function;
+  isTemplateMode?: boolean;
 }) => {
   const isCollapsible = !!(field.list && !(typeof field.list === 'object' && field.list?.collapsible === false));
 
   const { setValue, watch } = useFormContext();
-  const { fields: arrayFields, append, remove, move } = useFieldArray({
+  const { fields: arrayFields, append, remove, move, insert } = useFieldArray({
     name: fieldName,
   });
   const fieldValues = watch(fieldName);
@@ -162,7 +165,7 @@ const ListField = ({
           forceUpdate({});
           // Scroll to the block after a brief delay for DOM update
           setTimeout(() => {
-            itemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            itemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }, 50);
         }
       });
@@ -172,17 +175,25 @@ const ListField = ({
 
   useEffect(() => {
     if (openStatesRef.current.length === 0 && arrayFields.length > 0) {
+      // For block fields, default to collapsed (except first block is expanded)
+      // For other fields, check the explicit collapsible.collapsed config
       const defaultCollapsed =
-        isCollapsible &&
-        typeof field.list === 'object' &&
-        field.list.collapsible &&
-        typeof field.list.collapsible === 'object' &&
-        field.list.collapsible.collapsed;
+        field.type === 'block' ||
+        (isCollapsible &&
+          typeof field.list === 'object' &&
+          field.list.collapsible &&
+          typeof field.list.collapsible === 'object' &&
+          field.list.collapsible.collapsed);
 
-      openStatesRef.current = Array(arrayFields.length).fill(!defaultCollapsed);
+      if (field.type === 'block') {
+        // First block expanded, rest collapsed
+        openStatesRef.current = arrayFields.map((_, index) => index === 0);
+      } else {
+        openStatesRef.current = Array(arrayFields.length).fill(!defaultCollapsed);
+      }
       forceUpdate({});
     }
-  }, [arrayFields.length, field.list, isCollapsible]);
+  }, [arrayFields.length, field.list, field.type, isCollapsible]);
 
   const toggleOpen = (index: number) => {
     if (index >= 0 && index < openStatesRef.current.length) {
@@ -227,6 +238,16 @@ const ListField = ({
   const removeItem = (index: number) => {
     remove(index);
     openStatesRef.current.splice(index, 1);
+    forceUpdate({});
+  };
+
+  const duplicateItem = (index: number) => {
+    const itemToDuplicate = fieldValues[index];
+    // Deep clone the item to avoid reference issues
+    const duplicatedItem = JSON.parse(JSON.stringify(itemToDuplicate));
+    insert(index + 1, duplicatedItem);
+    // Insert open state for the new item (start expanded)
+    openStatesRef.current.splice(index + 1, 0, true);
     forceUpdate({});
   };
   
@@ -297,18 +318,31 @@ const ListField = ({
                         isOpen={openStatesRef.current[index]}
                         toggleOpen={() => toggleOpen(index)}
                         index={index}
+                        isTemplateMode={isTemplateMode}
                       />
                     </div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" className="bg-muted/50 text-muted-foreground self-start" onClick={() => removeItem(index)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Remove item
-                      </TooltipContent>
-                    </Tooltip>
+                    <div className="flex flex-col gap-1 self-start">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" className="bg-muted/50 text-muted-foreground" onClick={() => removeItem(index)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Remove item
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" className="bg-muted/50 text-muted-foreground" onClick={() => duplicateItem(index)}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Duplicate item
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </SortableItem>
                 ))}
               </SortableContext>
@@ -335,7 +369,7 @@ const ListField = ({
 };
 
 const BlocksField = forwardRef((props: any, ref) => {
-  const { field, fieldName, renderFields, isOpen, onToggleOpen, index } = props;
+  const { field, fieldName, renderFields, isOpen, onToggleOpen, index, isTemplateMode } = props;
 
   const isCollapsible = !!(field.list && !(typeof field.list === 'object' && field.list?.collapsible === false));
   
@@ -451,7 +485,15 @@ const BlocksField = forwardRef((props: any, ref) => {
                   selectedBlockDefinition.fields || [],
                   fieldName
                 );
-                return renderedElements;
+                const visibleElements = renderedElements.filter(Boolean);
+                if (visibleElements.length === 0 && isTemplateMode) {
+                  return (
+                    <p className="text-sm text-muted-foreground italic">
+                      No configuration options for this block
+                    </p>
+                  );
+                }
+                return visibleElements;
               })()
             ) : (
               <SingleField
@@ -459,6 +501,7 @@ const BlocksField = forwardRef((props: any, ref) => {
                 fieldName={fieldName}
                 renderFields={renderFields}
                 showLabel={false}
+                isTemplateMode={isTemplateMode}
               />
             )}
           </div>
@@ -519,7 +562,9 @@ const SingleField = ({
   showLabel = true,
   isOpen = true,
   toggleOpen = () => {},
-  index = 0
+  index = 0,
+  disabled = false,
+  isTemplateMode = false
 }: {
   field: Field;
   fieldName: string;
@@ -528,6 +573,8 @@ const SingleField = ({
   isOpen?: boolean;
   toggleOpen?: () => void;
   index?: number;
+  disabled?: boolean;
+  isTemplateMode?: boolean;
 }) => {
   const { control, formState: { errors } } = useFormContext();
   
@@ -548,7 +595,7 @@ const SingleField = ({
 
   let fieldComponentProps: any = { field: field };
   if (['object', 'block'].includes(field.type)) {
-    fieldComponentProps = { ...fieldComponentProps, fieldName, renderFields, isOpen };
+    fieldComponentProps = { ...fieldComponentProps, fieldName, renderFields, isOpen, isTemplateMode };
     if (isCollapsible) {
       fieldComponentProps = { ...fieldComponentProps, onToggleOpen: toggleOpen, index };
     }
@@ -561,7 +608,7 @@ const SingleField = ({
     };
 
     return (
-      <FormItem key={fieldName}>
+      <FormItem key={fieldName} className={disabled ? "opacity-50 pointer-events-none" : ""}>
         {showLabel &&
           <div className="flex items-center h-5 gap-x-2">
             {field.label !== false &&
@@ -585,7 +632,7 @@ const SingleField = ({
         key={fieldName}
         control={control}
         render={({ field: rhfManagedFieldProps, fieldState }) => (
-          <FormItem>
+          <FormItem className={disabled ? "opacity-50" : ""}>
             <div className="flex items-center h-5 gap-x-2">
               {showLabel && field.label !== false &&
                 <FormLabel>
@@ -595,9 +642,10 @@ const SingleField = ({
               {showLabel && field.required && <span className="inline-flex items-center rounded-full bg-muted border px-2 h-5 text-xs font-medium">Required</span>}
             </div>
             <FormControl>
-              <FieldComponent 
+              <FieldComponent
                 {...rhfManagedFieldProps}
                 {...fieldComponentProps}
+                disabled={disabled}
               />
             </FormControl>
             {field.description && <FormDescription>{field.description}</FormDescription>}
@@ -611,6 +659,73 @@ const SingleField = ({
 
 SingleField.displayName = 'SingleField';
 
+// Component to render a boolean toggle with its controlled fields inline
+const ToggleFieldGroup = ({
+  toggleField,
+  controlledFields,
+  parentName,
+  renderFields: renderFieldsFn,
+  isTemplateMode = false
+}: {
+  toggleField: Field;
+  controlledFields: Field[];
+  parentName?: string;
+  renderFields: Function;
+  isTemplateMode?: boolean;
+}) => {
+  const { watch } = useFormContext();
+  const toggleFieldName = parentName ? `${parentName}.${toggleField.name}` : toggleField.name;
+  const toggleValue = watch(toggleFieldName);
+
+  return (
+    <div className="space-y-3">
+      {/* Render the toggle field */}
+      <SingleField
+        field={toggleField}
+        fieldName={toggleFieldName}
+        renderFields={renderFieldsFn}
+        isTemplateMode={isTemplateMode}
+      />
+      {/* Render controlled fields with disabled state based on toggle value */}
+      {controlledFields.map((controlledField) => {
+        const controlledFieldName = parentName
+          ? `${parentName}.${controlledField.name}`
+          : controlledField.name;
+
+        // Invert the disabled logic if controlledByInverse is true
+        const isDisabled = controlledField.controlledByInverse ? toggleValue : !toggleValue;
+
+        if (controlledField.list === true || (typeof controlledField.list === 'object' && controlledField.list !== null)) {
+          // For list fields, wrap in a disabled container
+          return (
+            <div key={controlledFieldName} className={cn(isDisabled && "opacity-50 pointer-events-none")}>
+              <ListField
+                field={controlledField}
+                fieldName={controlledFieldName}
+                renderFields={renderFieldsFn}
+                isTemplateMode={isTemplateMode}
+              />
+            </div>
+          );
+        }
+
+        return (
+          <SingleField
+            key={controlledFieldName}
+            field={controlledField}
+            fieldName={controlledFieldName}
+            renderFields={renderFieldsFn}
+            disabled={isDisabled}
+            isTemplateMode={isTemplateMode}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+ToggleFieldGroup.displayName = 'ToggleFieldGroup';
+
 const EntryForm = ({
   title,
   navigateBack,
@@ -622,6 +737,7 @@ const EntryForm = ({
   filePath,
   options,
   previewUrl,
+  isTemplateMode = false,
 }: {
   title: string;
   navigateBack?: string;
@@ -633,6 +749,7 @@ const EntryForm = ({
   filePath?: React.ReactNode;
   options: React.ReactNode;
   previewUrl?: string;
+  isTemplateMode?: boolean;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(null);
@@ -655,8 +772,8 @@ const EntryForm = ({
   }), []);
 
   const zodSchema = useMemo(() => {
-    return generateZodSchema(fields);
-  }, [fields]);
+    return generateZodSchema(fields, false, isTemplateMode);
+  }, [fields, isTemplateMode]);
 
   // Find block list fields for preview
   const blockFieldInfo = useMemo(() => {
@@ -694,16 +811,61 @@ const EntryForm = ({
     fields: Field[],
     parentName?: string
   ): React.ReactNode[] => {
+    // Build a map of fields controlled by boolean toggles
+    const controlledFieldsMap = new Map<string, Field[]>();
+    const controlledFieldNames = new Set<string>();
+
+    // First pass: identify controlled fields and their controllers
+    for (const field of fields) {
+      if (field?.controlledBy) {
+        const controlled = controlledFieldsMap.get(field.controlledBy) || [];
+        controlled.push(field);
+        controlledFieldsMap.set(field.controlledBy, controlled);
+        controlledFieldNames.add(field.name);
+      }
+    }
+
     return fields.map((field) => {
       if (!field || field.hidden) return null;
+
+      // Skip fields that are controlled by a toggle (they render as part of the group)
+      if (controlledFieldNames.has(field.name)) return null;
+
+      // In template mode, only show fields marked templateEditable: true
+      // Exception: block-type fields are always shown (they define structure)
+      if (isTemplateMode && field.templateEditable !== true && field.type !== 'block') return null;
+
       const currentFieldName = parentName ? `${parentName}.${field.name}` : field.name;
 
-      if (field.list === true || (typeof field.list === 'object' && field.list !== null)) {
-        return <ListField key={currentFieldName} field={field} fieldName={currentFieldName} renderFields={renderFields} />;
+      // Check if this is a boolean toggle with controlled fields
+      const controlledFields = controlledFieldsMap.get(field.name);
+      if (field.type === 'boolean' && controlledFields && controlledFields.length > 0) {
+        // Filter controlled fields based on template mode
+        const visibleControlledFields = controlledFields.filter(cf => {
+          if (isTemplateMode && cf.templateEditable !== true && cf.type !== 'block') return false;
+          return !cf.hidden;
+        });
+
+        if (visibleControlledFields.length > 0) {
+          return (
+            <ToggleFieldGroup
+              key={currentFieldName}
+              toggleField={field}
+              controlledFields={visibleControlledFields}
+              parentName={parentName}
+              renderFields={renderFields}
+              isTemplateMode={isTemplateMode}
+            />
+          );
+        }
       }
-      return <SingleField key={currentFieldName} field={field} fieldName={currentFieldName} renderFields={renderFields} />;
+
+      if (field.list === true || (typeof field.list === 'object' && field.list !== null)) {
+        return <ListField key={currentFieldName} field={field} fieldName={currentFieldName} renderFields={renderFields} isTemplateMode={isTemplateMode} />;
+      }
+      return <SingleField key={currentFieldName} field={field} fieldName={currentFieldName} renderFields={renderFields} isTemplateMode={isTemplateMode} />;
     });
-  }, []);
+  }, [isTemplateMode]);
 
   const handleSubmit = async (values: any) => {
     setIsSubmitting(true);
@@ -720,6 +882,8 @@ const EntryForm = ({
 
   // Watch block values for preview
   const blocksValue = blockFieldInfo ? form.watch(blockFieldInfo.name) : null;
+  // Serialize blocksValue to detect mutations (react-hook-form mutates arrays in place)
+  const blocksValueKey = JSON.stringify(blocksValue);
   const currentBlockData = useMemo(() => {
     if (!blockFieldInfo || !blocksValue || !Array.isArray(blocksValue) || blocksValue.length === 0) {
       return null;
@@ -735,7 +899,8 @@ const EntryForm = ({
       type: blockType,
       data: block,
     };
-  }, [blocksValue, previewBlockIndex, blockFieldInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- blocksValueKey is serialized blocksValue to detect mutations
+  }, [blocksValueKey, previewBlockIndex, blockFieldInfo]);
 
   // Mobile preview URL and data
   const mobilePreviewData = useMemo(() => {
@@ -828,10 +993,10 @@ const EntryForm = ({
                   </Button>
                   {options ? options : null}
                 </div>
-                {previewUrl && currentBlockData && (
+                {previewUrl && (
                   <BlockPreview
-                    blockType={currentBlockData.type}
-                    blockData={currentBlockData.data}
+                    blockType={currentBlockData?.type}
+                    blockData={currentBlockData?.data}
                     previewBaseUrl={previewUrl}
                     currentIndex={previewBlockIndex ?? 0}
                     totalBlocks={blocksValue?.length ?? 0}

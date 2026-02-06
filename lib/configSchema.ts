@@ -76,6 +76,18 @@ const ListSchema = z.union([
   }).strict()
 ]);
 
+// Schema for collection dependencies in components
+const CollectionDependencySchema = z.object({
+  name: z.string({
+    required_error: "Collection 'name' is required.",
+    invalid_type_error: "Collection 'name' must be a string.",
+  }),
+  limit: z.union([
+    z.number().positive(),
+    z.string(), // Field reference like "count"
+  ]).optional(),
+});
+
 // Generator for Field Object Schema (components do not have a `name` field)
 const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.ZodType<any> => {
   let baseObjectSchema = {
@@ -96,6 +108,9 @@ const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.
       z.lazy(() => generateFieldObjectSchema()),
       { message: "'fields' must be an array of field definitions." }
     ).optional(),
+    collections: z.array(CollectionDependencySchema, {
+      message: "'collections' must be an array of collection dependency objects."
+    }).optional(),
   };
 
   if (!isComponent) {
@@ -126,6 +141,9 @@ const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.
         list: ListSchema.optional(),
         hidden: z.boolean({
           message: "'hidden' must be a boolean."
+        }).optional().nullable(),
+        templateEditable: z.boolean({
+          message: "'templateEditable' must be a boolean."
         }).optional().nullable(),
         required: z.boolean({
           message: "'required' must be a boolean."
@@ -158,8 +176,16 @@ const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.
         ]).optional(),
         blockKey: z.string({
           message: "'blockKey' must be a string."
-        }).min(1, { 
+        }).min(1, {
            message: "'blockKey' cannot be empty."
+        }).optional(),
+        controlledBy: z.string({
+          message: "'controlledBy' must be a string (the name of a boolean toggle field)."
+        }).regex(/^[a-zA-Z0-9-_]+$/, {
+          message: "'controlledBy' must be alphanumeric with dashes and underscores.",
+        }).optional(),
+        controlledByInverse: z.boolean({
+          message: "'controlledByInverse' must be a boolean."
         }).optional()
       },
       ...baseObjectSchema
@@ -316,6 +342,9 @@ const ContentObjectSchema = z.object({
   subfolders: z.boolean({
     message: "'subfolders' must be a boolean."
   }).optional().nullable(),
+  isTemplate: z.boolean({
+    message: "'isTemplate' must be a boolean."
+  }).optional(),
   fields: z.array(
     generateFieldObjectSchema(),
     { message: "'fields' must be an array of field definitions." }
