@@ -165,7 +165,7 @@ const ListField = ({
           forceUpdate({});
           // Scroll to the block after a brief delay for DOM update
           setTimeout(() => {
-            itemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            itemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }, 50);
         }
       });
