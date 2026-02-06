@@ -63,6 +63,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   ChevronLeft,
+  Copy,
   GripVertical,
   Loader,
   Plus,
@@ -140,7 +141,7 @@ const ListField = ({
   const isCollapsible = !!(field.list && !(typeof field.list === 'object' && field.list?.collapsible === false));
 
   const { setValue, watch } = useFormContext();
-  const { fields: arrayFields, append, remove, move } = useFieldArray({
+  const { fields: arrayFields, append, remove, move, insert } = useFieldArray({
     name: fieldName,
   });
   const fieldValues = watch(fieldName);
@@ -239,6 +240,16 @@ const ListField = ({
     openStatesRef.current.splice(index, 1);
     forceUpdate({});
   };
+
+  const duplicateItem = (index: number) => {
+    const itemToDuplicate = fieldValues[index];
+    // Deep clone the item to avoid reference issues
+    const duplicatedItem = JSON.parse(JSON.stringify(itemToDuplicate));
+    insert(index + 1, duplicatedItem);
+    // Insert open state for the new item (start expanded)
+    openStatesRef.current.splice(index + 1, 0, true);
+    forceUpdate({});
+  };
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -310,16 +321,28 @@ const ListField = ({
                         isTemplateMode={isTemplateMode}
                       />
                     </div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" className="bg-muted/50 text-muted-foreground self-start" onClick={() => removeItem(index)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Remove item
-                      </TooltipContent>
-                    </Tooltip>
+                    <div className="flex flex-col gap-1 self-start">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" className="bg-muted/50 text-muted-foreground" onClick={() => removeItem(index)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Remove item
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" className="bg-muted/50 text-muted-foreground" onClick={() => duplicateItem(index)}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Duplicate item
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </SortableItem>
                 ))}
               </SortableContext>
