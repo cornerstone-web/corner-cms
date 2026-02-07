@@ -112,25 +112,148 @@ const getDefaultValue = (field: Record<string, any>) => {
   }
 };
 
+// A rule describing a field whose "required" validation depends on a toggle
+type ConditionalRequiredRule = {
+  fieldPath: string[];
+  controlledBy: string;
+  inverse: boolean;
+  fieldType: string;
+  isList: boolean;
+};
+
+// Check if a value should be considered "empty" for required-validation purposes
+const isValueEmpty = (value: unknown, rule: ConditionalRequiredRule): boolean => {
+  if (value == null || value === "") return true;
+  if (rule.isList && Array.isArray(value) && value.length === 0) return true;
+  if (rule.fieldType === "block" && typeof value === "object" && Object.keys(value as object).length === 0) return true;
+  return false;
+};
+
+// Recursively strip `required` from all descendant fields.
+// Fields with their own `controlledBy` are left intact — they handle their own conditional logic.
+const stripRequiredDeep = (fields: Field[]): Field[] => {
+  return fields.map(f => {
+    const stripped = f.controlledBy ? { ...f } : { ...f, required: false };
+    if (f.type === 'object' && f.fields) {
+      stripped.fields = stripRequiredDeep(f.fields);
+    }
+    return stripped;
+  });
+};
+
+// Recursively collect paths to required fields that don't have their own `controlledBy`.
+// These are the fields whose required enforcement needs to be delegated to an ancestor toggle.
+const collectRequiredPaths = (
+  fields: Field[],
+  prefix: string[] = []
+): { fieldPath: string[]; fieldType: string; isList: boolean }[] => {
+  const paths: { fieldPath: string[]; fieldType: string; isList: boolean }[] = [];
+  for (const f of fields) {
+    if (f.controlledBy) continue; // Handled by its own scope
+    const path = [...prefix, f.name];
+    if (f.required) {
+      paths.push({ fieldPath: path, fieldType: f.type, isList: !!f.list });
+    }
+    if (f.type === 'object' && f.fields) {
+      paths.push(...collectRequiredPaths(f.fields, path));
+    }
+  }
+  return paths;
+};
+
+// The superRefine callback that enforces conditional required rules
+const enforceConditionalRules = (
+  rules: ConditionalRequiredRule[]
+) => (data: Record<string, unknown>, ctx: z.RefinementCtx) => {
+  for (const rule of rules) {
+    const toggleValue = data[rule.controlledBy];
+    const isEnabled = rule.inverse ? !toggleValue : !!toggleValue;
+
+    if (isEnabled) {
+      // Traverse the path to reach the target value
+      const value = rule.fieldPath.reduce<unknown>(
+        (obj, key) => (obj as Record<string, unknown>)?.[key],
+        data
+      );
+      if (isValueEmpty(value, rule)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: rule.fieldPath,
+          message: rule.fieldType === "block"
+            ? "Please select a block."
+            : rule.isList
+              ? "Field requires at least one item."
+              : "This field is required",
+        });
+      }
+    }
+  }
+};
+
+// Apply conditional required rules via superRefine on a ZodObject
+const applyConditionalRules = (
+  schema: z.ZodObject<any>,
+  rules: ConditionalRequiredRule[]
+): z.ZodTypeAny => {
+  if (rules.length === 0) return schema;
+  return schema.superRefine(enforceConditionalRules(rules));
+};
+
+
 // Generate a Zod schema for validation
 const generateZodSchema = (
   fields: Field[],
   ignoreHidden: boolean = false,
   isTemplateMode: boolean = false
 ): z.ZodTypeAny => {
-  const buildSchemaObject = (currentFields: Field[]): Record<string, z.ZodTypeAny> => {
-    return currentFields.reduce((acc: Record<string, z.ZodTypeAny>, field) => {
+  const buildSchemaObject = (currentFields: Field[]): {
+    shape: Record<string, z.ZodTypeAny>;
+    conditionalRules: ConditionalRequiredRule[];
+  } => {
+    const conditionalRules: ConditionalRequiredRule[] = [];
+
+    const shape = currentFields.reduce((acc: Record<string, z.ZodTypeAny>, field) => {
       if (ignoreHidden && field.hidden) return acc;
 
       // In template mode, skip validation for non-templateEditable fields
       // Exception: block-type fields are always validated (they define structure)
       if (isTemplateMode && field.templateEditable !== true && field.type !== 'block') return acc;
 
+      // Determine if this field's required validation is conditional on a toggle
+      const isConditionallyRequired = !!(field.required && field.controlledBy);
+
+      // The field definition passed to field-level schema functions:
+      // if conditionally required, tell it required=false so it won't bake in .min(1) etc.
+      const fieldForSchema = isConditionallyRequired
+        ? { ...field, required: false }
+        : field;
+
       let fieldSchema: z.ZodTypeAny;
 
       if (field.type === 'object') {
-        // Object field
-        fieldSchema = z.object(buildSchemaObject(field.fields || []));
+        // Object field — if controlled by a toggle, strip required from children
+        // and bubble those constraints up as conditional rules on the parent scope.
+        // Skip this for list fields: per-item validation is handled by Zod's array
+        // schema, and path traversal doesn't work on arrays.
+        const isControlledObject = !!field.controlledBy && !field.list;
+        const childFields = isControlledObject
+          ? stripRequiredDeep(field.fields || [])
+          : (field.fields || []);
+        const nested = buildSchemaObject(childFields);
+        fieldSchema = applyConditionalRules(z.object(nested.shape), nested.conditionalRules);
+
+        if (isControlledObject) {
+          const requiredPaths = collectRequiredPaths(field.fields || []);
+          for (const rp of requiredPaths) {
+            conditionalRules.push({
+              fieldPath: [field.name, ...rp.fieldPath],
+              controlledBy: field.controlledBy!,
+              inverse: !!field.controlledByInverse,
+              fieldType: rp.fieldType,
+              isList: rp.isList,
+            });
+          }
+        }
       } else if (field.type === 'block') {
         // Block field
         if (!field.blocks || field.blocks.length === 0) {
@@ -150,29 +273,65 @@ const generateZodSchema = (
             const fieldsWithoutDiscriminator = (blockDef.fields || []).filter(
               (f: Field) => f.name !== discriminator
             );
-            const blockFieldsSchema = z.object(buildSchemaObject(fieldsWithoutDiscriminator));
-            return base.merge(blockFieldsSchema); 
-          }).filter(schema => schema !== null) as z.ZodObject<any>[];
+            const nested = buildSchemaObject(fieldsWithoutDiscriminator);
+            // Merge raw ZodObject shapes — conditional rules are applied post-union
+            // via applyScopedBlockRules, since superRefine wrapping would
+            // produce ZodEffects which can't be used in discriminatedUnion.
+            return {
+              name: blockDef.name,
+              schema: base.merge(z.object(nested.shape)),
+              rules: nested.conditionalRules
+            };
+          }).filter(item => item !== null) as { name: string; schema: z.ZodObject<any>; rules: ConditionalRequiredRule[] }[];
 
-          if (blockTypeSchemas.length === 0) {
+          // Build a map of block name → conditional rules so each block's rules
+          // only run when validating that specific block type
+          const blockRulesMap = new Map<string, ConditionalRequiredRule[]>();
+          let hasAnyBlockRules = false;
+          for (const item of blockTypeSchemas) {
+            if (item.rules.length > 0) {
+              blockRulesMap.set(item.name, item.rules);
+              hasAnyBlockRules = true;
+            }
+          }
+          const blockSchemas = blockTypeSchemas.map(item => item.schema);
+
+          // Applies scoped conditional rules: only runs rules belonging to the current block type
+          const applyScopedBlockRules = (baseSchema: z.ZodTypeAny): z.ZodTypeAny => {
+            if (!hasAnyBlockRules) return baseSchema;
+            const enforce = enforceConditionalRules; // reuse the factory
+            return baseSchema.superRefine((data, ctx) => {
+              if (!data) return;
+              const blockName = (data as Record<string, unknown>)[discriminator] as string;
+              const rules = blockRulesMap.get(blockName);
+              if (!rules || rules.length === 0) return;
+              enforce(rules)(data as Record<string, unknown>, ctx);
+            });
+          };
+
+          if (blockSchemas.length === 0) {
             console.warn(`Block field "${field.name}" has no valid block definitions in 'blocks'. Allowing any object.`);
             fieldSchema = z.object({}).passthrough();
-          } else if (blockTypeSchemas.length === 1) {
-            fieldSchema = blockTypeSchemas[0].optional().nullable();
+          } else if (blockSchemas.length === 1) {
+            fieldSchema = applyScopedBlockRules(
+              blockSchemas[0].optional().nullable()
+            );
           } else {
-            fieldSchema = z.discriminatedUnion(
-              discriminator,
-              blockTypeSchemas as [z.ZodObject<any>, z.ZodObject<any>, ...z.ZodObject<any>[]]
-            ).optional().nullable();
+            fieldSchema = applyScopedBlockRules(
+              z.discriminatedUnion(
+                discriminator,
+                blockSchemas as [z.ZodObject<any>, z.ZodObject<any>, ...z.ZodObject<any>[]]
+              ).optional().nullable()
+            );
           }
         }
       } else if (field.type && schemas[field.type]) {
         // Standard registered field type (e.g. text, number, ...)
         const fieldSchemaFn = schemas[field.type];
-        fieldSchema = fieldSchemaFn(field);
+        fieldSchema = fieldSchemaFn(fieldForSchema);
       } else {
         console.warn(`Unknown or invalid type "${field.type}" for field "${field.name}". Defaulting to text validation.`);
-        fieldSchema = schemas["text"](field);
+        fieldSchema = schemas["text"](fieldForSchema);
       }
 
       if (field.list) {
@@ -185,14 +344,17 @@ const generateZodSchema = (
             arraySchema = arraySchema.max(field.list.max);
           }
         }
-        if (field.required) {
+        // Only bake in list required if NOT conditionally required
+        if (field.required && !isConditionallyRequired) {
           arraySchema = arraySchema.min(1, { message: `Field requires at least one item.` });
         }
         fieldSchema = arraySchema;
       }
-      
+
       if (!field.list) {
-        if (!field.required) {
+        if (!field.required || isConditionallyRequired) {
+          // Non-required fields and conditionally-required fields are both optional in the shape.
+          // Conditionally-required fields get their enforcement via superRefine on the parent.
           fieldSchema = fieldSchema.optional();
         } else {
           if (field.type === 'block') {
@@ -204,12 +366,26 @@ const generateZodSchema = (
         }
       }
 
+      // Collect conditional required rule for superRefine on the parent object
+      if (isConditionallyRequired) {
+        conditionalRules.push({
+          fieldPath: [field.name],
+          controlledBy: field.controlledBy!,
+          inverse: !!field.controlledByInverse,
+          fieldType: field.type,
+          isList: !!field.list,
+        });
+      }
+
       acc[field.name] = fieldSchema;
       return acc;
     }, {});
+
+    return { shape, conditionalRules };
   };
 
-  return z.object(buildSchemaObject(fields));
+  const { shape, conditionalRules } = buildSchemaObject(fields);
+  return applyConditionalRules(z.object(shape), conditionalRules);
 };
 
 // Traverse the object and remove all empty/null/undefined values
