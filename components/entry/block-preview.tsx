@@ -29,6 +29,7 @@ interface BlockPreviewProps {
   onBlockSelect?: (index: number) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  entryContext?: { collection: string; slug: string };
 }
 
 // Transform collection API response to format expected by preview blocks
@@ -60,6 +61,7 @@ export function BlockPreview({
   onBlockSelect,
   isCollapsed,
   onToggleCollapse,
+  entryContext,
 }: BlockPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -183,6 +185,23 @@ export function BlockPreview({
     [key],
   );
 
+  // Filter collection data based on entry context (e.g., series entry → only its sermons)
+  const filteredCollectionData = useMemo(() => {
+    if (!entryContext?.collection || !entryContext?.slug) return collectionData;
+    if (entryContext.collection === "series" && collectionData.sermons) {
+      return {
+        ...collectionData,
+        sermons: (
+          collectionData.sermons as Array<{
+            slug: string;
+            data: Record<string, unknown>;
+          }>
+        ).filter((sermon) => sermon.data?.series === entryContext.slug),
+      };
+    }
+    return collectionData;
+  }, [collectionData, entryContext]);
+
   // Base preview URL (without data for open in new tab with current data)
   const basePreviewUrl = `${previewBaseUrl}/preview/${normalizedBlockType}`;
   // Iframe URL with initial data (stable)
@@ -195,12 +214,12 @@ export function BlockPreview({
         {
           type: "UPDATE_PREVIEW",
           blockData: transformedData,
-          collections: collectionData,
+          collections: filteredCollectionData,
         },
         "*",
       );
     }
-  }, [transformedData, collectionData, isLoaded]);
+  }, [transformedData, filteredCollectionData, isLoaded]);
 
   // When blocks are added back after being empty, refresh the iframe with new data
   useEffect(() => {
@@ -227,7 +246,7 @@ export function BlockPreview({
           {
             type: "UPDATE_PREVIEW",
             blockData: transformedData,
-            collections: collectionData,
+            collections: filteredCollectionData,
           },
           "*",
         );

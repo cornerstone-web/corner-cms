@@ -23,6 +23,7 @@ interface PagePreviewProps {
   previewBaseUrl: string;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  entryContext?: { collection: string; slug: string };
 }
 
 // Transform collection API response to format expected by preview blocks
@@ -50,6 +51,7 @@ export function PagePreview({
   previewBaseUrl,
   isCollapsed,
   onToggleCollapse,
+  entryContext,
 }: PagePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -180,6 +182,23 @@ export function PagePreview({
     [key],
   );
 
+  // Filter collection data based on entry context (e.g., series entry → only its sermons)
+  const filteredCollectionData = useMemo(() => {
+    if (!entryContext?.collection || !entryContext?.slug) return collectionData;
+    if (entryContext.collection === "series" && collectionData.sermons) {
+      return {
+        ...collectionData,
+        sermons: (
+          collectionData.sermons as Array<{
+            slug: string;
+            data: Record<string, unknown>;
+          }>
+        ).filter((sermon) => sermon.data?.series === entryContext.slug),
+      };
+    }
+    return collectionData;
+  }, [collectionData, entryContext]);
+
   // Preview URLs
   const basePreviewUrl = `${previewBaseUrl}/preview/page`;
   const iframeUrl = `${basePreviewUrl}?data=${initialDataParam}`;
@@ -192,12 +211,13 @@ export function PagePreview({
           type: "UPDATE_PAGE_PREVIEW",
           blocks: transformedBlocks,
           blockKey,
-          collections: collectionData,
+          collections: filteredCollectionData,
+          entryContext,
         },
         "*",
       );
     }
-  }, [transformedBlocks, blockKey, collectionData, isLoaded]);
+  }, [transformedBlocks, blockKey, filteredCollectionData, isLoaded, entryContext]);
 
   // Handle iframe load
   const handleLoad = () => {
@@ -210,7 +230,8 @@ export function PagePreview({
             type: "UPDATE_PAGE_PREVIEW",
             blocks: transformedBlocks,
             blockKey,
-            collections: collectionData,
+            collections: filteredCollectionData,
+            entryContext,
           },
           "*",
         );

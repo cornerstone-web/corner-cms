@@ -931,6 +931,7 @@ const EntryForm = ({
   options,
   previewUrl,
   isTemplateMode = false,
+  collectionName,
 }: {
   title: string;
   navigateBack?: string;
@@ -943,6 +944,7 @@ const EntryForm = ({
   options: React.ReactNode;
   previewUrl?: string;
   isTemplateMode?: boolean;
+  collectionName?: string;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(
@@ -1285,6 +1287,10 @@ const EntryForm = ({
                     onToggleCollapse={() =>
                       setOpenPreview(openPreview === "block" ? null : "block")
                     }
+                    entryContext={collectionName && path ? {
+                      collection: collectionName,
+                      slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
+                    } : undefined}
                   />
                 )}
                 {previewUrl &&
@@ -1299,6 +1305,10 @@ const EntryForm = ({
                       onToggleCollapse={() =>
                         setOpenPreview(openPreview === "page" ? null : "page")
                       }
+                      entryContext={collectionName && path ? {
+                        collection: collectionName,
+                        slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
+                      } : undefined}
                     />
                   )}
                 {path && history && (

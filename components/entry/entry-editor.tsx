@@ -419,6 +419,7 @@ export function EntryEditor({
         history={history}
         previewUrl={config.object?.previewUrl}
         isTemplateMode={isTemplateMode}
+        collectionName={name}
         // filePath={(path && schema?.type === 'collection')
         //   ? <FilePath
         //       path={path}
