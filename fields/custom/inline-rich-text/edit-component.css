@@ -1,0 +1,19 @@
+.inline-rich-text .ProseMirror {
+  @apply rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background min-h-[2.5rem];
+}
+
+.inline-rich-text .ProseMirror-focused {
+  @apply outline-none ring-2 ring-ring ring-offset-2;
+}
+
+.inline-rich-text .ProseMirror > * {
+  @apply first:!mt-0 last:!mb-0;
+}
+
+.inline-rich-text .ProseMirror a {
+  @apply font-medium text-primary underline decoration-dotted underline-offset-4;
+}
+
+.inline-rich-text .tiptap p.is-empty::before {
+  @apply text-muted-foreground float-left h-0 pointer-events-none content-[attr(data-placeholder)];
+}
