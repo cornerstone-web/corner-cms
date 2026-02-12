@@ -157,8 +157,13 @@ const normalizeConfig = (configObject: any) => {
   return configObjectCopy;
 }
 
-// Helper function to resolve component and ref: references in fields
-function resolveComponent(field: any, componentsMap: Record<string, any>, configObject?: any): any {
+// Helper function to resolve component and ref: references in fields.
+// _refDepths tracks how many times each ref name has been resolved in the
+// current call stack, preventing infinite recursion when a block type
+// references itself (e.g. a container block whose children include containers).
+const MAX_REF_DEPTH = 3;
+
+function resolveComponent(field: any, componentsMap: Record<string, any>, configObject?: any, _refDepths: Record<string, number> = {}): any {
   let result = JSON.parse(JSON.stringify(field));
 
   if (result.component && typeof result.component === 'string') {
@@ -195,15 +200,23 @@ function resolveComponent(field: any, componentsMap: Record<string, any>, config
   // Resolve ref: references (e.g., blocks: ref:blockTypes)
   if (typeof result.blocks === 'string' && result.blocks.startsWith('ref:') && configObject) {
     const refName = result.blocks.slice(4); // Remove 'ref:' prefix
-    const refValue = configObject[refName];
-    if (Array.isArray(refValue)) {
-      // Deep clone and resolve components in each block definition
-      result.blocks = refValue.map((block: any) => {
-        return resolveComponent(JSON.parse(JSON.stringify(block)), componentsMap, configObject);
-      });
-    } else {
-      console.warn(`Reference "${refName}" not found or not an array in config.`);
+    const depth = _refDepths[refName] || 0;
+
+    if (depth >= MAX_REF_DEPTH) {
+      // Depth limit reached — stop resolving to prevent infinite recursion
       result.blocks = [];
+    } else {
+      const refValue = configObject[refName];
+      if (Array.isArray(refValue)) {
+        const newDepths = { ..._refDepths, [refName]: depth + 1 };
+        // Deep clone and resolve components in each block definition
+        result.blocks = refValue.map((block: any) => {
+          return resolveComponent(JSON.parse(JSON.stringify(block)), componentsMap, configObject, newDepths);
+        });
+      } else {
+        console.warn(`Reference "${refName}" not found or not an array in config.`);
+        result.blocks = [];
+      }
     }
   }
 
@@ -213,14 +226,14 @@ function resolveComponent(field: any, componentsMap: Record<string, any>, config
   // Nested fields
   if (Array.isArray(result.fields)) {
     result.fields = result.fields.map((nestedField: any) => {
-      return resolveComponent(nestedField, componentsMap, configObject);
+      return resolveComponent(nestedField, componentsMap, configObject, _refDepths);
     });
   }
 
   // Nested blocks
   if (Array.isArray(result.blocks)) {
     result.blocks = result.blocks.map((block: any) => {
-      return resolveComponent(block, componentsMap, configObject);
+      return resolveComponent(block, componentsMap, configObject, _refDepths);
     });
   }
 
