@@ -103,6 +103,10 @@ export const siteConfigSchema = z.object({
 
   serviceTimes: z.array(serviceTimeSchema).default([]),
 
+  integrations: z.object({
+    youtubeApiKey: z.string().default(""),
+  }),
+
   features: z.object({
     articles: z.boolean().default(true),
     events: z.boolean().default(true),

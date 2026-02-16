@@ -23,6 +23,7 @@ import { ThemeSection } from "./sections/ThemeSection";
 import { NavigationSection } from "./sections/NavigationSection";
 import { FooterSection } from "./sections/FooterSection";
 import { ExternalLinksSection } from "./sections/ExternalLinksSection";
+import { IntegrationsSection } from "./sections/IntegrationsSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
 
 export function SiteConfigEditor() {
@@ -204,6 +205,7 @@ export function SiteConfigEditor() {
                   <TabsTrigger value="navigation">Navigation</TabsTrigger>
                   <TabsTrigger value="footer">Footer</TabsTrigger>
                   <TabsTrigger value="external">Links</TabsTrigger>
+                  <TabsTrigger value="integrations">Integrations</TabsTrigger>
                   <TabsTrigger value="features">Features</TabsTrigger>
                 </TabsList>
 
@@ -227,6 +229,9 @@ export function SiteConfigEditor() {
                 </TabsContent>
                 <TabsContent value="external" className="mt-6">
                   <ExternalLinksSection control={form.control} />
+                </TabsContent>
+                <TabsContent value="integrations" className="mt-6">
+                  <IntegrationsSection control={form.control} />
                 </TabsContent>
                 <TabsContent value="features" className="mt-6">
                   <FeaturesSection control={form.control} />
