@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LinkInput } from "../LinkInput";
 import type { SiteConfigFormValues } from "../schema";
 
 interface FooterSectionProps {
@@ -196,7 +197,12 @@ function FooterLinksList({
             render={({ field }) => (
               <FormItem className="flex-1">
                 <FormControl>
-                  <Input className="h-8 text-sm" placeholder="/path" {...field} />
+                  <LinkInput
+                    ref={field.ref}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="/path"
+                  />
                 </FormControl>
               </FormItem>
             )}

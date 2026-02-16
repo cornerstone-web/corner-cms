@@ -5,7 +5,6 @@ import { Control, useFieldArray, useWatch } from "react-hook-form";
 import {
   ChevronDown,
   ChevronRight,
-  GripVertical,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LinkInput } from "../LinkInput";
 import type { SiteConfigFormValues } from "../schema";
 
 interface NavigationSectionProps {
@@ -106,7 +106,12 @@ export function NavigationSection({ control }: NavigationSectionProps) {
               <FormItem>
                 <FormLabel>URL</FormLabel>
                 <FormControl>
-                  <Input placeholder="/give" {...field} />
+                  <LinkInput
+                    ref={field.ref}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="/give"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -198,10 +203,11 @@ function NavItemsList({ control }: { control: Control<SiteConfigFormValues> }) {
                     <FormItem>
                       <FormLabel>URL (for simple links)</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="/events"
-                          {...field}
+                        <LinkInput
+                          ref={field.ref}
                           value={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder="/events"
                         />
                       </FormControl>
                       <FormMessage />
@@ -429,10 +435,11 @@ function NavLinksList({
             render={({ field }) => (
               <FormItem className="flex-1">
                 <FormControl>
-                  <Input
-                    className="h-7 text-xs"
+                  <LinkInput
+                    ref={field.ref}
+                    value={field.value}
+                    onChange={field.onChange}
                     placeholder="/path"
-                    {...field}
                   />
                 </FormControl>
               </FormItem>
