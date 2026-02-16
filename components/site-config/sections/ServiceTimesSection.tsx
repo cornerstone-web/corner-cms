@@ -47,52 +47,54 @@ export function ServiceTimesSection({ control }: ServiceTimesSectionProps) {
           key={field.id}
           className="flex items-start gap-3 rounded-lg border p-4"
         >
-          <div className="flex-1 grid grid-cols-3 gap-3">
-            <FormField
-              control={control}
-              name={`serviceTimes.${index}.day`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className={index > 0 ? "sr-only" : undefined}>
-                    Day
-                  </FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Day" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {DAYS.map((day) => (
-                        <SelectItem key={day} value={day}>
-                          {day}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <div className="flex-1 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={control}
+                name={`serviceTimes.${index}.day`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className={index > 0 ? "sr-only" : undefined}>
+                      Day
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Day" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {DAYS.map((day) => (
+                          <SelectItem key={day} value={day}>
+                            {day}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={control}
-              name={`serviceTimes.${index}.time`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className={index > 0 ? "sr-only" : undefined}>
-                    Time
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="10:00 AM" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={control}
+                name={`serviceTimes.${index}.time`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className={index > 0 ? "sr-only" : undefined}>
+                      Time
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="10:00 AM" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={control}
