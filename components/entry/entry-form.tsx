@@ -24,6 +24,8 @@ import {
   sanitizeObject,
 } from "@/lib/schema";
 import { Field } from "@/types/field";
+import { useConfig } from "@/contexts/config-context";
+import { useSiteFeatures } from "@/hooks/use-site-features";
 import { EntryHistoryBlock, EntryHistoryDropdown } from "./entry-history";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -476,6 +478,26 @@ const BlocksField = forwardRef((props: any, ref) => {
   const blockKey = field.blockKey || "_block";
   const selectedBlockName = value?.[blockKey];
 
+  // Filter out blocks whose collection dependencies are disabled
+  const { config: repoConfig } = useConfig();
+  const { features } = useSiteFeatures();
+  const availableBlocks = useMemo(() => {
+    if (!repoConfig?.object?.components) return blocks;
+    return blocks.filter((blockDef: Field) => {
+      // Derive component name: kebab-case → camelCase + "Block"
+      const componentName =
+        blockDef.name
+          .split("-")
+          .map((part: string, i: number) =>
+            i === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)
+          )
+          .join("") + "Block";
+      const componentDef = repoConfig.object.components?.[componentName];
+      const deps: Array<{ name: string }> = componentDef?.collections || [];
+      return deps.every((dep) => features[dep.name] !== false);
+    });
+  }, [blocks, repoConfig, features]);
+
   const handleBlockSelect = (blockName: string) => {
     const selectedBlockDef = blocks.find((b: Field) => b.name === blockName);
     if (!selectedBlockDef) return;
@@ -517,7 +539,7 @@ const BlocksField = forwardRef((props: any, ref) => {
             <span>Choose content block:</span>
           </header>
           <div className="flex flex-wrap gap-2 p-4">
-            {blocks.map((blockDef: Field) => (
+            {availableBlocks.map((blockDef: Field) => (
               <Button
                 key={blockDef.name}
                 type="button"

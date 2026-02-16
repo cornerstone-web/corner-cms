@@ -34,8 +34,8 @@ interface NavigationSectionProps {
 export function NavigationSection({ control }: NavigationSectionProps) {
   return (
     <div className="space-y-6">
-      {/* Navigation style and background */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Navigation style, mobile style, and background */}
+      <div className="grid grid-cols-3 gap-4">
         <FormField
           control={control}
           name="navigation.style"
@@ -52,6 +52,29 @@ export function NavigationSection({ control }: NavigationSectionProps) {
                   <SelectItem value="mega">Mega Menu</SelectItem>
                   <SelectItem value="dropdown">Dropdown</SelectItem>
                   <SelectItem value="simple">Simple</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="navigation.mobileStyle"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Mobile Menu</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="drawer">Drawer</SelectItem>
+                  <SelectItem value="fullscreen">Full Screen</SelectItem>
+                  <SelectItem value="slidedown">Slide Down</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

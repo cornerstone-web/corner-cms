@@ -60,6 +60,7 @@ export const siteConfigSchema = z.object({
 
   navigation: z.object({
     style: z.enum(["mega", "dropdown", "simple"]).default("mega"),
+    mobileStyle: z.enum(["drawer", "fullscreen", "slidedown"]).default("drawer"),
     background: z.enum(["solid", "transparent"]).default("solid"),
     items: z.array(navItemSchema).default([]),
     cta: ctaButtonSchema,
@@ -101,6 +102,15 @@ export const siteConfigSchema = z.object({
   }),
 
   serviceTimes: z.array(serviceTimeSchema).default([]),
+
+  features: z.object({
+    articles: z.boolean().default(true),
+    events: z.boolean().default(true),
+    ministries: z.boolean().default(true),
+    series: z.boolean().default(true),
+    sermons: z.boolean().default(true),
+    staff: z.boolean().default(true),
+  }),
 });
 
 export type SiteConfigFormValues = z.infer<typeof siteConfigSchema>;

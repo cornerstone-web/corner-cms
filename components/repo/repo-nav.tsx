@@ -7,6 +7,7 @@ import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { cn } from "@/lib/utils";
 import { FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
+import { useSiteFeatures } from "@/hooks/use-site-features";
 
 const RepoNavItem = ({
   children,
@@ -43,19 +44,26 @@ const RepoNav = ({
   const { config } = useConfig();
   const { user } = useUser();
   const pathname = usePathname();
+  const { features } = useSiteFeatures();
 
   const items = useMemo(() => {
     if (!config || !config.object) return [];
     const configObject: any = config.object;
-    const contentItems = configObject.content?.map((item: any) => ({
-      key: item.name,
-      icon: item.type === "collection"
-        ? <FileStack className="h-5 w-5 mr-2" />
-        : <FileText className="h-5 w-5 mr-2" />
-      ,
-      href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/${item.type}/${encodeURIComponent(item.name)}`,
-      label: item.label || item.name,
-    })) || [];
+    const contentItems = configObject.content
+      ?.filter((item: any) => {
+        if (item.type !== "collection") return true;
+        if (item.name === "pages" || item.name === "templates") return true;
+        return features[item.name] !== false;
+      })
+      .map((item: any) => ({
+        key: item.name,
+        icon: item.type === "collection"
+          ? <FileStack className="h-5 w-5 mr-2" />
+          : <FileText className="h-5 w-5 mr-2" />
+        ,
+        href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/${item.type}/${encodeURIComponent(item.name)}`,
+        label: item.label || item.name,
+      })) || [];
 
     const mediaItems = configObject.media?.map((item: any) => ({
       key: item.name || "media",
@@ -88,7 +96,7 @@ const RepoNav = ({
       settingsItem,
       collaboratorsItem
     ].filter(Boolean);
-  }, [config, user?.githubId]);
+  }, [config, user?.githubId, features]);
 
   if (!items.length) return null;
 
