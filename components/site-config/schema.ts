@@ -67,14 +67,15 @@ export const siteConfigSchema = z.object({
   }),
 
   navigation: z.object({
-    style: z.enum(["mega", "dropdown", "simple"]).default("mega"),
+    desktopStyle: z.enum(["dropdown-columns", "dropdown", "simple"]).default("dropdown-columns"),
     mobileStyle: z.enum(["drawer", "fullscreen", "slidedown"]).default("drawer"),
     background: z.enum(["solid", "transparent"]).default("solid"),
     items: z.array(navElementSchema).default([]),
   }),
 
   footer: z.object({
-    style: z.enum(["comprehensive", "minimal"]).default("comprehensive"),
+    variant: z.enum(["comprehensive", "minimal"]).default("comprehensive"),
+    style: z.enum(["centered", "left-aligned"]).default("centered"),
     socialLinks: z
       .array(
         z.object({

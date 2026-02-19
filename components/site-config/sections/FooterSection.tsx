@@ -125,32 +125,57 @@ function useSortableSensors() {
 // ---------------------------------------------------------------------------
 
 export function FooterSection({ control }: FooterSectionProps) {
+  const variant = useWatch({ control, name: "footer.variant" });
+
   return (
     <div className="space-y-6">
-      <FormField
-        control={control}
-        name="footer.style"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Footer Style</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="comprehensive">Comprehensive</SelectItem>
-                <SelectItem value="minimal">Minimal</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={control}
+          name="footer.variant"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Variant</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="comprehensive">Comprehensive</SelectItem>
+                  <SelectItem value="minimal">Minimal</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name="footer.style"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Style</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="centered">Centered</SelectItem>
+                  <SelectItem value="left-aligned">Left-Aligned</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
       <SocialLinksList control={control} />
-      <FooterSectionsList control={control} />
+      {variant !== "minimal" && <FooterSectionsList control={control} />}
     </div>
   );
 }

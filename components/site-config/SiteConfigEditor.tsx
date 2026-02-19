@@ -12,7 +12,6 @@ import { Form } from "@/components/ui/form";
 import {
   IFrameWrapper,
   PreviewToolbar,
-  PreviewFrame,
   ExpandedPreviewModal,
 } from "@/components/entry/preview/shared";
 import { siteConfigSchema, type SiteConfigFormValues } from "./schema";
@@ -114,6 +113,23 @@ export function SiteConfigEditor() {
     }
   };
 
+  const handleLoad = useCallback(() => {
+    setIsLoaded(true);
+    lastSentRef.current = "";
+    setTimeout(() => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          { type: "UPDATE_SITE_CONFIG", config: form.getValues() },
+          "*"
+        );
+      }
+    }, 300);
+  }, [form]);
+
+  useEffect(() => {
+    setIsLoaded(false);
+  }, [isExpanded]);
+
   const handleReload = useCallback(() => {
     setIsLoaded(false);
     setRefreshKey((k) => k + 1);
@@ -143,21 +159,6 @@ export function SiteConfigEditor() {
   }
 
   const iframeUrl = previewUrl ? `${previewUrl}/preview/site-config` : null;
-
-  const previewContent = iframeUrl ? (
-    <IFrameWrapper
-      url={iframeUrl}
-      title="Site Config Preview"
-      onLoad={() => setIsLoaded(true)}
-      isLoaded={isLoaded}
-      iframeRef={iframeRef}
-      refreshKey={refreshKey}
-    />
-  ) : (
-    <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-      No preview URL configured
-    </div>
-  );
 
   return (
     <div className="flex flex-col h-full">
@@ -241,7 +242,20 @@ export function SiteConfigEditor() {
           <div className="hidden lg:flex flex-col w-1/2 border-l bg-muted/30">
             <div className="flex-1 p-4">
               <div className="h-full rounded-lg overflow-hidden border bg-white">
-                {previewContent}
+                {isExpanded ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    Preview is expanded
+                  </div>
+                ) : (
+                  <IFrameWrapper
+                    url={iframeUrl}
+                    title="Site Config Preview"
+                    onLoad={handleLoad}
+                    isLoaded={isLoaded}
+                    iframeRef={iframeRef}
+                    refreshKey={refreshKey}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -263,7 +277,18 @@ export function SiteConfigEditor() {
               />
             </div>
           }
-          iframeContent={previewContent}
+          iframeContent={
+            iframeUrl ? (
+              <IFrameWrapper
+                url={iframeUrl}
+                title="Site Config Preview"
+                onLoad={handleLoad}
+                isLoaded={isLoaded}
+                iframeRef={iframeRef}
+                refreshKey={refreshKey}
+              />
+            ) : null
+          }
           onClose={() => setIsExpanded(false)}
         />
       )}

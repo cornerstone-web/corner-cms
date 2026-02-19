@@ -62,10 +62,10 @@ export function NavigationSection({ control }: NavigationSectionProps) {
       <div className="grid grid-cols-3 gap-4">
         <FormField
           control={control}
-          name="navigation.style"
+          name="navigation.desktopStyle"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Style</FormLabel>
+              <FormLabel>Desktop Menu</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -73,7 +73,7 @@ export function NavigationSection({ control }: NavigationSectionProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="mega">Mega Menu</SelectItem>
+                  <SelectItem value="dropdown-columns">Dropdown Columns</SelectItem>
                   <SelectItem value="dropdown">Dropdown</SelectItem>
                   <SelectItem value="simple">Simple</SelectItem>
                 </SelectContent>
@@ -435,7 +435,9 @@ function LinkItemCard({
     control,
     name: `navigation.items.${index}.columns` as any,
   });
+  const navStyle = useWatch({ control, name: "navigation.desktopStyle" });
   const hasColumns = Array.isArray(columns) && columns.length > 0;
+  const showColumns = navStyle !== "simple";
 
   return (
     <div className="rounded-lg border">
@@ -483,7 +485,7 @@ function LinkItemCard({
             )}
           />
 
-          <div className={hasColumns ? "opacity-50 pointer-events-none" : ""}>
+          <div className={hasColumns && showColumns ? "opacity-50 pointer-events-none" : ""}>
             <FormField
               control={control}
               name={`navigation.items.${index}.href` as any}
@@ -491,7 +493,7 @@ function LinkItemCard({
                 <FormItem>
                   <FormLabel>
                     URL{" "}
-                    {hasColumns && (
+                    {hasColumns && showColumns && (
                       <span className="text-xs text-muted-foreground font-normal">
                         (disabled — item has dropdown columns)
                       </span>
@@ -512,7 +514,7 @@ function LinkItemCard({
           </div>
 
           {/* Columns */}
-          <NavColumnsList control={control} itemIndex={index} />
+          {showColumns && <NavColumnsList control={control} itemIndex={index} />}
         </div>
       )}
     </div>
