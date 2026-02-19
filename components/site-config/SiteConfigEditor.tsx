@@ -37,6 +37,7 @@ export function SiteConfigEditor() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const previewUrl = config?.object?.previewUrl;
+  const previewOrigin = previewUrl ? new URL(previewUrl).origin : null;
 
   const form = useForm<SiteConfigFormValues>({
     resolver: zodResolver(siteConfigSchema),
@@ -82,9 +83,9 @@ export function SiteConfigEditor() {
 
     iframeRef.current.contentWindow.postMessage(
       { type: "UPDATE_SITE_CONFIG", config: watchedValues },
-      "*"
+      previewOrigin!
     );
-  }, [watchedValues, isLoaded]);
+  }, [watchedValues, isLoaded, previewOrigin]);
 
   const handleSave = async (values: SiteConfigFormValues) => {
     if (!config || !sha) return;
@@ -120,7 +121,7 @@ export function SiteConfigEditor() {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
           { type: "UPDATE_SITE_CONFIG", config: form.getValues() },
-          "*"
+          previewOrigin!
         );
       }
     }, 300);
