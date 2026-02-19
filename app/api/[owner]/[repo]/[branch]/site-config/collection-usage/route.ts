@@ -102,14 +102,13 @@ export async function GET(
     await Promise.all(
       pageFiles.map(async (file) => {
         try {
-          const { data } = await octokit.rest.repos.getContent({
+          // Use the blob SHA already available from the tree response to avoid
+          // an extra path-resolution step that getContent performs.
+          const { data } = await octokit.rest.git.getBlob({
             owner: params.owner,
             repo: params.repo,
-            path: file.path!,
-            ref: params.branch,
+            file_sha: file.sha!,
           });
-
-          if (Array.isArray(data) || data.type !== "file") return;
 
           const content = Buffer.from(data.content, "base64").toString();
 
