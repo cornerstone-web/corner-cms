@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfig } from "@/contexts/config-context";
 import { useRepo } from "@/contexts/repo-context";
+import { SiteFeaturesProvider } from "@/contexts/site-features-context";
 import { trackVisit } from "@/lib/tracker";
 
 export function RepoLayout({
@@ -41,6 +42,7 @@ export function RepoLayout({
   }, [config, owner, repo]);
 
   return (
+    <SiteFeaturesProvider>
     <>
       <div className="flex h-screen w-full">
         <aside className="hidden xl:flex flex-col h-screen w-72 border-r gap-y-2">
@@ -74,5 +76,6 @@ export function RepoLayout({
         </aside>
       </div>
     </>
+    </SiteFeaturesProvider>
   );
 }
