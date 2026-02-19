@@ -2,7 +2,32 @@
 
 import { useState } from "react";
 import { Control, useFieldArray, useWatch } from "react-hook-form";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  ChevronDown,
+  ChevronRight,
+  GripVertical,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import {
   FormField,
   FormItem,
@@ -36,6 +61,69 @@ const SOCIAL_PLATFORMS = [
   { value: "custom", label: "Custom" },
 ];
 
+const DND_MODIFIERS = [restrictToVerticalAxis, restrictToParentElement];
+
+// ---------------------------------------------------------------------------
+// SortableItem – shared drag wrapper
+// ---------------------------------------------------------------------------
+
+function SortableItem({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={isDragging ? "opacity-50 z-50 relative" : "z-10 relative"}
+      style={style}
+    >
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="h-auto w-5 bg-muted/50 self-stretch rounded-md text-muted-foreground cursor-move shrink-0"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </Button>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function useSortableSensors() {
+  return useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FooterSection – main export
+// ---------------------------------------------------------------------------
+
 export function FooterSection({ control }: FooterSectionProps) {
   return (
     <div className="space-y-6">
@@ -67,23 +155,57 @@ export function FooterSection({ control }: FooterSectionProps) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// SocialLinksList
+// ---------------------------------------------------------------------------
+
 function SocialLinksList({
   control,
 }: {
   control: Control<SiteConfigFormValues>;
 }) {
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control,
     name: "footer.socialLinks",
   });
+
+  const sensors = useSortableSensors();
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = fields.findIndex((item) => item.id === active.id);
+    const newIndex = fields.findIndex((item) => item.id === over.id);
+    move(oldIndex, newIndex);
+  };
 
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-medium">Social Links</h3>
 
-      {fields.map((field, index) => (
-        <SocialLinkRow key={field.id} control={control} index={index} onRemove={() => remove(index)} />
-      ))}
+      <DndContext
+        sensors={sensors}
+        modifiers={DND_MODIFIERS}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={fields.map((item) => item.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {fields.map((field, index) => (
+              <SortableItem key={field.id} id={field.id}>
+                <SocialLinkRow
+                  control={control}
+                  index={index}
+                  onRemove={() => remove(index)}
+                />
+              </SortableItem>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <Button
         type="button"
@@ -107,7 +229,10 @@ function SocialLinkRow({
   index: number;
   onRemove: () => void;
 }) {
-  const platform = useWatch({ control, name: `footer.socialLinks.${index}.platform` });
+  const platform = useWatch({
+    control,
+    name: `footer.socialLinks.${index}.platform`,
+  });
   const isCustom = platform === "custom";
 
   return (
@@ -141,12 +266,22 @@ function SocialLinkRow({
           render={({ field }) => (
             <FormItem className="flex-1">
               <FormControl>
-                <Input className="h-8 text-sm" type="url" placeholder="https://..." {...field} />
+                <Input
+                  className="h-8 text-sm"
+                  type="url"
+                  placeholder="https://..."
+                  {...field}
+                />
               </FormControl>
             </FormItem>
           )}
         />
-        <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={onRemove}
+        >
           <Trash2 className="h-4 w-4 text-muted-foreground" />
         </Button>
       </div>
@@ -159,7 +294,12 @@ function SocialLinkRow({
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <Input className="h-8 text-sm" placeholder="Label" {...field} value={field.value ?? ""} />
+                  <Input
+                    className="h-8 text-sm"
+                    placeholder="Label"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
                 </FormControl>
               </FormItem>
             )}
@@ -185,12 +325,16 @@ function SocialLinkRow({
   );
 }
 
+// ---------------------------------------------------------------------------
+// FooterSectionsList
+// ---------------------------------------------------------------------------
+
 function FooterSectionsList({
   control,
 }: {
   control: Control<SiteConfigFormValues>;
 }) {
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control,
     name: "footer.sections",
   });
@@ -208,76 +352,122 @@ function FooterSectionsList({
     });
   };
 
+  const sensors = useSortableSensors();
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = fields.findIndex((item) => item.id === active.id);
+    const newIndex = fields.findIndex((item) => item.id === over.id);
+
+    // Remap expanded state
+    setExpandedSections((prev) => {
+      const next = new Set<number>();
+      for (const idx of prev) {
+        if (idx === oldIndex) {
+          next.add(newIndex);
+        } else if (oldIndex < newIndex) {
+          next.add(idx > oldIndex && idx <= newIndex ? idx - 1 : idx);
+        } else {
+          next.add(idx >= newIndex && idx < oldIndex ? idx + 1 : idx);
+        }
+      }
+      return next;
+    });
+
+    move(oldIndex, newIndex);
+  };
+
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-medium">Footer Sections</h3>
 
-      {fields.map((field, index) => (
-        <div key={field.id} className="rounded-lg border">
-          <div className="flex items-center gap-2 p-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => toggleSection(index)}
-            >
-              {expandedSections.has(index) ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </Button>
-            <FooterSectionLabel control={control} index={index} />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => remove(index)}
-            >
-              <Trash2 className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </div>
+      <DndContext
+        sensors={sensors}
+        modifiers={DND_MODIFIERS}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={fields.map((item) => item.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {fields.map((field, index) => (
+              <SortableItem key={field.id} id={field.id}>
+                <div className="rounded-lg border">
+                  <div className="flex items-center gap-2 p-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => toggleSection(index)}
+                    >
+                      {expandedSections.has(index) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <FooterSectionLabel control={control} index={index} />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => remove(index)}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
 
-          {expandedSections.has(index) && (
-            <div className="px-3 pb-3 space-y-3 border-t pt-3">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={control}
-                  name={`footer.sections.${index}.heading`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Heading</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={control}
-                  name={`footer.sections.${index}.icon`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Icon</FormLabel>
-                      <FormControl>
-                        <IconPicker
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                          field={{ required: false }}
+                  {expandedSections.has(index) && (
+                    <div className="px-3 pb-3 space-y-3 border-t pt-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={control}
+                          name={`footer.sections.${index}.heading`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Heading</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                        <FormField
+                          control={control}
+                          name={`footer.sections.${index}.icon`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Icon</FormLabel>
+                              <FormControl>
+                                <IconPicker
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                  field={{ required: false }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
-              <FooterLinksList control={control} sectionIndex={index} />
-            </div>
-          )}
-        </div>
-      ))}
+                      <FooterLinksList
+                        control={control}
+                        sectionIndex={index}
+                      />
+                    </div>
+                  )}
+                </div>
+              </SortableItem>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <Button
         type="button"
@@ -310,6 +500,10 @@ function FooterSectionLabel({
   );
 }
 
+// ---------------------------------------------------------------------------
+// FooterLinksList
+// ---------------------------------------------------------------------------
+
 function FooterLinksList({
   control,
   sectionIndex,
@@ -317,54 +511,84 @@ function FooterLinksList({
   control: Control<SiteConfigFormValues>;
   sectionIndex: number;
 }) {
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control,
     name: `footer.sections.${sectionIndex}.links`,
   });
+
+  const sensors = useSortableSensors();
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = fields.findIndex((item) => item.id === active.id);
+    const newIndex = fields.findIndex((item) => item.id === over.id);
+    move(oldIndex, newIndex);
+  };
 
   return (
     <div className="space-y-2">
       <h4 className="text-xs font-medium text-muted-foreground">Links</h4>
 
-      {fields.map((field, linkIndex) => (
-        <div key={field.id} className="flex items-center gap-2">
-          <FormField
-            control={control}
-            name={`footer.sections.${sectionIndex}.links.${linkIndex}.label`}
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormControl>
-                  <Input className="h-8 text-sm" placeholder="Label" {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name={`footer.sections.${sectionIndex}.links.${linkIndex}.href`}
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormControl>
-                  <LinkInput
-                    ref={field.ref}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="/path"
+      <DndContext
+        sensors={sensors}
+        modifiers={DND_MODIFIERS}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={fields.map((item) => item.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {fields.map((field, linkIndex) => (
+              <SortableItem key={field.id} id={field.id}>
+                <div className="flex items-center gap-2">
+                  <FormField
+                    control={control}
+                    name={`footer.sections.${sectionIndex}.links.${linkIndex}.label`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input
+                            className="h-8 text-sm"
+                            placeholder="Label"
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => remove(linkIndex)}
-          >
-            <Trash2 className="h-3 w-3 text-muted-foreground" />
-          </Button>
-        </div>
-      ))}
+                  <FormField
+                    control={control}
+                    name={`footer.sections.${sectionIndex}.links.${linkIndex}.href`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <LinkInput
+                            ref={field.ref}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="/path"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => remove(linkIndex)}
+                  >
+                    <Trash2 className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </div>
+              </SortableItem>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <Button
         type="button"
