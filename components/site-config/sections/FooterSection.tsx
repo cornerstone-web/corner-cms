@@ -19,12 +19,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EditComponent as IconPicker } from "@/fields/custom/icon/edit-component";
 import { LinkInput } from "../LinkInput";
 import type { SiteConfigFormValues } from "../schema";
 
 interface FooterSectionProps {
   control: Control<SiteConfigFormValues>;
 }
+
+const SOCIAL_PLATFORMS = [
+  { value: "facebook", label: "Facebook" },
+  { value: "instagram", label: "Instagram" },
+  { value: "youtube", label: "YouTube" },
+  { value: "twitter", label: "Twitter / X" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "custom", label: "Custom" },
+];
 
 export function FooterSection({ control }: FooterSectionProps) {
   return (
@@ -51,7 +61,126 @@ export function FooterSection({ control }: FooterSectionProps) {
         )}
       />
 
+      <SocialLinksList control={control} />
       <FooterSectionsList control={control} />
+    </div>
+  );
+}
+
+function SocialLinksList({
+  control,
+}: {
+  control: Control<SiteConfigFormValues>;
+}) {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "footer.socialLinks",
+  });
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-medium">Social Links</h3>
+
+      {fields.map((field, index) => (
+        <SocialLinkRow key={field.id} control={control} index={index} onRemove={() => remove(index)} />
+      ))}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => append({ platform: "facebook", url: "" })}
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Add Social Link
+      </Button>
+    </div>
+  );
+}
+
+function SocialLinkRow({
+  control,
+  index,
+  onRemove,
+}: {
+  control: Control<SiteConfigFormValues>;
+  index: number;
+  onRemove: () => void;
+}) {
+  const platform = useWatch({ control, name: `footer.socialLinks.${index}.platform` });
+  const isCustom = platform === "custom";
+
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <FormField
+          control={control}
+          name={`footer.socialLinks.${index}.platform`}
+          render={({ field }) => (
+            <FormItem className="w-40">
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {SOCIAL_PLATFORMS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`footer.socialLinks.${index}.url`}
+          render={({ field }) => (
+            <FormItem className="flex-1">
+              <FormControl>
+                <Input className="h-8 text-sm" type="url" placeholder="https://..." {...field} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove}>
+          <Trash2 className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      </div>
+
+      {isCustom && (
+        <div className="grid grid-cols-2 gap-2">
+          <FormField
+            control={control}
+            name={`footer.socialLinks.${index}.label`}
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input className="h-8 text-sm" placeholder="Label" {...field} value={field.value ?? ""} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name={`footer.socialLinks.${index}.icon`}
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <IconPicker
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    field={{ required: false }}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -111,19 +240,38 @@ function FooterSectionsList({
 
           {expandedSections.has(index) && (
             <div className="px-3 pb-3 space-y-3 border-t pt-3">
-              <FormField
-                control={control}
-                name={`footer.sections.${index}.heading`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Heading</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={control}
+                  name={`footer.sections.${index}.heading`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Heading</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name={`footer.sections.${index}.icon`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Icon</FormLabel>
+                      <FormControl>
+                        <IconPicker
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          field={{ required: false }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FooterLinksList control={control} sectionIndex={index} />
             </div>
@@ -135,7 +283,7 @@ function FooterSectionsList({
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append({ heading: "", links: [] })}
+        onClick={() => append({ heading: "", icon: "", links: [] })}
       >
         <Plus className="h-4 w-4 mr-2" />
         Add Section

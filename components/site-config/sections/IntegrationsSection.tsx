@@ -35,14 +35,19 @@ export function IntegrationsSection({ control }: IntegrationsSectionProps) {
                 <TooltipTrigger asChild>
                   <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs">
+                <TooltipContent side="right" className="max-w-sm">
                   <p>
-                    Used for YouTube Live stream detection in the Video Embed
-                    block. To create one: Go to the{" "}
-                    <strong>Google Cloud Console</strong> &rarr; Create or select
-                    a project &rarr; Enable the{" "}
-                    <strong>YouTube Data API v3</strong> &rarr; Go to{" "}
-                    <strong>Credentials</strong> &rarr; Create an API key.
+                    Used for YouTube Live stream detection. To create a key, follow{" "}
+                    <a
+                      href="https://support.google.com/googleapi/answer/6158862"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-medium"
+                    >
+                      Google&apos;s API key guide
+                    </a>
+                    : Enable the YouTube Data API v3 in Google Cloud Console,
+                    then create an API key under Credentials.
                   </p>
                 </TooltipContent>
               </Tooltip>

@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import type { SiteConfigFormValues } from "../schema";
 
 interface IdentitySectionProps {
@@ -48,27 +47,6 @@ export function IdentitySection({ control }: IdentitySectionProps) {
               />
             </FormControl>
             <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={control}
-        name="search.enabled"
-        render={({ field }) => (
-          <FormItem className="flex items-center justify-between rounded-lg border p-4">
-            <div>
-              <FormLabel className="text-base">Site Search</FormLabel>
-              <p className="text-sm text-muted-foreground">
-                Enable search functionality across the site
-              </p>
-            </div>
-            <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
           </FormItem>
         )}
       />

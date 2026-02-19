@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -24,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EditComponent as IconPicker } from "@/fields/custom/icon/edit-component";
 import { LinkInput } from "../LinkInput";
 import type { SiteConfigFormValues } from "../schema";
 
@@ -105,46 +107,94 @@ export function NavigationSection({ control }: NavigationSectionProps) {
         />
       </div>
 
+      {/* Search toggle */}
+      <FormField
+        control={control}
+        name="search.enabled"
+        render={({ field }) => (
+          <FormItem className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <FormLabel className="text-base">Site Search</FormLabel>
+              <p className="text-sm text-muted-foreground">
+                Show search icon in the header
+              </p>
+            </div>
+            <FormControl>
+              <Switch
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+
       {/* CTA Button */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium">Call to Action Button</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={control}
-            name="navigation.cta.label"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Label</FormLabel>
-                <FormControl>
-                  <Input placeholder="Give" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name="navigation.cta.href"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>URL</FormLabel>
-                <FormControl>
-                  <LinkInput
-                    ref={field.ref}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="/give"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={control}
+          name="navigation.showCta"
+          render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <FormLabel className="text-base">Call to Action Button</FormLabel>
+                <p className="text-sm text-muted-foreground">
+                  Show a CTA button in the header
+                </p>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <CtaFields control={control} />
       </div>
 
       {/* Navigation Items */}
       <NavItemsList control={control} />
+    </div>
+  );
+}
+
+function CtaFields({ control }: { control: Control<SiteConfigFormValues> }) {
+  const showCta = useWatch({ control, name: "navigation.showCta" });
+  return (
+    <div className={`grid grid-cols-2 gap-4 ${showCta === false ? "opacity-50 pointer-events-none" : ""}`}>
+      <FormField
+        control={control}
+        name="navigation.cta.label"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Label</FormLabel>
+            <FormControl>
+              <Input placeholder="Give" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="navigation.cta.href"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>URL</FormLabel>
+            <FormControl>
+              <LinkInput
+                ref={field.ref}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="/give"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 }
@@ -359,11 +409,10 @@ function NavColumnsList({
                     <FormItem>
                       <FormLabel className="text-xs">Icon</FormLabel>
                       <FormControl>
-                        <Input
-                          className="h-8 text-sm"
-                          placeholder="book-open"
-                          {...field}
+                        <IconPicker
                           value={field.value ?? ""}
+                          onChange={field.onChange}
+                          field={{ required: false }}
                         />
                       </FormControl>
                       <FormMessage />

@@ -64,14 +64,26 @@ export const siteConfigSchema = z.object({
     background: z.enum(["solid", "transparent"]).default("solid"),
     items: z.array(navItemSchema).default([]),
     cta: ctaButtonSchema,
+    showCta: z.boolean().default(true),
   }),
 
   footer: z.object({
     style: z.enum(["comprehensive", "minimal"]).default("comprehensive"),
+    socialLinks: z
+      .array(
+        z.object({
+          platform: z.string().default("custom"),
+          url: z.string().default(""),
+          label: z.string().optional(),
+          icon: z.string().optional(),
+        })
+      )
+      .default([]),
     sections: z
       .array(
         z.object({
           heading: z.string().min(1, "Heading is required"),
+          icon: z.string().optional(),
           links: z.array(navLinkSchema).default([]),
         })
       )
@@ -80,14 +92,6 @@ export const siteConfigSchema = z.object({
 
   search: z.object({
     enabled: z.boolean().default(true),
-  }),
-
-  external: z.object({
-    give: z.string().default(""),
-    youtube: z.string().default(""),
-    podcast: z.string().default(""),
-    instagram: z.string().default(""),
-    facebook: z.string().default(""),
   }),
 
   contact: z.object({
