@@ -5,26 +5,19 @@ import { Control, useFieldArray, useWatch } from "react-hook-form";
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
-  restrictToVerticalAxis,
-  restrictToParentElement,
-} from "@dnd-kit/modifiers";
-import { CSS } from "@dnd-kit/utilities";
+  DND_MODIFIERS,
+  SortableItem,
+  useSortableSensors,
+} from "../dnd-helpers";
 import {
   ChevronDown,
   ChevronRight,
-  GripVertical,
   Plus,
   Search,
   Megaphone,
@@ -136,54 +129,6 @@ export function NavigationSection({ control }: NavigationSectionProps) {
 }
 
 // ---------------------------------------------------------------------------
-// SortableNavItem – wraps each item with dnd-kit drag handle
-// ---------------------------------------------------------------------------
-
-function SortableNavItem({
-  id,
-  children,
-}: {
-  id: string;
-  children: React.ReactNode;
-}) {
-  const {
-    attributes,
-    isDragging,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={isDragging ? "opacity-50 z-50 relative" : "z-10 relative"}
-      style={style}
-    >
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="h-auto w-5 bg-muted/50 self-stretch rounded-md text-muted-foreground cursor-move shrink-0"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </Button>
-        <div className="flex-1 min-w-0">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // NavItemsList – the unified draggable list
 // ---------------------------------------------------------------------------
 
@@ -204,14 +149,8 @@ function NavItemsList({ control }: { control: Control<SiteConfigFormValues> }) {
     });
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const modifiers = [restrictToVerticalAxis, restrictToParentElement];
+  const sensors = useSortableSensors();
+  const modifiers = DND_MODIFIERS;
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
@@ -259,24 +198,24 @@ function NavItemsList({ control }: { control: Control<SiteConfigFormValues> }) {
 
               if (itemType === "search") {
                 return (
-                  <SortableNavItem key={field.id} id={field.id}>
+                  <SortableItem key={field.id} id={field.id}>
                     <SearchItemCard control={control} index={index} />
-                  </SortableNavItem>
+                  </SortableItem>
                 );
               }
 
               if (itemType === "cta") {
                 return (
-                  <SortableNavItem key={field.id} id={field.id}>
+                  <SortableItem key={field.id} id={field.id}>
                     <CtaItemCard control={control} index={index} />
-                  </SortableNavItem>
+                  </SortableItem>
                 );
               }
 
               // Link-type item
               const isExpanded = expandedItems.has(index);
               return (
-                <SortableNavItem key={field.id} id={field.id}>
+                <SortableItem key={field.id} id={field.id}>
                   <LinkItemCard
                     control={control}
                     index={index}
@@ -284,7 +223,7 @@ function NavItemsList({ control }: { control: Control<SiteConfigFormValues> }) {
                     onToggle={() => toggleItem(index)}
                     onRemove={() => remove(index)}
                   />
-                </SortableNavItem>
+                </SortableItem>
               );
             })}
           </div>

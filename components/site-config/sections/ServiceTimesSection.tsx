@@ -4,23 +4,17 @@ import { Control, useFieldArray } from "react-hook-form";
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { Plus, Trash2 } from "lucide-react";
 import {
-  restrictToVerticalAxis,
-  restrictToParentElement,
-} from "@dnd-kit/modifiers";
-import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+  DND_MODIFIERS,
+  SortableItem,
+  useSortableSensors,
+} from "../dnd-helpers";
 import {
   FormField,
   FormItem,
@@ -53,64 +47,13 @@ const DAYS = [
   "Saturday",
 ];
 
-const DND_MODIFIERS = [restrictToVerticalAxis, restrictToParentElement];
-
-function SortableItem({
-  id,
-  children,
-}: {
-  id: string;
-  children: React.ReactNode;
-}) {
-  const {
-    attributes,
-    isDragging,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={isDragging ? "opacity-50 z-50 relative" : "z-10 relative"}
-      style={style}
-    >
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="h-auto w-5 bg-muted/50 self-stretch rounded-md text-muted-foreground cursor-move shrink-0"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </Button>
-        <div className="flex-1 min-w-0">{children}</div>
-      </div>
-    </div>
-  );
-}
-
 export function ServiceTimesSection({ control }: ServiceTimesSectionProps) {
   const { fields, append, remove, move } = useFieldArray({
     control,
     name: "serviceTimes",
   });
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  const sensors = useSortableSensors();
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;

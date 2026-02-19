@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Control, useWatch, useFormContext } from "react-hook-form";
+import { Control } from "react-hook-form";
 import { Loader } from "lucide-react";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/config-context";
@@ -39,13 +39,9 @@ const featureKeys = Object.keys(featureLabels) as Array<
 
 export function FeaturesSection({ control }: FeaturesSectionProps) {
   const { config } = useConfig();
-  const { setValue } = useFormContext<SiteConfigFormValues>();
 
   const [usageData, setUsageData] = useState<Record<string, BlockUsage[]>>({});
   const [usageLoading, setUsageLoading] = useState(true);
-
-  // Watch all feature values so we can intercept toggles
-  const featuresValues = useWatch({ control, name: "features" });
 
   // Fetch collection usage on mount
   useEffect(() => {

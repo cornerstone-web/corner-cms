@@ -219,7 +219,7 @@ export function SiteConfigEditor() {
                   <ServiceTimesSection control={form.control} />
                 </TabsContent>
                 <TabsContent value="theme" className="mt-6">
-                  <ThemeSection control={form.control} watch={form.watch} />
+                  <ThemeSection control={form.control} />
                 </TabsContent>
                 <TabsContent value="navigation" className="mt-6">
                   <NavigationSection control={form.control} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Control, UseFormWatch, useWatch, useFormContext } from "react-hook-form";
+import { Control, useWatch, useFormContext } from "react-hook-form";
 import { HelpCircle } from "lucide-react";
 import {
   FormField,
@@ -137,11 +137,10 @@ const CUSTOM_THEME_FIELDS = [
 
 interface ThemeSectionProps {
   control: Control<SiteConfigFormValues>;
-  watch: UseFormWatch<SiteConfigFormValues>;
 }
 
-export function ThemeSection({ control, watch }: ThemeSectionProps) {
-  const theme = watch("theme");
+export function ThemeSection({ control }: ThemeSectionProps) {
+  const theme = useWatch({ control, name: "theme" });
 
   return (
     <div className="space-y-6">
