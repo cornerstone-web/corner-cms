@@ -125,7 +125,7 @@ export function SiteConfigEditor() {
         );
       }
     }, 300);
-  }, [form]);
+  }, [form, previewOrigin]);
 
   useEffect(() => {
     setIsLoaded(false);

@@ -2,6 +2,7 @@ import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import YAML from "yaml";
+import { siteConfigSchema } from "@/components/site-config/schema";
 
 const SITE_CONFIG_PATH = "src/config/site.config.yaml";
 
@@ -125,10 +126,17 @@ export async function POST(
     if (!token) throw new Error("Token not found");
 
     const data = await request.json();
-    const { config, sha } = data;
+    const { config: rawConfig, sha } = data;
 
-    if (!config) throw new Error("config is required");
+    if (!rawConfig) throw new Error("config is required");
     if (!sha) throw new Error("sha is required");
+
+    const parsed = siteConfigSchema.safeParse(rawConfig);
+    if (!parsed.success) {
+      const message = parsed.error.errors[0]?.message ?? "Invalid config";
+      return Response.json({ status: "error", message }, { status: 400 });
+    }
+    const config = parsed.data;
 
     const yamlContent = YAML.stringify(config);
     const contentBase64 = Buffer.from(yamlContent).toString("base64");
