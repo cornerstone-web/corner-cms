@@ -3,9 +3,31 @@
 import { useState } from "react";
 import { Control, useFieldArray, useWatch } from "react-hook-form";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
+import {
   ChevronDown,
   ChevronRight,
+  GripVertical,
   Plus,
+  Search,
+  Megaphone,
   Trash2,
 } from "lucide-react";
 import {
@@ -107,100 +129,66 @@ export function NavigationSection({ control }: NavigationSectionProps) {
         />
       </div>
 
-      {/* Search toggle */}
-      <FormField
-        control={control}
-        name="search.enabled"
-        render={({ field }) => (
-          <FormItem className="flex items-center justify-between rounded-lg border p-4">
-            <div>
-              <FormLabel className="text-base">Site Search</FormLabel>
-              <p className="text-sm text-muted-foreground">
-                Show search icon in the header
-              </p>
-            </div>
-            <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-          </FormItem>
-        )}
-      />
-
-      {/* CTA Button */}
-      <div className="space-y-3">
-        <FormField
-          control={control}
-          name="navigation.showCta"
-          render={({ field }) => (
-            <FormItem className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <FormLabel className="text-base">Call to Action Button</FormLabel>
-                <p className="text-sm text-muted-foreground">
-                  Show a CTA button in the header
-                </p>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        <CtaFields control={control} />
-      </div>
-
-      {/* Navigation Items */}
+      {/* Unified draggable items list */}
       <NavItemsList control={control} />
     </div>
   );
 }
 
-function CtaFields({ control }: { control: Control<SiteConfigFormValues> }) {
-  const showCta = useWatch({ control, name: "navigation.showCta" });
+// ---------------------------------------------------------------------------
+// SortableNavItem – wraps each item with dnd-kit drag handle
+// ---------------------------------------------------------------------------
+
+function SortableNavItem({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
   return (
-    <div className={`grid grid-cols-2 gap-4 ${showCta === false ? "opacity-50 pointer-events-none" : ""}`}>
-      <FormField
-        control={control}
-        name="navigation.cta.label"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Label</FormLabel>
-            <FormControl>
-              <Input placeholder="Give" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name="navigation.cta.href"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>URL</FormLabel>
-            <FormControl>
-              <LinkInput
-                ref={field.ref}
-                value={field.value}
-                onChange={field.onChange}
-                placeholder="/give"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+    <div
+      ref={setNodeRef}
+      className={isDragging ? "opacity-50 z-50 relative" : "z-10 relative"}
+      style={style}
+    >
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="h-auto w-5 bg-muted/50 self-stretch rounded-md text-muted-foreground cursor-move shrink-0"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </Button>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// NavItemsList – the unified draggable list
+// ---------------------------------------------------------------------------
+
 function NavItemsList({ control }: { control: Control<SiteConfigFormValues> }) {
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control,
     name: "navigation.items",
   });
@@ -216,91 +204,98 @@ function NavItemsList({ control }: { control: Control<SiteConfigFormValues> }) {
     });
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const modifiers = [restrictToVerticalAxis, restrictToParentElement];
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = fields.findIndex((item) => item.id === active.id);
+    const newIndex = fields.findIndex((item) => item.id === over.id);
+
+    // Update expanded state tracking
+    setExpandedItems((prev) => {
+      const arr = Array.from(prev);
+      const next = new Set<number>();
+      for (const idx of arr) {
+        if (idx === oldIndex) {
+          next.add(newIndex);
+        } else if (oldIndex < newIndex) {
+          next.add(idx >= oldIndex && idx <= newIndex ? idx - 1 : idx);
+        } else {
+          next.add(idx >= newIndex && idx <= oldIndex ? idx + 1 : idx);
+        }
+      }
+      return next;
+    });
+
+    move(oldIndex, newIndex);
+  };
+
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium">Menu Items</h3>
+      <h3 className="text-sm font-medium">Navigation Items</h3>
 
-      {fields.map((field, index) => {
-        const isExpanded = expandedItems.has(index);
+      <DndContext
+        sensors={sensors}
+        modifiers={modifiers}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={fields.map((item) => item.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {fields.map((field, index) => {
+              const itemType = (field as any).type;
 
-        return (
-          <div key={field.id} className="rounded-lg border">
-            {/* Item header */}
-            <div className="flex items-center gap-2 p-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => toggleItem(index)}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Button>
+              if (itemType === "search") {
+                return (
+                  <SortableNavItem key={field.id} id={field.id}>
+                    <SearchItemCard control={control} index={index} />
+                  </SortableNavItem>
+                );
+              }
 
-              <NavItemLabel control={control} index={index} />
+              if (itemType === "cta") {
+                return (
+                  <SortableNavItem key={field.id} id={field.id}>
+                    <CtaItemCard control={control} index={index} />
+                  </SortableNavItem>
+                );
+              }
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </div>
-
-            {/* Item details */}
-            {isExpanded && (
-              <div className="px-3 pb-3 space-y-3 border-t pt-3">
-                <FormField
-                  control={control}
-                  name={`navigation.items.${index}.label`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Label</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={control}
-                  name={`navigation.items.${index}.href`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>URL (for simple links)</FormLabel>
-                      <FormControl>
-                        <LinkInput
-                          ref={field.ref}
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                          placeholder="/events"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Columns */}
-                <NavColumnsList control={control} itemIndex={index} />
-              </div>
-            )}
+              // Link-type item
+              const isExpanded = expandedItems.has(index);
+              return (
+                <SortableNavItem key={field.id} id={field.id}>
+                  <LinkItemCard
+                    control={control}
+                    index={index}
+                    isExpanded={isExpanded}
+                    onToggle={() => toggleItem(index)}
+                    onRemove={() => remove(index)}
+                  />
+                </SortableNavItem>
+              );
+            })}
           </div>
-        );
-      })}
+        </SortableContext>
+      </DndContext>
 
       <Button
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append({ label: "", href: "" })}
+        onClick={() => append({ type: "link", label: "", href: "" } as any)}
       >
         <Plus className="h-4 w-4 mr-2" />
         Add Menu Item
@@ -308,6 +303,225 @@ function NavItemsList({ control }: { control: Control<SiteConfigFormValues> }) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// SearchItemCard – compact, non-deletable, toggle only
+// ---------------------------------------------------------------------------
+
+function SearchItemCard({
+  control,
+  index,
+}: {
+  control: Control<SiteConfigFormValues>;
+  index: number;
+}) {
+  return (
+    <div className="rounded-lg border bg-muted/20">
+      <div className="flex items-center gap-2 p-3">
+        <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="flex-1 text-sm font-medium">Site Search</span>
+        <FormField
+          control={control}
+          name={`navigation.items.${index}.enabled` as any}
+          render={({ field }) => (
+            <FormControl>
+              <Switch
+                checked={field.value as boolean}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CtaItemCard – non-deletable, toggle + label + href
+// ---------------------------------------------------------------------------
+
+function CtaItemCard({
+  control,
+  index,
+}: {
+  control: Control<SiteConfigFormValues>;
+  index: number;
+}) {
+  const enabled = useWatch({
+    control,
+    name: `navigation.items.${index}.enabled` as any,
+  });
+
+  return (
+    <div className="rounded-lg border bg-muted/20">
+      <div className="flex items-center gap-2 p-3">
+        <Megaphone className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="flex-1 text-sm font-medium">Call to Action</span>
+        <FormField
+          control={control}
+          name={`navigation.items.${index}.enabled` as any}
+          render={({ field }) => (
+            <FormControl>
+              <Switch
+                checked={field.value as boolean}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+          )}
+        />
+      </div>
+      <div
+        className={`grid grid-cols-2 gap-3 px-3 pb-3 ${!enabled ? "opacity-50 pointer-events-none" : ""}`}
+      >
+        <FormField
+          control={control}
+          name={`navigation.items.${index}.label` as any}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs">Label</FormLabel>
+              <FormControl>
+                <Input
+                  className="h-8 text-sm"
+                  placeholder="Give"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`navigation.items.${index}.href` as any}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs">URL</FormLabel>
+              <FormControl>
+                <LinkInput
+                  ref={field.ref}
+                  value={field.value as string}
+                  onChange={field.onChange}
+                  placeholder="/give"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LinkItemCard – collapsible, deletable
+// ---------------------------------------------------------------------------
+
+function LinkItemCard({
+  control,
+  index,
+  isExpanded,
+  onToggle,
+  onRemove,
+}: {
+  control: Control<SiteConfigFormValues>;
+  index: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onRemove: () => void;
+}) {
+  const columns = useWatch({
+    control,
+    name: `navigation.items.${index}.columns` as any,
+  });
+  const hasColumns = Array.isArray(columns) && columns.length > 0;
+
+  return (
+    <div className="rounded-lg border">
+      {/* Item header */}
+      <div className="flex items-center gap-2 p-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={onToggle}
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+
+        <NavItemLabel control={control} index={index} />
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={onRemove}
+        >
+          <Trash2 className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      </div>
+
+      {/* Item details */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3 border-t pt-3">
+          <FormField
+            control={control}
+            name={`navigation.items.${index}.label` as any}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Label</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className={hasColumns ? "opacity-50 pointer-events-none" : ""}>
+            <FormField
+              control={control}
+              name={`navigation.items.${index}.href` as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    URL{" "}
+                    {hasColumns && (
+                      <span className="text-xs text-muted-foreground font-normal">
+                        (disabled — item has dropdown columns)
+                      </span>
+                    )}
+                  </FormLabel>
+                  <FormControl>
+                    <LinkInput
+                      ref={field.ref}
+                      value={(field.value as string) ?? ""}
+                      onChange={field.onChange}
+                      placeholder="/events"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Columns */}
+          <NavColumnsList control={control} itemIndex={index} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NavItemLabel – reactive label display
+// ---------------------------------------------------------------------------
 
 function NavItemLabel({
   control,
@@ -318,14 +532,18 @@ function NavItemLabel({
 }) {
   const label = useWatch({
     control,
-    name: `navigation.items.${index}.label`,
+    name: `navigation.items.${index}.label` as any,
   });
   return (
     <span className="flex-1 text-sm font-medium truncate">
-      {label || `Item ${index + 1}`}
+      {(label as string) || `Item ${index + 1}`}
     </span>
   );
 }
+
+// ---------------------------------------------------------------------------
+// NavColumnsList – columns editor within a link item
+// ---------------------------------------------------------------------------
 
 function NavColumnsList({
   control,
@@ -336,7 +554,7 @@ function NavColumnsList({
 }) {
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `navigation.items.${itemIndex}.columns`,
+    name: `navigation.items.${itemIndex}.columns` as any,
   });
 
   const [expandedCols, setExpandedCols] = useState<Set<number>>(new Set());
@@ -391,7 +609,9 @@ function NavColumnsList({
               <div className="grid grid-cols-2 gap-2">
                 <FormField
                   control={control}
-                  name={`navigation.items.${itemIndex}.columns.${colIndex}.heading`}
+                  name={
+                    `navigation.items.${itemIndex}.columns.${colIndex}.heading` as any
+                  }
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">Heading</FormLabel>
@@ -404,7 +624,9 @@ function NavColumnsList({
                 />
                 <FormField
                   control={control}
-                  name={`navigation.items.${itemIndex}.columns.${colIndex}.icon`}
+                  name={
+                    `navigation.items.${itemIndex}.columns.${colIndex}.icon` as any
+                  }
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">Icon</FormLabel>
@@ -437,7 +659,7 @@ function NavColumnsList({
         variant="ghost"
         size="sm"
         className="text-xs"
-        onClick={() => append({ heading: "", links: [], icon: "" })}
+        onClick={() => append({ heading: "", links: [], icon: "" } as any)}
       >
         <Plus className="h-3 w-3 mr-1" />
         Add Column
@@ -445,6 +667,10 @@ function NavColumnsList({
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// NavColumnLabel
+// ---------------------------------------------------------------------------
 
 function NavColumnLabel({
   control,
@@ -457,14 +683,18 @@ function NavColumnLabel({
 }) {
   const heading = useWatch({
     control,
-    name: `navigation.items.${itemIndex}.columns.${colIndex}.heading`,
+    name: `navigation.items.${itemIndex}.columns.${colIndex}.heading` as any,
   });
   return (
     <span className="flex-1 text-xs font-medium truncate">
-      {heading || `Column ${colIndex + 1}`}
+      {(heading as string) || `Column ${colIndex + 1}`}
     </span>
   );
 }
+
+// ---------------------------------------------------------------------------
+// NavLinksList
+// ---------------------------------------------------------------------------
 
 function NavLinksList({
   control,
@@ -477,7 +707,7 @@ function NavLinksList({
 }) {
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `navigation.items.${itemIndex}.columns.${colIndex}.links`,
+    name: `navigation.items.${itemIndex}.columns.${colIndex}.links` as any,
   });
 
   return (
@@ -488,7 +718,9 @@ function NavLinksList({
         <div key={field.id} className="flex items-center gap-2">
           <FormField
             control={control}
-            name={`navigation.items.${itemIndex}.columns.${colIndex}.links.${linkIndex}.label`}
+            name={
+              `navigation.items.${itemIndex}.columns.${colIndex}.links.${linkIndex}.label` as any
+            }
             render={({ field }) => (
               <FormItem className="flex-1">
                 <FormControl>
@@ -503,7 +735,9 @@ function NavLinksList({
           />
           <FormField
             control={control}
-            name={`navigation.items.${itemIndex}.columns.${colIndex}.links.${linkIndex}.href`}
+            name={
+              `navigation.items.${itemIndex}.columns.${colIndex}.links.${linkIndex}.href` as any
+            }
             render={({ field }) => (
               <FormItem className="flex-1">
                 <FormControl>
@@ -533,7 +767,7 @@ function NavLinksList({
         variant="ghost"
         size="sm"
         className="text-xs"
-        onClick={() => append({ label: "", href: "" })}
+        onClick={() => append({ label: "", href: "" } as any)}
       >
         <Plus className="h-3 w-3 mr-1" />
         Add Link

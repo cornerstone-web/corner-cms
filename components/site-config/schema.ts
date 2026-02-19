@@ -12,21 +12,29 @@ const navColumnSchema = z.object({
   icon: z.string().optional(),
 });
 
-const navItemSchema = z.object({
-  label: z.string().min(1, "Label is required"),
-  href: z.string().optional(),
-  columns: z.array(navColumnSchema).optional(),
-  featured: z
-    .object({
-      type: z.enum(["sermon", "event", "article"]),
-    })
-    .optional(),
-});
-
-const ctaButtonSchema = z.object({
-  label: z.string().min(1, "Label is required"),
-  href: z.string().min(1, "URL is required"),
-});
+const navElementSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("link"),
+    label: z.string().min(1, "Label is required"),
+    href: z.string().optional(),
+    columns: z.array(navColumnSchema).optional(),
+    featured: z
+      .object({
+        type: z.enum(["sermon", "event", "article"]),
+      })
+      .optional(),
+  }),
+  z.object({
+    type: z.literal("search"),
+    enabled: z.boolean().default(true),
+  }),
+  z.object({
+    type: z.literal("cta"),
+    enabled: z.boolean().default(true),
+    label: z.string().default(""),
+    href: z.string().default(""),
+  }),
+]);
 
 const customThemeSchema = z.object({
   primary: z.string().optional(),
@@ -62,9 +70,7 @@ export const siteConfigSchema = z.object({
     style: z.enum(["mega", "dropdown", "simple"]).default("mega"),
     mobileStyle: z.enum(["drawer", "fullscreen", "slidedown"]).default("drawer"),
     background: z.enum(["solid", "transparent"]).default("solid"),
-    items: z.array(navItemSchema).default([]),
-    cta: ctaButtonSchema,
-    showCta: z.boolean().default(true),
+    items: z.array(navElementSchema).default([]),
   }),
 
   footer: z.object({
@@ -88,10 +94,6 @@ export const siteConfigSchema = z.object({
         })
       )
       .default([]),
-  }),
-
-  search: z.object({
-    enabled: z.boolean().default(true),
   }),
 
   contact: z.object({
