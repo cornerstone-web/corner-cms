@@ -12,10 +12,21 @@ import {
   FormControl,
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import type { SiteConfigFormValues } from "../schema";
 
 interface FeaturesSectionProps {
   control: Control<SiteConfigFormValues>;
+  onSaveAndReload: () => Promise<void>;
 }
 
 interface BlockUsage {
@@ -37,11 +48,16 @@ const featureKeys = Object.keys(featureLabels) as Array<
   keyof typeof featureLabels
 >;
 
-export function FeaturesSection({ control }: FeaturesSectionProps) {
+export function FeaturesSection({ control, onSaveAndReload }: FeaturesSectionProps) {
   const { config } = useConfig();
 
   const [usageData, setUsageData] = useState<Record<string, BlockUsage[]>>({});
   const [usageLoading, setUsageLoading] = useState(true);
+  const [pendingToggle, setPendingToggle] = useState<{
+    key: string;
+    newValue: boolean;
+    apply: () => void;
+  } | null>(null);
 
   // Fetch collection usage on mount
   useEffect(() => {
@@ -80,7 +96,7 @@ export function FeaturesSection({ control }: FeaturesSectionProps) {
       );
       return;
     }
-    fieldOnChange(newValue);
+    setPendingToggle({ key, newValue, apply: () => fieldOnChange(newValue) });
   }
 
   return (
@@ -124,6 +140,37 @@ export function FeaturesSection({ control }: FeaturesSectionProps) {
           />
         ))}
       </div>
+
+      <AlertDialog
+        open={!!pendingToggle}
+        onOpenChange={(open) => { if (!open) setPendingToggle(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingToggle?.newValue ? "Enable" : "Disable"}{" "}
+              {pendingToggle ? featureLabels[pendingToggle.key] : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will save your settings and reload the page for the change to
+              take effect.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingToggle) {
+                  pendingToggle.apply();
+                  onSaveAndReload();
+                }
+              }}
+            >
+              Save & reload
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

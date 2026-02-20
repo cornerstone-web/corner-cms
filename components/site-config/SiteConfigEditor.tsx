@@ -87,8 +87,8 @@ export function SiteConfigEditor() {
     );
   }, [watchedValues, isLoaded, previewOrigin]);
 
-  const handleSave = async (values: SiteConfigFormValues) => {
-    if (!config || !sha) return;
+  const handleSave = useCallback(async (values: SiteConfigFormValues): Promise<boolean> => {
+    if (!config || !sha) return false;
 
     setSaving(true);
     try {
@@ -107,12 +107,19 @@ export function SiteConfigEditor() {
       setSha(result.data.sha);
       form.reset(values);
       toast.success("Site config saved successfully.");
+      return true;
     } catch (err: any) {
       toast.error(err.message);
+      return false;
     } finally {
       setSaving(false);
     }
-  };
+  }, [config, sha, form]);
+
+  const saveAndReload = useCallback(async () => {
+    const success = await handleSave(form.getValues());
+    if (success) window.location.reload();
+  }, [form, handleSave]);
 
   const handleLoad = useCallback(() => {
     setIsLoaded(true);
@@ -231,7 +238,7 @@ export function SiteConfigEditor() {
                   <IntegrationsSection control={form.control} />
                 </TabsContent>
                 <TabsContent value="features" className="mt-6">
-                  <FeaturesSection control={form.control} />
+                  <FeaturesSection control={form.control} onSaveAndReload={saveAndReload} />
                 </TabsContent>
               </Tabs>
             </form>

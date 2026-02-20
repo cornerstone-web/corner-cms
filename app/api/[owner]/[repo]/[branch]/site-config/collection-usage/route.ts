@@ -36,21 +36,21 @@ interface BlockUsage {
  * Recursively extract block types from a blocks array,
  * including blocks nested inside container columns.
  */
-function extractBlockTypes(
-  blocks: Array<{ type?: string; columns?: Array<{ blocks?: Array<any> }> }>
-): string[] {
-  const types: string[] = [];
+function extractBlocks(
+  blocks: Array<Record<string, any>>
+): Array<Record<string, any>> {
+  const result: Array<Record<string, any>> = [];
   for (const block of blocks) {
-    if (block.type) types.push(block.type);
+    if (block.type) result.push(block);
     if (block.type === "container" && block.columns) {
       for (const col of block.columns) {
         if (col.blocks) {
-          types.push(...extractBlockTypes(col.blocks));
+          result.push(...extractBlocks(col.blocks));
         }
       }
     }
   }
-  return types;
+  return result;
 }
 
 /**
@@ -120,19 +120,22 @@ export async function GET(
           if (!frontmatter?.blocks || !Array.isArray(frontmatter.blocks))
             return;
 
-          const blockTypes = extractBlockTypes(frontmatter.blocks);
+          const pageBlocks = extractBlocks(frontmatter.blocks);
           const pageName = file.path!.replace("src/content/pages/", "");
           const pageTitle = frontmatter.title || pageName;
 
-          for (const blockType of blockTypes) {
-            const collections = blockCollectionMap[blockType];
+          for (const block of pageBlocks) {
+            const collections = blockCollectionMap[block.type];
             if (!collections) continue;
+
+            // Block explicitly opts out of using a collection source
+            if (block.useCollectionSource === false) continue;
 
             for (const col of collections) {
               usage[col].push({
                 page: pageName,
                 title: pageTitle,
-                blockType,
+                blockType: block.type,
               });
             }
           }
