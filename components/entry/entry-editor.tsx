@@ -10,6 +10,7 @@ import {
   getFileExtension,
   getFileName,
   getParentPath,
+  joinPathSegments,
   normalizePath
 } from "@/lib/utils/file";
 import { EntryForm } from "./entry-form";
@@ -20,7 +21,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, EllipsisVertical, History } from "lucide-react";
+import { ChevronLeft, EllipsisVertical, History, Trash2 } from "lucide-react";
 import { FilePath } from "@/components/file/file-path";
 
 export function EntryEditor({
@@ -59,7 +60,14 @@ export function EntryEditor({
   }, [config, name]);
 
   const isTemplateMode = schema?.isTemplate === true;
-  
+
+  const urlPrefix = useMemo(() => {
+    if (!schema || schema.type !== "collection") return null;
+    if (schema.name === "templates") return null;
+    if (schema.name === "pages") return "/";
+    return `/${schema.name}/`;
+  }, [schema]);
+
   let entryFields = useMemo(() => {
     return !schema?.fields || schema.fields.length === 0
       ? [{
@@ -215,10 +223,46 @@ export function EntryEditor({
     fetchHistory();
   }, [config.branch, config.owner, config.repo, path, sha, refetchTrigger, name]);
 
-  const onSubmit = async (contentObject: any) => {
+  const handleSlugRename = async (newSlug: string) => {
+    if (!path) return;
+    const ext = getFileExtension(normalizePath(path));
+    const dir = getParentPath(normalizePath(path));
+    const newPath = joinPathSegments([dir, `${newSlug}.${ext}`]);
+    if (newPath === normalizePath(path)) return;
+
+    const renamePromise = new Promise<any>(async (resolve, reject) => {
+      try {
+        const response = await fetch(
+          `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(normalizePath(path))}/rename`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "content", name, newPath }),
+          }
+        );
+        const data: any = await response.json();
+        if (data.status !== "success") throw new Error(data.message);
+        resolve(data);
+      } catch (error) {
+        reject(error);
+      }
+    });
+
+    toast.promise(renamePromise, {
+      loading: "Updating page address...",
+      success: "Page address updated",
+      error: (error: any) => error.message,
+    });
+
+    await renamePromise;
+    handleRename(path, newPath);
+  };
+
+  const onSubmit = async (contentObject: any, newSlug?: string) => {
     const savePromise = new Promise(async (resolve, reject) => {
       try {
-        const savePath = path ?? `${parent ?? schema.path}/${generateFilename(schema.filename, schema, contentObject)}`;
+        const savePath = path
+          ?? `${parent ?? schema.path}/${newSlug ? `${newSlug}.${schema.extension || "md"}` : generateFilename(schema.filename, schema, contentObject)}`;
 
         const response = await fetch(`/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}`, {
           method: "POST",
@@ -265,9 +309,8 @@ export function EntryEditor({
   };
 
   const handleDelete = (path: string) => {
-    // TODO: disable save button or freeze form while deleting?
     if (schema.type === "collection") {
-      router.push(`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}`);
+      router.push(navigateBack);
     } else {
       setRefetchTrigger(refetchTrigger + 1);
     }
@@ -420,16 +463,13 @@ export function EntryEditor({
         previewUrl={config.object?.previewUrl}
         isTemplateMode={isTemplateMode}
         collectionName={name}
-        // filePath={(path && schema?.type === 'collection')
-        //   ? <FilePath
-        //       path={path}
-        //       sha={sha}
-        //       type={schema.type}
-        //       name={name}
-        //       onRename={handleRename}
-        //     />
-        //   : undefined
-        // }
+        slugInfo={urlPrefix !== null ? {
+          urlPrefix,
+          extension: schema.extension || "md",
+          primaryFieldName: getPrimaryField(schema) ?? "title",
+          currentPath: path,
+        } : undefined}
+        onSlugRename={path ? handleSlugRename : undefined}
         options={path && sha &&
           <FileOptions
             path={path}
@@ -440,7 +480,7 @@ export function EntryEditor({
             onRename={handleRename}
           >
             <Button variant="outline" size="icon" className="shrink-0" disabled={isLoading}>
-              <EllipsisVertical className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </FileOptions>
         }

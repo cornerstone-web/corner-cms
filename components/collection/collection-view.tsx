@@ -39,7 +39,8 @@ import {
   Ellipsis,
   FolderPlus,
   Plus,
-  Search
+  Search,
+  Trash2
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -322,8 +323,8 @@ export function CollectionView({
                 Edit
               </Link>
               <FileOptions path={row.original.path} sha={row.original.sha} type="collection" name={name} onDelete={handleDelete} onRename={handleRename}>
-                <Button variant="outline" size="icon-sm" className="w-8 h-8">
-                  <Ellipsis className="h-4 w-4" />
+                <Button variant="ghost" size="icon-sm" className="w-8 h-8 text-muted-foreground hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </FileOptions>
             </>

@@ -104,6 +104,26 @@ export function FileOptions({
     }
   };
   
+  if (type === "collection") {
+    return (
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          {children}
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this file?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete &quot;{path}&quot;.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
+
   return (
     <>
       <AlertDialog>
@@ -138,7 +158,7 @@ export function FileOptions({
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure you want to delete this file?</AlertDialogTitle>
-              <AlertDialogDescription>This will premanently delete &quot;{path}&quot;.</AlertDialogDescription>
+              <AlertDialogDescription>This will permanently delete &quot;{path}&quot;.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>

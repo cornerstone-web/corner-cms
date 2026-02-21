@@ -8,6 +8,8 @@ import React, {
   forwardRef,
   useCallback,
 } from "react";
+import slugify from "slugify";
+import { getFileName, normalizePath } from "@/lib/utils/file";
 import Link from "next/link";
 import {
   useForm,
@@ -40,6 +42,18 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -945,6 +959,110 @@ const ToggleFieldGroup = ({
 
 ToggleFieldGroup.displayName = "ToggleFieldGroup";
 
+interface SlugInfo {
+  urlPrefix: string;
+  extension: string;
+  primaryFieldName: string;
+  currentPath?: string;
+}
+
+function PageSlugField({
+  slugInfo,
+  onSlugChange,
+  onRenameRequest,
+}: {
+  slugInfo: SlugInfo;
+  onSlugChange: (slug: string) => void;
+  onRenameRequest?: (slug: string) => Promise<void>;
+}) {
+  const originalSlug = slugInfo.currentPath
+    ? getFileName(normalizePath(slugInfo.currentPath)).replace(/\.[^.]+$/, "")
+    : "";
+
+  const [slug, setSlug] = useState(originalSlug);
+  const [manuallyEdited, setManuallyEdited] = useState(!!slugInfo.currentPath);
+  const [isRenaming, setIsRenaming] = useState(false);
+
+  const { watch } = useFormContext();
+  const primaryValue = watch(slugInfo.primaryFieldName);
+
+  useEffect(() => {
+    if (!manuallyEdited && !slugInfo.currentPath && primaryValue) {
+      const auto = slugify(primaryValue, { lower: true, strict: true });
+      setSlug(auto);
+      onSlugChange(auto);
+    }
+  }, [primaryValue]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const urlPreview = (s: string) =>
+    s === "index" && slugInfo.urlPrefix === "/"
+      ? "/"
+      : `${slugInfo.urlPrefix}${s || "..."}`;
+
+  const showUpdateButton = !!slugInfo.currentPath && slug !== originalSlug && !!onRenameRequest;
+
+  const handleConfirmRename = async () => {
+    if (!onRenameRequest) return;
+    setIsRenaming(true);
+    try {
+      await onRenameRequest(slug);
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  return (
+    <FormItem>
+      <Label>Page Address</Label>
+      <div className="flex gap-2">
+        <Input
+          value={slug}
+          onChange={(e) => {
+            const val = slugify(e.target.value, { lower: true, strict: true });
+            setSlug(val);
+            setManuallyEdited(true);
+            onSlugChange(val);
+          }}
+          placeholder="e.g. about"
+        />
+        {showUpdateButton && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 self-stretch"
+                disabled={isRenaming}
+              >
+                {isRenaming ? <Loader className="h-4 w-4 animate-spin" /> : "Update"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Change page address?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will rename the page from{" "}
+                  <span className="font-mono">{urlPreview(originalSlug)}</span> to{" "}
+                  <span className="font-mono">{urlPreview(slug)}</span>.{" "}
+                  Any existing links to this page will break.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmRename}>Update</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Will be live at: <span className="font-mono">{urlPreview(slug)}</span>
+      </p>
+    </FormItem>
+  );
+}
+
 const EntryForm = ({
   title,
   navigateBack,
@@ -958,12 +1076,14 @@ const EntryForm = ({
   previewUrl,
   isTemplateMode = false,
   collectionName,
+  slugInfo,
+  onSlugRename,
 }: {
   title: string;
   navigateBack?: string;
   fields: Field[];
   contentObject?: any;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: any, newSlug?: string) => void;
   history?: Record<string, any>[];
   path?: string;
   filePath?: React.ReactNode;
@@ -971,8 +1091,11 @@ const EntryForm = ({
   previewUrl?: string;
   isTemplateMode?: boolean;
   collectionName?: string;
+  slugInfo?: SlugInfo;
+  onSlugRename?: (slug: string) => Promise<void>;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const slugRef = useRef<string | undefined>(undefined);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(
     null,
   );
@@ -1136,7 +1259,7 @@ const EntryForm = ({
   const handleSubmit = async (values: any) => {
     setIsSubmitting(true);
     try {
-      await onSubmit(values);
+      await onSubmit(values, slugRef.current);
     } finally {
       setIsSubmitting(false);
     }
@@ -1276,7 +1399,22 @@ const EntryForm = ({
                     {filePath}
                   </div>
                 )}
-                {renderFields(fields)}
+                {slugInfo
+                  ? (() => {
+                      const rendered = renderFields(fields).filter(Boolean);
+                      return [
+                        rendered[0],
+                        <PageSlugField
+                          key="__slug"
+                          slugInfo={slugInfo}
+                          onSlugChange={(s) => { slugRef.current = s; }}
+                          onRenameRequest={onSlugRename}
+                        />,
+                        ...rendered.slice(1),
+                      ];
+                    })()
+                  : renderFields(fields)
+                }
               </div>
             </div>
 
