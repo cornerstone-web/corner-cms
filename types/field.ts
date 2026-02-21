@@ -18,4 +18,12 @@ export type Field = {
   controlledBy?: string;
   // When true, inverts the controlledBy logic - field is enabled when toggle is OFF
   controlledByInverse?: boolean;
+  // Block category key (references a blockCategories entry)
+  category?: string;
+};
+
+export type BlockCategory = {
+  key: string;
+  label: string;
+  description?: string;
 };

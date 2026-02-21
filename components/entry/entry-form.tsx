@@ -26,6 +26,7 @@ import {
 import { Field } from "@/types/field";
 import { useConfig } from "@/contexts/config-context";
 import { useSiteFeatures } from "@/hooks/use-site-features";
+import { BlockPickerModal } from "./block-picker-modal";
 import { EntryHistoryBlock, EntryHistoryDropdown } from "./entry-history";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -513,6 +514,8 @@ const BlocksField = forwardRef((props: any, ref) => {
     onChange(null);
   };
 
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const selectedBlockDefinition = useMemo(() => {
     const definition = blocks.find((b: Field) => b.name === selectedBlockName);
     return definition;
@@ -538,21 +541,26 @@ const BlocksField = forwardRef((props: any, ref) => {
           <header className="flex items-center gap-x-2 rounded-t-lg pl-4 pr-1 h-10 text-sm font-medium">
             <span>Choose content block:</span>
           </header>
-          <div className="flex flex-wrap gap-2 p-4">
-            {availableBlocks.map((blockDef: Field) => (
-              <Button
-                key={blockDef.name}
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="gap-x-2"
-                onClick={() => handleBlockSelect(blockDef.name)}
-              >
-                {blockDef.label || blockDef.name}
-                <Plus className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            ))}
+          <div className="p-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-x-2"
+              onClick={() => setPickerOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Browse blocks
+            </Button>
           </div>
+          <BlockPickerModal
+            open={pickerOpen}
+            onOpenChange={setPickerOpen}
+            availableBlocks={availableBlocks}
+            onSelect={(blockName) => {
+              handleBlockSelect(blockName);
+              setPickerOpen(false);
+            }}
+          />
         </div>
       ) : (
         <div className="border rounded-lg">

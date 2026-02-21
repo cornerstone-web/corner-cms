@@ -76,6 +76,23 @@ const ListSchema = z.union([
   }).strict()
 ]);
 
+// Schema for block categories (used in block picker UI)
+const BlockCategorySchema = z.object({
+  key: z.string({
+    required_error: "Block category 'key' is required.",
+    invalid_type_error: "Block category 'key' must be a string.",
+  }).regex(/^[a-zA-Z0-9-_]+$/, {
+    message: "Block category 'key' must be alphanumeric with dashes and underscores.",
+  }),
+  label: z.string({
+    required_error: "Block category 'label' is required.",
+    invalid_type_error: "Block category 'label' must be a string.",
+  }),
+  description: z.string({
+    invalid_type_error: "Block category 'description' must be a string.",
+  }).optional(),
+}).strict();
+
 // Schema for collection dependencies in components
 const CollectionDependencySchema = z.object({
   name: z.string({
@@ -90,7 +107,7 @@ const CollectionDependencySchema = z.object({
 
 // Generator for Field Object Schema (components do not have a `name` field)
 const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.ZodType<any> => {
-  let baseObjectSchema = {
+  let baseObjectSchema: Record<string, z.ZodTypeAny> = {
     label: z.union([
       z.literal(false),
       z.string({
@@ -125,6 +142,18 @@ const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.
       },
       ...baseObjectSchema
     }
+  }
+
+  // Block definitions can have a category key for the block picker UI
+  if (isBlock) {
+    baseObjectSchema = {
+      ...baseObjectSchema,
+      category: z.string({
+        invalid_type_error: "'category' must be a string.",
+      }).regex(/^[a-zA-Z0-9-_]+$/, {
+        message: "'category' must be alphanumeric with dashes and underscores.",
+      }).optional(),
+    };
   }
 
   if (!isBlock) {
@@ -384,6 +413,9 @@ const ConfigSchema = z.object({
     }),
   ]).optional(),
   previewUrl: z.string().url().optional(),
+  blockCategories: z.array(BlockCategorySchema, {
+    message: "'blockCategories' must be an array of category objects with 'key', 'label', and optionally 'description'.",
+  }).optional(),
 }).passthrough().nullable();
 
 export { ConfigSchema };
