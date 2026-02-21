@@ -101,7 +101,7 @@ This is a fork of Pages CMS customized for the Cornerstone church website platfo
 
 ### Site Config System
 
-Global site settings live in `template-repo/src/config/site.config.yaml` and are edited via a dedicated CMS editor (`components/site-config/`). The API route at `app/api/.../site-config/route.ts` runs `normalizeConfig()` on GET to auto-migrate old config shapes.
+Global site settings live in `template-repo/src/config/site.config.yaml` and are edited via a dedicated CMS editor (`components/site-config/`). The API route at `app/api/.../site-config/route.ts` handles two operations: GET fetches the raw YAML from GitHub and returns it as-is; POST validates the submitted config against `siteConfigSchema` (Zod) and commits the serialized YAML back to GitHub.
 
 **NavElement** (`template-repo/src/config/types.ts`) is a discriminated union — array position determines render order:
 - `type: 'link'` — menu item with optional `columns` (dropdown) and `featured` sidebar
