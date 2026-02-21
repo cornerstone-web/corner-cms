@@ -92,3 +92,73 @@ Repositories define their CMS structure via `.pages.yml` (or YAML/TOML variants)
 - `main` is production (app.pagescms.org)
 - `development` is staging (dev.pagescms.org)
 - Use `feature/name` or `issue/123-description` branch naming
+
+---
+
+## Cornerstone Integration
+
+This is a fork of Pages CMS customized for the Cornerstone church website platform. The following sections document Cornerstone-specific extensions.
+
+### Site Config System
+
+Global site settings live in `template-repo/src/config/site.config.yaml` and are edited via a dedicated CMS editor (`components/site-config/`). The API route at `app/api/.../site-config/route.ts` runs `normalizeConfig()` on GET to auto-migrate old config shapes.
+
+**NavElement** (`template-repo/src/config/types.ts`) is a discriminated union — array position determines render order:
+- `type: 'link'` — menu item with optional `columns` (dropdown) and `featured` sidebar
+- `type: 'search'` — search icon toggle (`enabled: boolean`)
+- `type: 'cta'` — call-to-action button (`enabled`, `label`, `href`)
+
+**Footer config** has two separate fields:
+- `variant`: `'comprehensive' | 'minimal'` — what elements appear
+- `style`: `'centered' | 'left-aligned'` — layout alignment
+
+**CMS editor components** (`components/site-config/`):
+- `SiteConfigEditor.tsx` — form + live preview iframe, tabbed sections
+- `schema.ts` — Zod schema with `navElementSchema` discriminated union
+- `sections/NavigationSection.tsx` — drag-and-drop nav item reordering (dnd-kit)
+- `sections/FooterSection.tsx` — drag-and-drop social links, sections, links
+- `sections/ServiceTimesSection.tsx` — drag-and-drop service times
+
+**Conditional fields:** `FooterSectionsList` is hidden when `footer.variant === 'minimal'`.
+
+### `templateEditable` — Template vs Page Mode
+
+Fields in `.pages.yml` can be marked `templateEditable: true`. This controls visibility in **template editing mode** (editing the template structure, not page content):
+
+- `templateEditable: true` → field visible in template mode (structural: variants, toggles, counts)
+- No `templateEditable` → field hidden in template mode (content: headline, images, description)
+
+Template mode validation in `lib/schema.ts` (`generateZodSchema()`) skips non-`templateEditable` fields, so required content fields don't block template saves.
+
+### `controlledBy` — Field Grouping in Entry Form
+
+Content fields can declare which toggle controls them via `controlledBy: toggleFieldName`. The entry form (`components/entry/entry-form.tsx` — `ToggleFieldGroup`) renders these as a group: toggle first, controlled fields indented below. When the toggle is OFF, controlled fields appear muted.
+
+- **Field order matters** — toggle must be immediately before its controlled field(s) in `.pages.yml`
+- Defined on `Field` type in `types/field.ts`, validated in `lib/configSchema.ts`
+- Works for all field types including `component` references
+
+### Block Picker Modal (`components/entry/block-picker-modal.tsx`)
+
+Opened via "Browse blocks" button in `BlocksField` (`entry-form.tsx`). Self-sources config via `useConfig()` for `blockCategories` and `previewBaseUrl`.
+
+- **Desktop:** `max-w-4xl` dialog; clicking a block name splits to 40/60 list/preview pane
+- **Mobile:** full-screen dialog with navigation stack (tap → preview slide, "+" to quick-add)
+- **Search:** filters across all categories by name, label, description
+- **Preview iframe:** points to `${previewBaseUrl}/preview/${blockType}` with no `?data=` — PreviewWrapper renders with block's built-in placeholder data
+- Blocks without a `category` in `.pages.yml` fall into an "Other" group
+
+### PreviewWrapper Standalone Rendering
+
+`template-repo/src/components/preview/PreviewWrapper.tsx` renders blocks with placeholder data when no CMS postMessage data is provided (instead of showing a spinner). This enables the block picker modal previews and standalone `/preview/*` navigation without CMS data setup.
+
+### Custom Fields (`fields/custom/`)
+
+Add a folder with an `index.ts` (or `index.tsx`) exporting any of:
+- `schema` — Zod validation schema
+- `read` / `write` — format conversion when reading/writing files
+- `EditComponent` — React component for field editing
+- `ViewComponent` — React component for display in collection lists
+- `defaultValue` — default value for new entries
+
+Field names in `fields/custom/` override core fields if they share a name. Current custom fields: `icon`, `inline-rich-text`, `template`.
