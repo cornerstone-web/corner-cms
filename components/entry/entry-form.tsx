@@ -911,24 +911,21 @@ const ToggleFieldGroup = ({
           ? toggleValue
           : !toggleValue;
 
+        if (isDisabled) return null;
+
         if (
           controlledField.list === true ||
           (typeof controlledField.list === "object" &&
             controlledField.list !== null)
         ) {
-          // For list fields, wrap in a disabled container
           return (
-            <div
+            <ListField
               key={controlledFieldName}
-              className={cn(isDisabled && "opacity-50 pointer-events-none")}
-            >
-              <ListField
-                field={controlledField}
-                fieldName={controlledFieldName}
-                renderFields={renderFieldsFn}
-                isTemplateMode={isTemplateMode}
-              />
-            </div>
+              field={controlledField}
+              fieldName={controlledFieldName}
+              renderFields={renderFieldsFn}
+              isTemplateMode={isTemplateMode}
+            />
           );
         }
 
@@ -938,7 +935,6 @@ const ToggleFieldGroup = ({
             field={controlledField}
             fieldName={controlledFieldName}
             renderFields={renderFieldsFn}
-            disabled={isDisabled}
             isTemplateMode={isTemplateMode}
           />
         );
