@@ -230,8 +230,8 @@ export async function GET(
           if (mediaOutputPrefixes.some((prefix) => url.startsWith(prefix))) continue;
           if (!validUrls.has(url)) {
             const section = fieldPath.startsWith("footer")
-              ? "Site Config → Footer"
-              : "Site Config → Navigation";
+              ? "Settings → Footer"
+              : "Settings → Navigation";
             brokenLinks.push({ url, source: section });
           }
         }
