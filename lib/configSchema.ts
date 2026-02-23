@@ -34,6 +34,7 @@ const MediaConfigObject = z.object({
   }).optional(),
   name: z.string().optional(),
   label: z.string().optional(),
+  scan: z.boolean().optional(),
 }).strict();
 
 // Named media configuration schema (for array entries)
