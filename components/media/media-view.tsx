@@ -16,6 +16,7 @@ import { FolderCreate} from "@/components/folder-create";
 import { FileOptions } from "@/components/file/file-options";
 import { PathBreadcrumb } from "@/components/path-breadcrumb";
 import { MediaUpload} from "./media-upload";
+import { FilePreviewModal } from "./file-preview-modal";
 import { Message } from "@/components/message";
 import { Thumbnail } from "@/components/thumbnail";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,7 @@ const MediaView = ({
     return mediaConfig.input;
   });
   const [data, setData] = useState<Record<string, any>[] | undefined>(undefined);
+  const [previewFile, setPreviewFile] = useState<Record<string, any> | null>(null);
   
   // Filter the data based on filteredExtensions when displaying
   const filteredData = useMemo(() => {
@@ -330,12 +332,19 @@ const MediaView = ({
                                 />
                               }
                               <div className={onSelect && "hover:bg-muted peer-focus:ring-offset-background peer-focus:ring-2 peer-focus:ring-ring peer-focus:ring-offset-2 rounded-md peer-checked:ring-offset-background peer-checked:ring-offset-2 peer-checked:ring-2 peer-checked:ring-ring relative"}>
-                                {extensionCategories.image.includes(item.extension)
-                                  ? <Thumbnail name={mediaConfig.name} path={item.path} className="rounded-t-md aspect-video"/>
-                                  : <div className="flex items-center justify-center rounded-md aspect-video">
-                                      <File className="stroke-[0.5] h-24 w-24"/>
-                                    </div>
-                                }
+                                <button
+                                  type="button"
+                                  className="w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-zoom-in"
+                                  onClick={(e) => { e.preventDefault(); setPreviewFile(item); }}
+                                  aria-label={`Preview ${item.name}`}
+                                >
+                                  {extensionCategories.image.includes(item.extension)
+                                    ? <Thumbnail name={mediaConfig.name} path={item.path} className="rounded-t-md aspect-video"/>
+                                    : <div className="flex items-center justify-center rounded-t-md aspect-video">
+                                        <File className="stroke-[0.5] h-24 w-24"/>
+                                      </div>
+                                  }
+                                </button>
                                 <div className="flex gap-x-2 items-center p-2">
                                   <div className="overflow-hidden mr-auto h-9">
                                     <div className="text-sm font-medium truncate">{item.name}</div>
@@ -367,6 +376,12 @@ const MediaView = ({
           </div>
         </MediaUpload.DropZone>
       </MediaUpload>
+      <FilePreviewModal
+        file={previewFile}
+        files={(data ?? []).filter((item) => item.type === "file")}
+        mediaName={mediaConfig.name}
+        onClose={() => setPreviewFile(null)}
+      />
     </div>
   )
 };
