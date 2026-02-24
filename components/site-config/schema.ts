@@ -55,6 +55,8 @@ const serviceTimeSchema = z.object({
 });
 
 export const siteConfigSchema = z.object({
+  previewUrl: z.string().url().optional(),
+
   name: z.string().min(1, "Site name is required"),
   description: z.string().default(""),
 

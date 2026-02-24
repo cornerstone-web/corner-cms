@@ -1,13 +1,11 @@
 import { redirect } from "next/navigation";
-import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
-import { getToken } from "@/lib/token";
+import { getToken, getInstallationToken } from "@/lib/token";
 import { configVersion, parseConfig, normalizeConfig } from "@/lib/config";
 import { getConfig, saveConfig, updateConfig } from "@/lib/utils/config";
 import { ConfigProvider } from "@/contexts/config-context";
 import { RepoLayout } from "@/components/repo/repo-layout";
-import { EmptyCreate } from "@/components/empty-create";
-import { Message } from "@/components/message";
+import { createOctokitInstance } from "@/lib/utils/octokit";
 
 export default async function Layout({
   children,
@@ -23,90 +21,93 @@ export default async function Layout({
   if (!token) throw new Error("Token not found");
 
   const decodedBranch = decodeURIComponent(branch);
+  const lowerOwner = owner.toLowerCase();
+  const lowerRepo = repo.toLowerCase();
 
-  let config = {
-    owner: owner.toLowerCase(),
-    repo: repo.toLowerCase(),
-    branch: decodedBranch,
-    sha: "",
-    version: "",
-    object: {}
+  // Read the church repo's package-lock.json to find the exact installed version
+  // of @cornerstone-web/core. This drives which .pages.yml tag we fetch so that
+  // the CMS config is always version-matched to the deployed site.
+  const octokit = createOctokitInstance(token);
+  const lockfileResponse = await octokit.rest.repos.getContent({
+    owner,
+    repo,
+    path: "package-lock.json",
+    ref: decodedBranch,
+  });
+
+  if (!("content" in lockfileResponse.data)) {
+    throw new Error("package-lock.json not found. Ensure it is committed to the church repo.");
   }
-  
-  let errorMessage = null;
-  
-  // We try to retrieve the config file (.pages.yml)
-  try {
-    const octokit = createOctokitInstance(token);
-    const response = await octokit.rest.repos.getContent({
-      owner: owner,
-      repo: repo,
+
+  const lockfile = JSON.parse(
+    Buffer.from((lockfileResponse.data as any).content, "base64").toString()
+  );
+  const coreEntry = lockfile.packages?.["node_modules/@cornerstone-web/core"];
+  if (!coreEntry?.version) {
+    throw new Error(
+      "@cornerstone-web/core not found in package-lock.json. Run npm install and commit the lock file."
+    );
+  }
+  const resolvedVersion: string = coreEntry.version; // e.g. "0.1.2"
+
+  // Check DB cache. sha stores the resolved package version; version stores the
+  // pages-cms configVersion (schema format). Both must match to use the cache.
+  const cachedConfig = await getConfig(lowerOwner, lowerRepo, decodedBranch);
+
+  let config;
+  if (
+    cachedConfig &&
+    cachedConfig.sha === resolvedVersion &&
+    cachedConfig.version === (configVersion ?? "0.0")
+  ) {
+    config = cachedConfig;
+  } else {
+    // Cache miss — fetch .pages.yml from cornerstone-web/cornerstone-core at the
+    // matching git tag (v{version}). Uses the GitHub App installation token for
+    // cornerstone-web org (requires the App to be installed on that org).
+    const coreToken = await getInstallationToken("cornerstone-web", "cornerstone-core");
+    const coreOctokit = createOctokitInstance(coreToken);
+
+    const configResponse = await coreOctokit.rest.repos.getContent({
+      owner: "cornerstone-web",
+      repo: "cornerstone-core",
       path: ".pages.yml",
-      ref: decodedBranch,
-      headers: { Accept: "application/vnd.github.v3+json" },
+      ref: `v${resolvedVersion}`,
     });
 
-    if (Array.isArray(response.data)) {
-      throw new Error("Expected a file but found a directory");
-    } else if (response.data.type !== "file") {
-      throw new Error("Invalid response type");
+    if (!("content" in configResponse.data)) {
+      throw new Error(
+        `Could not fetch .pages.yml from cornerstone-core at v${resolvedVersion}. ` +
+        `Ensure git tag v${resolvedVersion} exists on that repo.`
+      );
     }
 
-    const savedConfig = await getConfig(owner, repo, decodedBranch);
+    const configYaml = Buffer.from(
+      (configResponse.data as any).content,
+      "base64"
+    ).toString();
+    const { document } = parseConfig(configYaml);
+    const configObject = normalizeConfig(document.toJSON());
 
-    // TODO: make it resilient to config not found (e.g. DB down)
+    config = {
+      owner: lowerOwner,
+      repo: lowerRepo,
+      branch: decodedBranch,
+      sha: resolvedVersion,
+      version: configVersion ?? "0.0",
+      object: configObject,
+    };
 
-    if (savedConfig && savedConfig.sha === response.data.sha && savedConfig.version === configVersion) {
-      // Config in DB and up-to-date
-      config = savedConfig;
+    if (!cachedConfig) {
+      await saveConfig(config);
     } else {
-      const configFile = Buffer.from(response.data.content, "base64").toString();
-      const parsedConfig = parseConfig(configFile);
-      const configObject = normalizeConfig(parsedConfig.document.toJSON());
-      
-      config.sha = response.data.sha;
-      config.version = configVersion ?? "0.0";
-      config.object = configObject;
-
-      if (!savedConfig) {
-        // Config not in DB
-        await saveConfig(config);
-      } else {
-        // Config in DB but outdated (based on sha or version)
-        await updateConfig(config);
-      }
-    }
-  } catch (error: any) {
-    if (error.status === 404) {
-      if (error.response.data.message === "Not Found") {
-        errorMessage = (
-          <Message
-            title="No configuration file"
-            description={`You need to add a ".pages.yml" file to this branch.`}
-            className="absolute inset-0"
-          >
-            <EmptyCreate type="settings">Create a configuration file</EmptyCreate>
-          </Message>
-        );
-      } else {
-        // We assume the branch is not valid
-        errorMessage = (
-          <Message
-            title="Invalid branch"
-            description={`The branch "${decodedBranch}" doesn't exist. It may have been removed or renamed.`}
-            className="absolute inset-0"
-            href={`/${owner}/${repo}`}
-            cta={"Switch to the default branch"}
-          />
-        );
-      }
-      // TODO: catch all error (it's not always just one of these two)
+      await updateConfig(config);
     }
   }
 
   return (
     <ConfigProvider value={config}>
-      <RepoLayout>{errorMessage ? errorMessage : children}</RepoLayout>
+      <RepoLayout>{children}</RepoLayout>
     </ConfigProvider>
   );
 }

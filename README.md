@@ -1,128 +1,111 @@
-# Pages CMS
+# Cornerstone Pages CMS
 
-[Pages CMS](https://pagescms.org) is an Open Source Content Management System for GitHub. It is particularly well suited for static site generators (e.g. Jekyll, Next.js, VuePress, Hugo).
+A content management system purpose-built for the [Cornerstone](https://github.com/cornerstone-web) church website platform. Originally based on [Pages CMS](https://github.com/pages-cms/pages-cms) — refer to that project for general CMS documentation, field types, and the upstream architecture.
 
-It offers a user-friendly interface to edit the content of your website or app directly on GitHub.
+## How this differs from Pages CMS
 
-<a href="https://demo.pagescms.org" target="_blank">
-<picture>
-<source media="(prefers-color-scheme: dark)" srcset="https://pagescms.org/media/screenshots/nextjs-edit-with-bg-dark@2x.png">
-<source media="(prefers-color-scheme: light)" srcset="https://pagescms.org/media/screenshots/nextjs-edit-with-bg-light@2x.png">
-<img src="https://pagescms.org/media/screenshots/nextjs-edit-with-bg-light@2x.png">
-</picture>
-</a>
+### Platform-baked schema
 
-*[Watch the demo ▶](https://demo.pagescms.org)*
+Standard Pages CMS reads a `.pages.yml` file from each repository to define the CMS structure. Cornerstone church repos don't have a `.pages.yml` — the schema is defined in [`@cornerstone-web/core`](https://github.com/cornerstone-web/cornerstone-core) alongside the block components it describes.
 
-## Documentation
+On load, the CMS reads the church repo's `package-lock.json` to find the exact installed version of `@cornerstone-web/core`, then fetches the matching `.pages.yml` from `cornerstone-web/cornerstone-core` at the corresponding git tag (`v{version}`). The result is cached in the database by version; subsequent loads skip the GitHub fetch entirely.
 
-Go to [pagescms.org/docs](https://pagescms.org/docs).
+This means the CMS schema and the site code are always version-matched — adding a block to `cornerstone-core` automatically makes it available in the CMS once the church repo updates its dependency.
 
-## Community chat
+### Site config editor
 
-[Join the Discord server](https://pagescms.org/chat) to get help with Pages CMS, share feedback, and connect with other users building with the platform.
+A dedicated editor for `src/config/site.config.yaml` — the church-specific settings file (navigation, footer, contact info, theme, service times). Changes are committed directly to GitHub.
 
-## Built with
+### Block picker
 
-- [Next.js](https://nextjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [shadcn/ui](https://ui.shadcn.com/)
-- [drizzle](https://orm.drizzle.team/)
-- [Vercel](https://vercel.com/)
-- [Supabase](https://supabase.tech/)
-- [Resend](https://resend.com/)
+A modal block picker with category filtering, search, and live iframe previews powered by the deployed church site's `/preview/*` routes.
 
-## Use online
+### Custom fields
 
-The easiest way to get started is to use [the online version of Pages CMS](https://app.pagescms.org). You'll be able to log in with your GitHub account and get the latest version of Pages CMS.
+| Field | Purpose |
+|---|---|
+| `icon` | Lucide icon picker |
+| `inline-rich-text` | Single-line rich text (bold, italic, links) without block-level formatting |
+| `template` | Selects a named content template and populates fields from it |
 
-This online version is identical to what's in this repo, but you can also install your own version locally or deploy it (for free) on Vercel following the steps below.
+### `templateEditable`
 
-## Install and Deploy
+Fields can be marked `templateEditable: true` to control visibility in template editing mode. Fields without this flag are hidden and use placeholder data when editing a template — only structural fields (variants, toggles, counts) are exposed.
 
-### Create a GitHub App
+### `controlledBy`
 
-Whether you're installing Pages CMS locally or deploying it online, you will need a GitHub App.
+Fields can declare `controlledBy: toggleFieldName` to group themselves under a boolean toggle in the entry form. Controlled fields render indented beneath their toggle and appear muted when the toggle is off. Required validation is only enforced when the toggle is on.
 
-You can either create it under your personal account (https://github.com/settings/apps) or under one of your organizations (`https://github.com/organizations/<org-name>/settings/apps`).
+## Local Development
 
-You will need to fill in the following information:
+### 1. Install dependencies
 
-- **GitHub App name**: use "Pages CMS" or whatever you think is appropriate (e.g. "Pages CMS (dev)").
-- **Homepage URL**: whatever you want, https://pagescms.org will do.
-- **Identifying and authorizing users**:
-    - Callback URL: the URL for `/api/auth/github`:
-        - `http://localhost:3000/api/auth/github` for development,
-        - something like `https://my-vercel-url.vercel.app/api/auth/github` (or whatever custom domain you're using) if you're deploying on Vercel.
-    - Expire user authorization tokens: no.
-    - Request user authorization (OAuth) during installation: yes.
-    - Enable Device Flow: no.
-- **Post installation**:
-    - Setup URL (optional): leave empty.
-    - Redirect on update: no.
-- **Webhook**:
-    - Active: yes.
-    - Webhook URL: the (public) URL for `/api/webhook/github`:
-        - for development, you'll need to use something like [ngrok](https://ngrok.com/). You'll end up with something like `https://your-unique-subdomain.ngrok-free.app/api/webhook/github`.
-        - something like `https://my-vercel-url.vercel.app/api/webhook/github` (or whatever custom domain you're using) if you're deploying on Vercel.
-    - Secret: generate a random string (for example with `openssl rand -base64 32` on MacOS/Linux)
-- **Permissions**:
-    - Repository permissions:
-        - Administration: Read & Write
-        - Contents: Read & Write
-        - Metadata: Read only
-    - Organization permissions: nothing.
-    - Account permissions: nothing.
-- **Subscribe to events**:
-    - Installation target
-    - Repository
-    - Push
-    - Delete
-- **Where can this GitHub App be installed?**: you'll want to select "Any account" unless you intend to only use Pages CMS on the account this GitHub App is created under.
+```bash
+npm install
+```
+
+### 2. Copy the example env file
+
+```bash
+cp .env.local.example .env
+```
+
+### 3. Create a GitHub App
+
+Follow the GitHub App setup instructions in the [Pages CMS docs](https://github.com/pages-cms/pages-cms). A few local-specific notes:
+
+- Use `openssl rand -base64 32` to generate random secrets (`CRYPTO_KEY`, `GITHUB_APP_WEBHOOK_SECRET`)
+- For the Webhook URL, you need a public tunnel. Start ngrok in a separate terminal:
+
+```bash
+ngrok http 3000
+```
+
+- Paste the ngrok HTTPS URL as the Webhook URL (e.g. `https://abc123.ngrok-free.app/api/webhook/github`). **You'll need to update this in your GitHub App settings each time you restart ngrok.**
+- Set the OAuth Callback URL to `http://localhost:3000/api/auth/github`
+
+### 4. Start a local PostgreSQL database
+
+```bash
+docker run --name pages-cms-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:15
+```
+
+Then add this to your `.env`:
+
+```
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
+```
+
+### 5. Fill in the remaining `.env` values
+
+See the environment variables table below. At minimum you need the GitHub App credentials and `CRYPTO_KEY`.
+
+### 6. Run migrations and start the dev server
+
+```bash
+npm run db:migrate
+npm run dev
+```
 
 ### Environment variables
 
-Variable | Comments
---- | ---
-`BASE_URL` | **OPTIONAL**. If you're deploying to Vercel or working locally, you won't need that. If you're deploying elsewhere, you'll need to specify the base URL for the app (e.g. `https://mycustomdomain.com`).
-`DATABASE_URL` | The database URL, including your credentials (e.g. `postgresql://user:password@example.com:6543`). If you're using [Supabase](https://supabase.com), use the "Transaction pooler" url.
-`CRYPTO_KEY` | Used to encrypt/decrypt GitHub tokens in the database. On MacOS/Linux*, you can use `openssl rand -base64 32`.
-`GITHUB_APP_ID` | GitHub App ID from your GitHub App details page.
-`GITHUB_APP_NAME` | Machine name for your GitHub App (e.g. `pages-cms`), should be the slug the URL of your GitHub App details page.
-`GITHUB_APP_PRIVATE_KEY` | PEM file you can download upong creation of the GitHub App.
-`GITHUB_APP_WEBHOOK_SECRET` | The secret you picked for your webhook. This is used to ensure the request is coming from GitHub.
-`GITHUB_APP_CLIENT_ID` | GitHub App Client ID from your GitHub App details page.
-`GITHUB_APP_CLIENT_SECRET` | GitHub App Client Secret you generate on theGitHub App details page.
-`RESEND_FROM_EMAIL` | The sender for authentication emails. Must be a verified domain in your Resend account and follow the format `email@example.com` or `Name <email@example.com>`.
-`RESEND_API_KEY` | You'll get that when you create a (free) [Resend](https://resend.com) account to handle emails.
-`FILE_CACHE_TTL` | **OPTIONAL**. Time to live (in minutes) for file cache (collections and media folders). Defaults to 1440 (1 day). Set to "-1" to prevent the cache from ever expiring, or "0" if you want no cache.
-`PERMISSION_CACHE_TTL` | **OPTIONAL**. Time to live (in minutes) for the permission cache, which controls access to file cache. Defaults to 60. Set to "0" if you want to always check permissions against the GitHub API.
-`CRON_SECRET` | Secret token used to secure the access of the cron API endpoint.
-
-### Local development
-
-We assume you've already created the GitHub App and have a running tunnel for the GitHub App Webhook (using [ngrok](https://ngrok.com/) for example):
-
-1. **Install the dependencies**: `npm install`
-2. **Update your environment variables**: copy `.env.example` to `.env` and fill in the values according to your setting (see section above).
-3. **Create the database**: `npm run db:migrate`
-4. **Run it**: `npm run dev`
-
-### Deploy on Vercel
-
-1. **Create a PostgreSQL database**: I recommend using [Supabase](https://supabase.com), but any PostgreSQL database will do.
-2. **Deploy to Vercel**: at this stage you have 2 choices:
-    1. **Create a fork**: fork the `pages-cms/pages-cms` repo in your account and deploy that fork. This will allow you to get updates. **Make sure you define all of the environment variables listed above**.
-    2. **Use the deploy button**:
-    
-        [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fpages-cms%2Fpages-cms%2Ftree%2Fmain&project-name=pages-cms&repository-name=pages-cms&redirect-url=https%3A%2F%2Fpagescms.org&env=CRYPTO_KEY,GITHUB_APP_ID,GITHUB_APP_NAME,GITHUB_APP_PRIVATE_KEY,GITHUB_APP_WEBHOOK_SECRET,GITHUB_APP_CLIENT_ID,GITHUB_APP_CLIENT_SECRET,RESEND_API_KEY,DATABASE_URL)
-
-3. **Update your GitHub OAuth app**: you'll probably need to go back to your GitHub App settings to update some of the settings once you have the Vercel URL (e.g. "Callback URL" and "Webhook URL").
-
-### Self-host
-
-There are [plenty of other options](https://nextjs.org/docs/app/building-your-application/deploying#self-hosting): Fly.io, Digital Ocean, Render, SST, etc.
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | ✓ | PostgreSQL connection string (use Supabase Transaction pooler URL) |
+| `CRYPTO_KEY` | ✓ | AES key for encrypting GitHub tokens — `openssl rand -base64 32` |
+| `GITHUB_APP_ID` | ✓ | GitHub App ID |
+| `GITHUB_APP_NAME` | ✓ | GitHub App machine name (slug from the App settings URL) |
+| `GITHUB_APP_PRIVATE_KEY` | ✓ | PEM private key from the GitHub App |
+| `GITHUB_APP_WEBHOOK_SECRET` | ✓ | Webhook secret set on the GitHub App |
+| `GITHUB_APP_CLIENT_ID` | ✓ | OAuth client ID from the GitHub App |
+| `GITHUB_APP_CLIENT_SECRET` | ✓ | OAuth client secret from the GitHub App |
+| `RESEND_API_KEY` | ✓ | [Resend](https://resend.com) API key for magic-link auth emails |
+| `RESEND_FROM_EMAIL` | ✓ | Verified sender address (e.g. `CMS <cms@example.com>`) |
+| `BASE_URL` | | Override base URL when not deploying to Vercel |
+| `FILE_CACHE_TTL` | | File cache TTL in minutes. Default: `1440`. `-1` = never expire, `0` = no cache |
+| `PERMISSION_CACHE_TTL` | | Permission cache TTL in minutes. Default: `60`. `0` = always check GitHub |
+| `CRON_SECRET` | | Secret for the `/api/cron` cache-clearing endpoint |
 
 ## License
 
-Everything in this repo is released under the [MIT License](LICENSE).
+[MIT](LICENSE) — same as the upstream Pages CMS project.

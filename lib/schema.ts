@@ -3,7 +3,6 @@
  */
 
 import slugify from "slugify";
-import { defaultValues, schemas } from "@/fields/registry";
 import { z } from "zod";
 import { Field } from "@/types/field";
 import { format } from "date-fns";
@@ -105,6 +104,8 @@ const getDefaultValue = (field: Record<string, any>) => {
   } else if (field.type === "block") {
     return null;
   } else {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { defaultValues } = require("@/fields/registry") as typeof import("@/fields/registry");
     const defaultValue = defaultValues?.[field.type];
     return defaultValue instanceof Function
       ? defaultValue(field)
@@ -206,6 +207,9 @@ const generateZodSchema = (
   ignoreHidden: boolean = false,
   isTemplateMode: boolean = false
 ): z.ZodTypeAny => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { schemas } = require("@/fields/registry") as typeof import("@/fields/registry");
+
   const buildSchemaObject = (currentFields: Field[]): {
     shape: Record<string, z.ZodTypeAny>;
     conditionalRules: ConditionalRequiredRule[];

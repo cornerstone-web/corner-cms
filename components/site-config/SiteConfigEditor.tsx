@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/config-context";
+import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Form } from "@/components/ui/form";
@@ -26,6 +27,7 @@ import { FeaturesSection } from "./sections/FeaturesSection";
 
 export function SiteConfigEditor() {
   const { config } = useConfig();
+  const { previewUrl } = useSiteFeaturesContext();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sha, setSha] = useState<string | null>(null);
@@ -36,7 +38,6 @@ export function SiteConfigEditor() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const previewUrl = config?.object?.previewUrl;
   const previewOrigin = previewUrl ? new URL(previewUrl).origin : null;
 
   const form = useForm<SiteConfigFormValues>({

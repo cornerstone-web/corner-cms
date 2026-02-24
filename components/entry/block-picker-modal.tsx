@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useConfig } from "@/contexts/config-context";
+import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import type { Field, BlockCategory } from "@/types/field";
 
 interface BlockPickerModalProps {
@@ -46,11 +47,11 @@ export function BlockPickerModal({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { config } = useConfig();
-  const blockCategories: BlockCategory[] = config?.object?.blockCategories ?? [];
-  const previewBaseUrl: string | undefined = config?.object?.previewUrl;
+  const { previewUrl: previewBaseUrl } = useSiteFeaturesContext();
 
   // Group blocks by category, preserving category order
   const groupedBlocks = useMemo((): CategoryGroup[] => {
+    const blockCategories: BlockCategory[] = config?.object?.blockCategories ?? [];
     const groups: CategoryGroup[] = [];
     const categorized = new Set<string>();
 
@@ -69,7 +70,7 @@ export function BlockPickerModal({
     }
 
     return groups;
-  }, [availableBlocks, blockCategories]);
+  }, [availableBlocks, config]);
 
   // Filter blocks by search query (matches name, label, and description)
   const filteredBlocks = useMemo(() => {

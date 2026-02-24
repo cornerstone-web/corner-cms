@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useConfig } from "@/contexts/config-context";
+import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import { useParams } from "next/navigation";
 import type { BrokenLink } from "@/app/api/[owner]/[repo]/[branch]/broken-links/route";
 
@@ -35,7 +35,7 @@ function isCacheValid(key: string): boolean {
 }
 
 export function useBrokenLinks() {
-  const { config } = useConfig();
+  const { previewUrl } = useSiteFeaturesContext();
   const params = useParams() as {
     owner: string;
     repo: string;
@@ -44,8 +44,6 @@ export function useBrokenLinks() {
 
   const [data, setData] = useState<BrokenLinksData | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const previewUrl = config?.object?.previewUrl;
   const cacheKey =
     params.owner && params.repo && params.branch
       ? getCacheKey(params.owner, params.repo, params.branch)
@@ -74,7 +72,7 @@ export function useBrokenLinks() {
       setLoading(true);
       cache = { key: cacheKey, data: null, fetchedAt: 0 };
 
-      const url = `/api/${params.owner}/${params.repo}/${encodeURIComponent(params.branch)}/broken-links`;
+      const url = `/api/${params.owner}/${params.repo}/${params.branch}/broken-links`;
 
       pendingPromise = fetch(url)
         .then((res) => {

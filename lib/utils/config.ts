@@ -1,9 +1,13 @@
 /**
  * Utility functions to create, retrieve and update a repository configuration
  * from the DB.
- * 
- * Look at the `lib/config.ts` file to understand how the config is parsed,
- * normalized and validated.
+ *
+ * Config rows are keyed by (owner, repo, branch). The `sha` field stores the
+ * resolved @cornerstone-web/core package version (e.g. "0.1.2") rather than a
+ * GitHub file sha, allowing layout.tsx to detect when the church repo has
+ * updated its package and re-fetch .pages.yml from cornerstone-core.
+ *
+ * See lib/config.ts for YAML parsing details.
  */
 
 import { cache } from "react";
@@ -12,7 +16,6 @@ import { db } from "@/db";
 import { configTable } from "@/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 
-// TODO: add a fallback behavior to retrieve conf if not in DB
 const getConfig = cache(
   async (
     owner: string,
@@ -20,7 +23,7 @@ const getConfig = cache(
     branch: string,
   ): Promise<Config | null> => {
     if (!owner || !repo || !branch) throw new Error(`Owner, repo, and branch must all be provided.`);
-    
+
     const config = await db.query.configTable.findFirst({
       where: and(
         sql`lower(${configTable.owner}) = lower(${owner})`,
@@ -28,7 +31,7 @@ const getConfig = cache(
         eq(configTable.branch, branch),
       )
     });
-    
+
     if (!config) return null;
 
     return {
@@ -45,7 +48,7 @@ const getConfig = cache(
 const saveConfig = async (
   config: Config,
 ): Promise<Config> => {
-  const result = await db.insert(configTable).values({
+  await db.insert(configTable).values({
     owner: config.owner,
     repo: config.repo,
     branch: config.branch,

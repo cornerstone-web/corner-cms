@@ -5,11 +5,13 @@ import { useConfig } from "@/contexts/config-context";
 
 interface SiteFeaturesContextType {
   features: Record<string, boolean>;
+  previewUrl: string | undefined;
   loading: boolean;
 }
 
 const SiteFeaturesContext = createContext<SiteFeaturesContextType>({
   features: {},
+  previewUrl: undefined,
   loading: true,
 });
 
@@ -20,6 +22,7 @@ export function useSiteFeaturesContext() {
 export function SiteFeaturesProvider({ children }: { children: React.ReactNode }) {
   const { config } = useConfig();
   const [features, setFeatures] = useState<Record<string, boolean>>({});
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,8 +33,10 @@ export function SiteFeaturesProvider({ children }: { children: React.ReactNode }
     )
       .then((r) => r.json())
       .then((result) => {
-        if (result.status === "success" && result.data?.config?.features) {
-          setFeatures(result.data.config.features);
+        if (result.status === "success" && result.data?.config) {
+          const siteConfig = result.data.config;
+          if (siteConfig.features) setFeatures(siteConfig.features);
+          if (siteConfig.previewUrl) setPreviewUrl(siteConfig.previewUrl);
         }
       })
       .catch(() => {})
@@ -39,7 +44,7 @@ export function SiteFeaturesProvider({ children }: { children: React.ReactNode }
   }, [config]);
 
   return (
-    <SiteFeaturesContext.Provider value={{ features, loading }}>
+    <SiteFeaturesContext.Provider value={{ features, previewUrl, loading }}>
       {children}
     </SiteFeaturesContext.Provider>
   );
