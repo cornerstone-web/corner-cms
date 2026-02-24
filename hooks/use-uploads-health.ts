@@ -78,7 +78,7 @@ export function useUploadsHealth() {
       setLoading(true);
       cache = { key: cacheKey, data: null, fetchedAt: 0 };
 
-      const url = `/api/${params.owner}/${params.repo}/${encodeURIComponent(params.branch)}/uploads-health`;
+      const url = `/api/${params.owner}/${params.repo}/${params.branch}/uploads-health`;
 
       pendingPromise = fetch(url)
         .then((res) => {

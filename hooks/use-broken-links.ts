@@ -72,7 +72,7 @@ export function useBrokenLinks() {
       setLoading(true);
       cache = { key: cacheKey, data: null, fetchedAt: 0 };
 
-      const url = `/api/${params.owner}/${params.repo}/${encodeURIComponent(params.branch)}/broken-links`;
+      const url = `/api/${params.owner}/${params.repo}/${params.branch}/broken-links`;
 
       pendingPromise = fetch(url)
         .then((res) => {
