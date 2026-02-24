@@ -1,10 +1,9 @@
 import { type NextRequest } from "next/server";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { writeFns } from "@/fields/registry";
-import { configVersion, parseConfig, normalizeConfig } from "@/lib/config";
 import { stringify, parse } from "@/lib/serialization";
 import { deepMap, generateZodSchema, getSchemaByName, sanitizeObject } from "@/lib/schema";
-import { getConfig, updateConfig } from "@/lib/utils/config";
+import { getConfig } from "@/lib/utils/config";
 import { getFileExtension, getFileName, normalizePath, serializedTypes, getParentPath } from "@/lib/utils/file";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
@@ -178,22 +177,6 @@ export async function POST(
   
     const savedPath = response?.data.content?.path;
 
-    let newConfig;
-    if (data.type === "settings") {
-      const parsedConfig = parseConfig(data.content.body ?? "");
-      const configObject = normalizeConfig(parsedConfig.document.toJSON());
-      newConfig = {
-        owner: params.owner,
-        repo: params.repo,
-        branch: params.branch,
-        sha: response?.data.content?.sha as string,
-        version: configVersion ?? "0.0",
-        object: configObject
-      };
-      
-      await updateConfig(newConfig);
-    }
-    
     if (response?.data.content && response?.data.commit) {
       // If the file is successfully saved, update the cache
       await updateFileCache(
