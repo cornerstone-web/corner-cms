@@ -212,7 +212,6 @@ export async function POST(
         extension: getFileExtension(response?.data.content?.name || ""),
         size: response?.data.content?.size,
         url: response?.data.content?.download_url,
-        config: newConfig ?? undefined,
       }
     });
   } catch (error: any) {
