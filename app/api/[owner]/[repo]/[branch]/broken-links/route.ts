@@ -95,7 +95,23 @@ export async function GET(
       (m: any) => ((m.output as string).startsWith("/") ? m.output : `/${m.output}`),
     );
 
-    const previewUrl = config.object?.previewUrl;
+    // Fetch previewUrl from site.config.yaml (the church-specific deployed URL)
+    let previewUrl: string | undefined;
+    try {
+      const octokit = createOctokitInstance(token);
+      const siteConfigRes = await octokit.rest.repos.getContent({
+        owner: params.owner,
+        repo: params.repo,
+        path: "src/config/site.config.yaml",
+        ref: params.branch,
+      });
+      if (!Array.isArray(siteConfigRes.data) && siteConfigRes.data.type === "file") {
+        const parsed = YAML.parse(Buffer.from(siteConfigRes.data.content, "base64").toString());
+        previewUrl = parsed?.previewUrl;
+      }
+    } catch {
+      // site.config.yaml not found or unreadable — skip broken-link scan
+    }
 
     // Without previewUrl there's no manifest to validate against
     if (!previewUrl) {

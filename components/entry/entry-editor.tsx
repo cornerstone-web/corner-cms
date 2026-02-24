@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useConfig } from "@/contexts/config-context";
+import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import { parseAndValidateConfig } from "@/lib/config";
 import { generateFilename, getPrimaryField, getSchemaByName } from "@/lib/schema";
 import {
@@ -53,6 +54,7 @@ export function EntryEditor({
   
   const { config } = useConfig();
   if (!config) throw new Error(`Configuration not found.`);
+  const { previewUrl } = useSiteFeaturesContext();
   
   const schema = useMemo(() => {
     if (!name) return;
@@ -460,7 +462,7 @@ export function EntryEditor({
         onSubmit={onSubmit}
         path={path}
         history={history}
-        previewUrl={config.object?.previewUrl}
+        previewUrl={previewUrl}
         isTemplateMode={isTemplateMode}
         collectionName={name}
         slugInfo={urlPrefix !== null ? {

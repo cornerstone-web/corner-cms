@@ -6,22 +6,24 @@ import { AlertTriangle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBrokenLinks } from "@/hooks/use-broken-links";
 import { useConfig } from "@/contexts/config-context";
+import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import { useRepo } from "@/contexts/repo-context";
 import { cn } from "@/lib/utils";
 
 export function BrokenLinksBar() {
   const { config } = useConfig();
+  const { previewUrl } = useSiteFeaturesContext();
   const { owner, repo } = useRepo();
   const { brokenLinks, loading, refresh } = useBrokenLinks();
   const [expanded, setExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Only render when previewUrl is configured and there are broken links
-  if (!config?.object?.previewUrl || loading || brokenLinks.length === 0) {
+  if (!previewUrl || loading || brokenLinks.length === 0) {
     return null;
   }
 
-  const branch = config.branch;
+  const branch = config?.branch ?? "";
   const count = brokenLinks.length;
 
   const handleRefresh = async () => {

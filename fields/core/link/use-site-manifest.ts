@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useConfig } from "@/contexts/config-context";
+import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 
 export interface ManifestLink {
   url: string;
@@ -21,11 +21,9 @@ let manifestCache: { url: string; data: SiteManifest | null } = {
 let manifestPromise: Promise<SiteManifest | null> | null = null;
 
 export function useSiteManifest() {
-  const { config } = useConfig();
+  const { previewUrl } = useSiteFeaturesContext();
   const [manifest, setManifest] = useState<SiteManifest | null>(manifestCache.data);
   const [loading, setLoading] = useState(false);
-
-  const previewUrl = config?.object?.previewUrl;
   const manifestUrl = previewUrl ? `${previewUrl}/site-manifest.json` : null;
 
   useEffect(() => {

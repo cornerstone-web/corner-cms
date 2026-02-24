@@ -1,0 +1,1863 @@
+# Pages CMS Configuration for Cornerstone Web Development Template Repo
+# Documentation: https://pagescms.org/docs/configuration
+
+media:
+  - name: uploads
+    label: Uploads
+    input: public/uploads
+    output: /uploads
+    categories: [image, document]
+  - name: files
+    label: Files
+    input: public/files
+    output: /files
+    categories: [document]
+  - name: bulletins
+    label: Bulletins
+    input: public/bulletins
+    output: /bulletins
+    categories: [document]
+    scan: false
+
+settings:
+  content:
+    merge: true
+
+# Reusable field components
+components:
+  cta:
+    label: Call to Action Link
+    type: object
+    fields:
+      - name: label
+        label: Button Label
+        type: string
+        required: true
+      - name: href
+        label: Link URL
+        type: link
+        required: true
+
+  pageAccess:
+    label: Access Control
+    type: object
+    fields:
+      - name: draft
+        label: Draft
+        type: boolean
+        default: false
+      - name: passwordProtected
+        label: Password Protected
+        type: boolean
+        default: false
+      - name: password
+        label: Password
+        type: string
+
+  # Block components for pages
+  heroBlock:
+    label: Hero
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: hero
+      # Layout variant at top
+      - name: variant
+        label: Layout Variant
+        type: select
+        default: centered
+        options:
+          values: [centered, left-aligned, split]
+        templateEditable: true
+      # Background image group
+      - name: showBackgroundImage
+        label: Show Background Image
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: backgroundImage
+        label: Background Image
+        type: image
+        templateEditable: true
+        controlledBy: showBackgroundImage
+      - name: backgroundImageAlt
+        label: Background Image Alt Text
+        type: string
+        required: true
+        templateEditable: true
+        controlledBy: showBackgroundImage
+      - name: overlay
+        label: Show Overlay
+        type: boolean
+        default: true
+        templateEditable: true
+      # Main content
+      - name: showHeadline
+        label: Show Headline
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: headline
+        label: Headline
+        type: string
+        controlledBy: showHeadline
+        required: true
+      # Subheadline group (toggle + field)
+      - name: showSubheadline
+        label: Show Subheadline
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: subheadline
+        label: Subheadline
+        type: inline-rich-text
+        controlledBy: showSubheadline
+      # Primary CTA group
+      - name: showPrimaryCta
+        label: Show Primary CTA
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: primaryCta
+        label: Primary CTA
+        component: cta
+        controlledBy: showPrimaryCta
+      # Secondary CTA group
+      - name: showSecondaryCta
+        label: Show Secondary CTA
+        type: boolean
+        default: false
+        templateEditable: true
+      - name: secondaryCta
+        label: Secondary CTA
+        component: cta
+        controlledBy: showSecondaryCta
+
+  proseBlock:
+    label: Prose/Text
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: prose
+      - name: content
+        label: Content
+        type: rich-text
+        required: true
+
+  ctaBlock:
+    label: CTA Section
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: cta
+      # Layout variant at top
+      - name: variant
+        label: Variant
+        type: select
+        default: default
+        options:
+          values: [default, primary]
+        templateEditable: true
+      # Main content first (no toggle)
+      - name: headline
+        label: Headline
+        type: string
+        required: true
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # Primary CTA group
+      - name: showPrimaryCta
+        label: Show Primary CTA
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: primaryCta
+        label: Primary CTA
+        component: cta
+        controlledBy: showPrimaryCta
+      # Secondary CTA group
+      - name: showSecondaryCta
+        label: Show Secondary CTA
+        type: boolean
+        default: false
+        templateEditable: true
+      - name: secondaryCta
+        label: Secondary CTA
+        component: cta
+        controlledBy: showSecondaryCta
+
+  faqItem:
+    label: FAQ Item
+    type: object
+    fields:
+      - name: question
+        label: Question
+        type: string
+        required: true
+      - name: answer
+        label: Answer
+        type: text
+        required: true
+
+  faqAccordionBlock:
+    label: FAQ Accordion
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: faq-accordion
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Display options
+      - name: startExpanded
+        label: Start First Item Expanded
+        type: boolean
+        default: false
+        templateEditable: true
+      # Content
+      - name: items
+        label: FAQ Items
+        component: faqItem
+        list: true
+
+  galleryImage:
+    label: Gallery Image
+    type: object
+    fields:
+      - name: src
+        label: Image
+        type: image
+        required: true
+      - name: alt
+        label: Alt Text
+        type: string
+        required: true
+      - name: caption
+        label: Caption
+        type: string
+
+  galleryBlock:
+    label: Gallery
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: gallery
+      # Layout options
+      - name: columns
+        label: Columns
+        type: select
+        default: 3
+        options:
+          values: [2, 3, 4]
+        templateEditable: true
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Display options
+      - name: showCaptions
+        label: Show Captions
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: enableLightbox
+        label: Enable Lightbox
+        type: boolean
+        default: true
+        templateEditable: true
+      # Content
+      - name: images
+        label: Images
+        component: galleryImage
+        list: true
+
+  imageBlock:
+    label: Image
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: image
+      # Main content
+      - name: src
+        label: Image
+        type: image
+        required: true
+      - name: alt
+        label: Alt Text
+        type: string
+        required: true
+      # Caption group
+      - name: showCaption
+        label: Show Caption
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: caption
+        label: Caption
+        type: string
+        controlledBy: showCaption
+
+  videoEmbedBlock:
+    label: Video Embed
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: video-embed
+      # YouTube Live toggle
+      - name: useYoutubeLive
+        label: Use YouTube Live
+        type: boolean
+        default: false
+        templateEditable: true
+      # Standard embed URL (shown when useYoutubeLive is OFF)
+      - name: url
+        label: Video URL
+        type: string
+        required: true
+        controlledBy: useYoutubeLive
+        controlledByInverse: true
+      # YouTube channel ID (shown when useYoutubeLive is ON)
+      - name: channelId
+        label: YouTube Channel ID
+        type: string
+        required: true
+        controlledBy: useYoutubeLive
+      # Display options
+      - name: aspectRatio
+        label: Aspect Ratio
+        type: select
+        default: "16:9"
+        options:
+          values: ["16:9", "4:3"]
+        templateEditable: true
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+
+  formField:
+    label: Form Field
+    type: object
+    fields:
+      - name: name
+        label: Field Name
+        type: string
+        required: true
+      - name: type
+        label: Field Type
+        type: select
+        required: true
+        options:
+          values: [text, email, textarea, select]
+      - name: label
+        label: Label
+        type: string
+        required: true
+      - name: required
+        label: Required
+        type: boolean
+        default: false
+      - name: options
+        label: Options (for select)
+        type: string
+        list: true
+
+  formBlock:
+    label: Form
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: form
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      - name: fields
+        label: Form Fields
+        component: formField
+        list:
+          default:
+            - name: name
+              type: text
+              label: Name
+              required: true
+            - name: email
+              type: email
+              label: Email
+              required: true
+            - name: message
+              type: textarea
+              label: Message
+              required: true
+
+  sermonGridBlock:
+    label: Sermon Grid
+    type: object
+    collections:
+      - name: sermons
+        limit: count
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: sermon-grid
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # Display options
+      - name: showAll
+        label: Show All Items
+        type: boolean
+        default: false
+        templateEditable: true
+      - name: count
+        label: Number of Sermons
+        type: number
+        templateEditable: true
+        controlledBy: showAll
+        controlledByInverse: true
+      - name: showViewAll
+        label: Show View All Link
+        type: boolean
+        default: true
+        templateEditable: true
+        controlledBy: showAll
+        controlledByInverse: true
+
+  eventListBlock:
+    label: Event List
+    type: object
+    collections:
+      - name: events
+        limit: count
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: event-list
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # Display options
+      - name: showAll
+        label: Show All Items
+        type: boolean
+        default: false
+        templateEditable: true
+      - name: count
+        label: Number of Events
+        type: number
+        templateEditable: true
+        controlledBy: showAll
+        controlledByInverse: true
+      - name: showViewAll
+        label: Show View All Link
+        type: boolean
+        default: true
+        templateEditable: true
+        controlledBy: showAll
+        controlledByInverse: true
+
+  articleGridBlock:
+    label: Article Grid
+    type: object
+    collections:
+      - name: articles
+        limit: count
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: article-grid
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # Display options
+      - name: showAll
+        label: Show All Items
+        type: boolean
+        default: false
+        templateEditable: true
+      - name: count
+        label: Number of Articles
+        type: number
+        templateEditable: true
+        controlledBy: showAll
+        controlledByInverse: true
+      - name: showViewAll
+        label: Show View All Link
+        type: boolean
+        default: true
+        templateEditable: true
+        controlledBy: showAll
+        controlledByInverse: true
+
+  ministryLinksBlock:
+    label: Ministry Links
+    type: object
+    collections:
+      - name: ministries
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: ministry-links
+      # Display mode at top
+      - name: displayMode
+        label: Display Mode
+        type: select
+        default: icons
+        options:
+          values: [icons, images]
+        templateEditable: true
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+
+  imageMarqueeImage:
+    label: Marquee Image
+    type: object
+    fields:
+      - name: src
+        label: Image
+        type: image
+        required: true
+      - name: alt
+        label: Alt Text
+        type: string
+        required: true
+
+  imageMarqueeBlock:
+    label: Image Marquee
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: image-marquee
+      # Variant fields (templateEditable)
+      - name: direction
+        label: Scroll Direction
+        type: select
+        default: left
+        options:
+          values: [left, right]
+        templateEditable: true
+      - name: imageStyle
+        label: Image Style
+        type: select
+        default: freeform
+        options:
+          values:
+            - value: freeform
+              label: Freeform (original aspect)
+            - value: square
+              label: Square (cropped)
+        templateEditable: true
+      - name: speed
+        label: Speed
+        type: slider
+        default: 50
+        options:
+          min: 0
+          max: 100
+        templateEditable: true
+      - name: enableDragScroll
+        label: Enable Drag Scrolling
+        type: boolean
+        default: false
+        templateEditable: true
+      # Content field
+      - name: images
+        label: Images
+        component: imageMarqueeImage
+        list: true
+
+  specialEventBannerBlock:
+    label: Special Event Banner
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: special-event-banner
+      # Layout variant at top
+      - name: imagePosition
+        label: Image Position
+        type: select
+        default: left
+        options:
+          values: [left, right]
+        templateEditable: true
+      # Main content (no toggles)
+      - name: image
+        label: Image
+        type: image
+        required: true
+      - name: imageAlt
+        label: Image Alt Text
+        type: string
+        required: true
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: date
+        label: Date Text
+        type: string
+        required: true
+      # Learn More group
+      - name: showLearnMore
+        label: Show Learn More Button
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: learnMoreHref
+        label: Learn More Link
+        type: link
+        controlledBy: showLearnMore
+      # Register group
+      - name: showRegister
+        label: Show Register Button
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: registerHref
+        label: Register Link
+        type: link
+        controlledBy: showRegister
+      - name: registerLabel
+        label: Register Button Label
+        type: string
+        controlledBy: showRegister
+
+  bulletinListBlock:
+    label: Bulletin List
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: bulletin-list
+      # Layout options
+      - name: layout
+        label: Layout
+        type: select
+        default: list
+        options:
+          values: [list, grid]
+        templateEditable: true
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Display options
+      - name: count
+        label: Number to Show
+        type: number
+        templateEditable: true
+      - name: showDate
+        label: Show Date
+        type: boolean
+        default: true
+        templateEditable: true
+
+  person:
+    label: Person
+    type: object
+    fields:
+      - name: name
+        label: Name
+        type: string
+        required: true
+      - name: image
+        label: Photo
+        type: image
+      - name: imageAlt
+        label: Photo Alt Text
+        type: string
+        required: true
+      - name: role
+        label: Role
+        type: string
+      - name: subtitle
+        label: Subtitle
+        type: string
+
+  seriesItem:
+    label: Series Item
+    type: object
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: url
+        label: URL
+        type: link
+        required: true
+      - name: image
+        label: Image
+        type: image
+      - name: description
+        label: Description
+        type: inline-rich-text
+
+  seriesGridBlock:
+    label: Series Grid
+    type: object
+    collections:
+      - name: series
+        limit: count
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: series-grid
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # Display options
+      - name: showAll
+        label: Show All Items
+        type: boolean
+        default: false
+        templateEditable: true
+      - name: count
+        label: Number of Series
+        type: number
+        templateEditable: true
+        controlledBy: showAll
+        controlledByInverse: true
+      - name: showViewAll
+        label: Show View All Link
+        type: boolean
+        default: true
+        templateEditable: true
+        controlledBy: showAll
+        controlledByInverse: true
+      # Data source toggle
+      - name: useCollectionSource
+        label: Use Collection Source
+        type: boolean
+        default: true
+      - name: items
+        label: Manual Series List
+        component: seriesItem
+        list: true
+        controlledBy: useCollectionSource
+        controlledByInverse: true
+
+  teamGridBlock:
+    label: Team Grid
+    type: object
+    collections:
+      - name: staff
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: team-grid
+      # Layout options
+      - name: imageStyle
+        label: Image Style
+        type: select
+        default: circle
+        options:
+          values: [circle, square]
+        templateEditable: true
+      - name: gridAlignment
+        label: Grid Alignment
+        type: select
+        default: left
+        options:
+          values: [left, center]
+        templateEditable: true
+      - name: gridSpacing
+        label: Grid Spacing
+        type: select
+        default: normal
+        options:
+          values: [compact, normal, spacious]
+        templateEditable: true
+      - name: gridItemSize
+        label: Item Size
+        type: select
+        default: medium
+        options:
+          values: [small, medium, large]
+        templateEditable: true
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # Data source toggle (hidden in template mode - always use collection)
+      - name: useCollectionSource
+        label: Use Collection Source
+        type: boolean
+        default: true
+      - name: source
+        label: Data Source
+        type: select
+        default: staff
+        options:
+          values:
+            - value: staff
+              label: Staff Collection
+        controlledBy: useCollectionSource
+        required: true
+      - name: people
+        label: Manual People List
+        component: person
+        list: true
+        controlledBy: useCollectionSource
+        controlledByInverse: true
+
+  fileDownloadBlock:
+    label: File Download
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: file-download
+      # Display variant at top
+      - name: variant
+        label: Display Mode
+        type: select
+        default: button
+        options:
+          values:
+            - value: button
+              label: Download Button
+            - value: embed
+              label: Embedded Preview
+        templateEditable: true
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # File content
+      - name: file
+        label: PDF Filename
+        type: string
+        description: "Filename of the PDF in the files directory (e.g. annual-report.pdf)"
+      - name: buttonLabel
+        label: Button Label
+        type: string
+        description: "Custom button text (button mode only, defaults to 'View PDF')"
+
+  containerBlock:
+    label: Container
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: container
+      - name: background
+        label: Background Color
+        type: select
+        default: background
+        options:
+          values: [background, surface, primary, secondary, accent]
+          labels: [Default, Surface, Primary, Secondary, Accent]
+        templateEditable: true
+      - name: padding
+        label: Padding
+        type: select
+        default: md
+        options:
+          values: [none, sm, md, lg]
+          labels: [None, Small, Medium, Large]
+        templateEditable: true
+      - name: ratio
+        label: Column Ratio
+        type: select
+        default: equal
+        description: "Only applies when exactly 2 columns"
+        options:
+          values: [equal, "2:1", "1:2", "3:1", "1:3", "3:2", "2:3"]
+          labels: [Equal, "2:1", "1:2", "3:1", "1:3", "3:2", "2:3"]
+        templateEditable: true
+      - name: columns
+        label: Columns
+        type: object
+        list: true
+        fields:
+          - name: blocks
+            label: Blocks
+            type: block
+            list: true
+            blockKey: type
+            blocks: ref:blockTypes
+
+  buttonBlock:
+    label: Button
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: button
+      - name: variant
+        label: Style
+        type: select
+        default: primary
+        options:
+          values: [primary, secondary, outline, ghost, inverse, inverse-ghost]
+          labels: [Primary, Secondary, Outline, Ghost, Inverse, Inverse Ghost]
+        templateEditable: true
+      - name: size
+        label: Size
+        type: select
+        default: md
+        options:
+          values: [sm, md, lg]
+          labels: [Small, Medium, Large]
+        templateEditable: true
+      - name: alignment
+        label: Alignment
+        type: select
+        default: left
+        options:
+          values: [left, center, right]
+          labels: [Left, Center, Right]
+        templateEditable: true
+      - name: padding
+        label: Spacing
+        type: select
+        default: md
+        options:
+          values: [none, sm, md, lg]
+          labels: [None, Small, Medium, Large]
+        templateEditable: true
+      - name: label
+        label: Button Text
+        type: string
+        required: true
+      - name: href
+        label: Link
+        type: link
+        required: true
+
+  iconBlock:
+    label: Icon
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: icon
+      - name: size
+        label: Size
+        type: select
+        default: md
+        options:
+          values: [sm, md, lg, xl]
+          labels: [Small, Medium, Large, Extra Large]
+        templateEditable: true
+      - name: color
+        label: Color
+        type: select
+        default: current
+        options:
+          values: [current, primary, secondary, accent, text, text-muted]
+          labels: [Inherit, Primary, Secondary, Accent, Text, Muted]
+        templateEditable: true
+      - name: icon
+        label: Icon
+        type: icon
+        required: true
+      - name: label
+        label: Label Text
+        type: string
+
+  mapBlock:
+    label: Map
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: map
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Map embed
+      - name: mapEmbedUrl
+        label: Google Maps Embed URL
+        type: string
+        description: 'To get an embed URL: go to maps.google.com, search for your address, click Share, select "Embed a map", and copy the URL from the src attribute of the iframe code.'
+
+  serviceTime:
+    label: Service Time
+    type: object
+    fields:
+      - name: time
+        label: Time
+        type: string
+        required: true
+      - name: label
+        label: Description
+        type: string
+        required: true
+
+  mediaItem:
+    label: Media Item
+    type: object
+    fields:
+      - name: image
+        label: Image
+        type: image
+      - name: imageAlt
+        label: Image Alt Text
+        type: string
+      - name: heading
+        label: Heading
+        type: string
+      - name: description
+        label: Description
+        type: inline-rich-text
+
+  mediaListBlock:
+    label: Media List
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: media-list
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # Items
+      - name: items
+        label: Items
+        component: mediaItem
+        list: true
+
+  serviceTimesBlock:
+    label: Service Times
+    type: object
+    fields:
+      - name: type
+        type: string
+        hidden: true
+        default: service-times
+      # Layout variant
+      - name: mobileAlignment
+        label: Mobile Alignment
+        type: select
+        default: left
+        options:
+          values: [left, center]
+        templateEditable: true
+      # Title group
+      - name: showTitle
+        label: Show Title
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: title
+        label: Title
+        type: string
+        controlledBy: showTitle
+      # Description group
+      - name: showDescription
+        label: Show Description
+        type: boolean
+        default: true
+        templateEditable: true
+      - name: description
+        label: Description
+        type: inline-rich-text
+        controlledBy: showDescription
+      # Service times
+      - name: times
+        label: Service Times
+        component: serviceTime
+        list: true
+
+# Block categories for the block picker UI
+blockCategories:
+  - key: featured
+    label: Featured Sections
+    description: Eye-catching banners and calls to action
+  - key: text
+    label: Text & Content
+    description: Written content and interactive Q&A
+  - key: media
+    label: Media
+    description: Images, galleries, and video
+  - key: church-life
+    label: Church Life
+    description: Sermons, events, articles, and more from your content library
+  - key: people
+    label: People & Ministries
+    description: Your team and ministry navigation
+  - key: forms
+    label: Forms
+    description: Collect information from your visitors
+  - key: info
+    label: Practical Info
+    description: Service times, location, and downloadable resources
+  - key: layout
+    label: Layout
+    description: Building blocks for custom page designs
+
+# Shared block type definitions (referenced via blocks: ref:blockTypes)
+blockTypes:
+  - name: hero
+    label: Hero
+    category: featured
+    description: Large banner with headline, imagery, and CTA buttons. Multiple layout styles.
+    component: heroBlock
+  - name: image-marquee
+    label: Image Marquee
+    category: media
+    description: Auto-scrolling strip of images. Customize direction and image shape.
+    component: imageMarqueeBlock
+  - name: prose
+    label: Prose/Text
+    category: text
+    description: Write paragraphs, headings, and formatted text content.
+    component: proseBlock
+  - name: cta
+    label: CTA Section
+    category: featured
+    description: Draw attention to an action visitors should take. Standard and bold styles.
+    component: ctaBlock
+  - name: faq-accordion
+    label: FAQ Accordion
+    category: text
+    description: Expandable question-and-answer sections visitors can browse.
+    component: faqAccordionBlock
+  - name: team-grid
+    label: Team Grid
+    category: people
+    description: Staff and leadership with photos. Customize photo style and grid layout.
+    component: teamGridBlock
+  - name: gallery
+    label: Gallery
+    category: media
+    description: Grid of images with optional lightbox viewing. Adjustable column count.
+    component: galleryBlock
+  - name: image
+    label: Image
+    category: media
+    description: A single responsive image with optional caption.
+    component: imageBlock
+  - name: video-embed
+    label: Video Embed
+    category: media
+    description: Embed a YouTube video or live stream on your page.
+    component: videoEmbedBlock
+  - name: form
+    label: Form
+    category: forms
+    description: Contact form, volunteer signup, or custom form with email delivery.
+    component: formBlock
+  - name: sermon-grid
+    label: Sermon Grid
+    category: church-life
+    description: Display recent sermons from your library in a card grid.
+    component: sermonGridBlock
+  - name: event-list
+    label: Event List
+    category: church-life
+    description: Show upcoming events from your calendar.
+    component: eventListBlock
+  - name: article-grid
+    label: Article Grid
+    category: church-life
+    description: Display recent articles or blog posts in a card grid.
+    component: articleGridBlock
+  - name: ministry-links
+    label: Ministry Links
+    category: people
+    description: Link to your ministries using icon cards or image cards.
+    component: ministryLinksBlock
+  - name: special-event-banner
+    label: Special Event Banner
+    category: featured
+    description: Promote an upcoming event with image, details, and registration links.
+    component: specialEventBannerBlock
+  - name: bulletin-list
+    label: Bulletin List
+    category: church-life
+    description: Downloadable bulletins and documents. List or grid view.
+    component: bulletinListBlock
+  - name: series-grid
+    label: Series Grid
+    category: church-life
+    description: Showcase sermon series with artwork and descriptions.
+    component: seriesGridBlock
+  - name: map
+    label: Map
+    category: info
+    description: Embed a Google Map showing your church's location.
+    component: mapBlock
+  - name: service-times
+    label: Service Times
+    category: info
+    description: Display your worship service schedule.
+    component: serviceTimesBlock
+  - name: media-list
+    label: Media List
+    category: media
+    description: A collection of images with titles and descriptions.
+    component: mediaListBlock
+  - name: file-download
+    label: File Download
+    category: info
+    description: Provide a downloadable PDF or document with preview.
+    component: fileDownloadBlock
+  - name: container
+    label: Container
+    category: layout
+    description: Arrange multiple blocks side by side in columns.
+    component: containerBlock
+  - name: button
+    label: Button
+    category: layout
+    description: A standalone call-to-action button.
+    component: buttonBlock
+  - name: icon
+    label: Icon
+    category: layout
+    description: Display a decorative icon element.
+    component: iconBlock
+
+content:
+  # Templates (editable default block configurations)
+  - name: templates
+    label: Templates
+    type: collection
+    path: src/content/templates
+    format: yaml-frontmatter
+    isTemplate: true
+    view:
+      fields: [name, description]
+      primary: name
+    fields:
+      - name: name
+        label: Name
+        type: string
+        required: true
+      - name: description
+        label: Description
+        type: text
+      - name: applicableTo
+        label: Applicable To
+        type: string
+        list: true
+      - name: blocks
+        label: Template Blocks
+        type: block
+        list: true
+        blockKey: type
+        blocks: ref:blockTypes
+
+  # Pages (block-based)
+  - name: pages
+    label: Pages
+    type: collection
+    path: src/content/pages
+    format: yaml-frontmatter
+    view:
+      fields: [title, draft]
+      primary: title
+      sort: [title]
+      search: [title, description]
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: description
+        label: Description
+        type: text
+      - name: template
+        label: Template
+        type: template
+      - name: blocks
+        label: Page Blocks
+        type: block
+        list: true
+        blockKey: type
+        blocks: ref:blockTypes
+      - name: draft
+        label: Draft
+        type: boolean
+        default: false
+      - name: passwordProtected
+        label: Password Protected
+        type: boolean
+        default: false
+      - name: password
+        label: Password
+        type: string
+
+  # Sermons
+  - name: sermons
+    label: Sermons
+    type: collection
+    path: src/content/sermons
+    format: yaml-frontmatter
+    view:
+      fields: [title, date, speaker, series]
+      primary: title
+      sort: [date, title]
+      search: [title, speaker, series]
+      default:
+        sort: date
+        order: desc
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: template
+        label: Template
+        type: template
+        default: sermon
+      - name: date
+        label: Date
+        type: date
+        required: true
+      - name: speaker
+        label: Speaker
+        type: string
+        required: true
+      - name: series
+        label: Series
+        type: string
+      - name: description
+        label: Description
+        type: text
+        required: true
+      - name: image
+        label: Image
+        type: image
+      - name: draft
+        label: Draft
+        type: boolean
+        default: false
+      - name: passwordProtected
+        label: Password Protected
+        type: boolean
+        default: false
+      - name: password
+        label: Password
+        type: string
+      - name: blocks
+        label: Content Blocks
+        type: block
+        list:
+          template: sermon
+        blockKey: type
+        blocks: ref:blockTypes
+
+  # Series
+  - name: series
+    label: Series
+    type: collection
+    path: src/content/series
+    format: yaml-frontmatter
+    view:
+      fields: [title, order]
+      primary: title
+      sort: [order, title]
+      search: [title, description]
+      default:
+        sort: title
+        order: asc
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: template
+        label: Template
+        type: template
+        default: series
+      - name: description
+        label: Description
+        type: text
+        required: true
+      - name: image
+        label: Image
+        type: image
+      - name: externalUrl
+        label: External URL
+        type: string
+        description: "Link to an external playlist (YouTube, Vimeo, etc.)"
+      - name: showDetailPage
+        label: Show Detail Page
+        type: boolean
+        default: true
+      - name: order
+        label: Display Order
+        type: number
+      - name: draft
+        label: Draft
+        type: boolean
+        default: false
+      - name: passwordProtected
+        label: Password Protected
+        type: boolean
+        default: false
+      - name: password
+        label: Password
+        type: string
+      - name: blocks
+        label: Content Blocks
+        type: block
+        list:
+          template: series
+        blockKey: type
+        blocks: ref:blockTypes
+
+  # Events
+  - name: events
+    label: Events
+    type: collection
+    path: src/content/events
+    format: yaml-frontmatter
+    view:
+      fields: [title, date, location]
+      primary: title
+      sort: [date, title]
+      search: [title, location]
+      default:
+        sort: date
+        order: asc
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: template
+        label: Template
+        type: template
+        default: event
+      - name: date
+        label: Start Date
+        type: date
+        required: true
+      - name: endDate
+        label: End Date
+        type: date
+      - name: location
+        label: Location
+        type: string
+        required: true
+      - name: description
+        label: Description
+        type: text
+        required: true
+      - name: image
+        label: Image
+        type: image
+      - name: draft
+        label: Draft
+        type: boolean
+        default: false
+      - name: passwordProtected
+        label: Password Protected
+        type: boolean
+        default: false
+      - name: password
+        label: Password
+        type: string
+      - name: blocks
+        label: Content Blocks
+        type: block
+        list:
+          template: event
+        blockKey: type
+        blocks: ref:blockTypes
+
+  # Articles
+  - name: articles
+    label: Articles
+    type: collection
+    path: src/content/articles
+    format: yaml-frontmatter
+    view:
+      fields: [title, date, author, category]
+      primary: title
+      sort: [date, title]
+      search: [title, author, category]
+      default:
+        sort: date
+        order: desc
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: template
+        label: Template
+        type: template
+        default: article
+      - name: author
+        label: Author
+        type: string
+        required: true
+      - name: date
+        label: Date
+        type: date
+        required: true
+      - name: category
+        label: Category
+        type: string
+        required: true
+      - name: description
+        label: Description
+        type: text
+        required: true
+      - name: image
+        label: Image
+        type: image
+      - name: draft
+        label: Draft
+        type: boolean
+        default: false
+      - name: passwordProtected
+        label: Password Protected
+        type: boolean
+        default: false
+      - name: password
+        label: Password
+        type: string
+      - name: blocks
+        label: Content Blocks
+        type: block
+        list:
+          template: article
+        blockKey: type
+        blocks: ref:blockTypes
+
+  # Ministries
+  - name: ministries
+    label: Ministries
+    type: collection
+    path: src/content/ministries
+    format: yaml-frontmatter
+    view:
+      fields: [title, leader, order]
+      primary: title
+      sort: [order, title]
+      search: [title, leader]
+      default:
+        sort: order
+        order: asc
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: template
+        label: Template
+        type: template
+        default: ministry
+      - name: description
+        label: Description
+        type: text
+        required: true
+      - name: image
+        label: Image
+        type: image
+      - name: leader
+        label: Leader
+        type: string
+      - name: icon
+        label: Icon
+        type: icon
+      - name: order
+        label: Display Order
+        type: number
+        default: 0
+      - name: showDetailPage
+        label: Show Detail Page
+        type: boolean
+        default: true
+      - name: draft
+        label: Draft
+        type: boolean
+        default: false
+      - name: passwordProtected
+        label: Password Protected
+        type: boolean
+        default: false
+      - name: password
+        label: Password
+        type: string
+      - name: blocks
+        label: Content Blocks
+        type: block
+        list:
+          template: ministry
+        blockKey: type
+        blocks: ref:blockTypes
+
+  # Staff
+  - name: staff
+    label: Staff
+    type: collection
+    path: src/content/staff
+    format: yaml-frontmatter
+    view:
+      fields: [name, role, order]
+      primary: name
+      sort: [order, name]
+      search: [name, role]
+      default:
+        sort: order
+        order: asc
+    fields:
+      - name: name
+        label: Name
+        type: string
+        required: true
+      - name: template
+        label: Template
+        type: template
+        default: staff
+      - name: role
+        label: Role/Title
+        type: string
+        required: true
+      - name: image
+        label: Photo
+        type: image
+      - name: email
+        label: Email
+        type: string
+      - name: bio
+        label: Short Bio
+        type: text
+        required: true
+      - name: order
+        label: Display Order
+        type: number
+        default: 0
+      - name: showDetailPage
+        label: Show Detail Page
+        type: boolean
+        default: true
+      - name: draft
+        label: Draft
+        type: boolean
+        default: false
+      - name: passwordProtected
+        label: Password Protected
+        type: boolean
+        default: false
+      - name: password
+        label: Password
+        type: string
+      - name: blocks
+        label: Content Blocks
+        type: block
+        list:
+          template: staff
+        blockKey: type
+        blocks: ref:blockTypes
