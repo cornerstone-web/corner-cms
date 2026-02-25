@@ -19,13 +19,14 @@ import {
 } from '@/components/ui/tooltip';
 
 /**
- * Transform image paths from CMS format (public/uploads/...) to preview-accessible format (/uploads/...)
+ * Transform media paths from CMS format (public/<dir>/...) to preview-accessible format (/<dir>/...)
+ * Handles all media directories: uploads, files, bulletins, and any future additions.
  */
 export const transformImagePaths = (data: Record<string, unknown>): Record<string, unknown> => {
   const result = { ...data };
   for (const [key, value] of Object.entries(result)) {
-    if (typeof value === 'string' && value.startsWith('public/uploads/')) {
-      result[key] = value.replace('public/uploads/', '/uploads/');
+    if (typeof value === 'string' && value.startsWith('public/')) {
+      result[key] = '/' + value.slice('public/'.length);
     } else if (Array.isArray(value)) {
       result[key] = value.map(item =>
         typeof item === 'object' && item !== null
