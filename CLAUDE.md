@@ -132,11 +132,13 @@ Template mode validation in `lib/schema.ts` (`generateZodSchema()`) skips non-`t
 
 ### `controlledBy` — Field Grouping in Entry Form
 
-Content fields can declare which toggle controls them via `controlledBy: toggleFieldName`. The entry form (`components/entry/entry-form.tsx` — `ToggleFieldGroup`) renders these as a group: toggle first, controlled fields indented below. When the toggle is OFF, controlled fields appear muted.
+Content fields can declare which field controls them via `controlledBy: fieldName`. The entry form (`components/entry/entry-form.tsx` — `ToggleFieldGroup`) renders these as a group: controller first, controlled fields below. When the controller disables them, controlled fields are hidden.
 
-- **Field order matters** — toggle must be immediately before its controlled field(s) in `.pages.yml`
+- **Field order matters** — controller must be immediately before its controlled field(s) in `.pages.yml`
 - Defined on `Field` type in `types/field.ts`, validated in `lib/configSchema.ts`
 - Works for all field types including `component` references
+- **Boolean controllers:** field hidden when toggle is OFF (default). Use `controlledByInverse: true` to invert.
+- **Select controllers:** add `controlledByValue: "optionValue"` — field shown only when the select equals that value. Example: `controlledBy: variant` + `controlledByValue: button` hides the field unless `variant` is `"button"`.
 
 ### Block Picker Modal (`components/entry/block-picker-modal.tsx`)
 
