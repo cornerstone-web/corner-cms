@@ -18,6 +18,8 @@ export type Field = {
   controlledBy?: string;
   // When true, inverts the controlledBy logic - field is enabled when toggle is OFF
   controlledByInverse?: boolean;
+  // When set, field is shown only when the controller field's value equals this string (for select controllers)
+  controlledByValue?: string;
   // Block category key (references a blockCategories entry)
   category?: string;
 };

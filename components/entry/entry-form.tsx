@@ -893,9 +893,11 @@ const ToggleFieldGroup = ({
   // waiting for the next form submission.
   useEffect(() => {
     controlledFields.forEach((controlledField) => {
-      const isDisabled = controlledField.controlledByInverse
-        ? toggleValue
-        : !toggleValue;
+      const isDisabled = controlledField.controlledByValue !== undefined
+        ? toggleValue !== controlledField.controlledByValue
+        : controlledField.controlledByInverse
+          ? toggleValue
+          : !toggleValue;
       if (isDisabled) {
         const controlledFieldName = parentName
           ? `${parentName}.${controlledField.name}`
@@ -920,10 +922,13 @@ const ToggleFieldGroup = ({
           ? `${parentName}.${controlledField.name}`
           : controlledField.name;
 
-        // Invert the disabled logic if controlledByInverse is true
-        const isDisabled = controlledField.controlledByInverse
-          ? toggleValue
-          : !toggleValue;
+        // Determine disabled state: controlledByValue takes precedence (select controllers),
+        // then controlledByInverse (inverted boolean), then standard boolean logic
+        const isDisabled = controlledField.controlledByValue !== undefined
+          ? toggleValue !== controlledField.controlledByValue
+          : controlledField.controlledByInverse
+            ? toggleValue
+            : !toggleValue;
 
         if (isDisabled) return null;
 
@@ -1196,10 +1201,10 @@ const EntryForm = ({
           ? `${parentName}.${field.name}`
           : field.name;
 
-        // Check if this is a boolean toggle with controlled fields
+        // Check if this is a boolean toggle or select field with controlled fields
         const controlledFields = controlledFieldsMap.get(field.name);
         if (
-          field.type === "boolean" &&
+          (field.type === "boolean" || field.type === "select") &&
           controlledFields &&
           controlledFields.length > 0
         ) {
