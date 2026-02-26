@@ -111,12 +111,12 @@ const EditComponent = forwardRef((props: any, ref: React.Ref<HTMLInputElement>) 
   }, [field.options?.path, mediaConfig?.input]);
 
   const allowedExtensions = useMemo(() => {
-    if (!mediaConfig) return getAllowedExtensions(field);
-    return getAllowedExtensions(field);
+    if (!mediaConfig) return getAllowedExtensions(field, undefined);
+    return getAllowedExtensions(field, mediaConfig);
   }, [field, mediaConfig]);
 
   useEffect(() => {
-    onChange(file?.path ?? "");
+    onChange(file?.path ?? undefined);
   }, [file, onChange]);
 
   const handleUpload = useCallback((fileData: any) => {
