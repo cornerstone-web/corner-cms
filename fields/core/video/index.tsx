@@ -71,8 +71,6 @@ const getAllowedExtensions = (field: Field, mediaConfig?: any): string[] | undef
     extensions = field.options.categories.flatMap(
       (category: string) => extensionCategories[category] || []
     );
-  } else if (mediaConfig?.extensions && Array.isArray(mediaConfig.extensions)) {
-    extensions = [...mediaConfig.extensions];
   }
 
   if (extensions.length > 0 && mediaConfig?.extensions && Array.isArray(mediaConfig.extensions)) {
