@@ -34,6 +34,34 @@ export async function generateUploadToken(
   return { token, r2Key, expiry };
 }
 
+/**
+ * Generate a short-lived HMAC-SHA256 delete token for corner-media.
+ * Uses "delete:{r2Key}:{expiry}" message prefix to prevent upload tokens being reused.
+ */
+export async function generateDeleteToken(
+  r2Key: string,
+  secret: string,
+): Promise<UploadTokenPayload> {
+  const expiry = Date.now() + TOKEN_TTL_MS;
+  const message = `delete:${r2Key}:${expiry}`;
+
+  const keyData = new TextEncoder().encode(secret);
+  const msgData = new TextEncoder().encode(message);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+  const token = bufferToBase64url(signature);
+
+  return { token, r2Key, expiry };
+}
+
 function bufferToBase64url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
