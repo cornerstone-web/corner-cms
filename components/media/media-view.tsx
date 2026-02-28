@@ -25,10 +25,12 @@ import {
   CornerLeftUp,
   Ban,
   Check,
-  EllipsisVertical,  
+  EllipsisVertical,
   File,
+  Film,
   Folder,
   FolderPlus,
+  Music,
   Upload
 } from "lucide-react";
 
@@ -340,9 +342,17 @@ const MediaView = ({
                                 >
                                   {extensionCategories.image.includes(item.extension)
                                     ? <Thumbnail name={mediaConfig.name} path={item.path} className="rounded-t-md aspect-video"/>
-                                    : <div className="flex items-center justify-center rounded-t-md aspect-video">
-                                        <File className="stroke-[0.5] h-24 w-24"/>
-                                      </div>
+                                    : extensionCategories.video.includes(item.extension)
+                                      ? <div className="flex items-center justify-center rounded-t-md aspect-video">
+                                          <Film className="stroke-[0.5] h-24 w-24"/>
+                                        </div>
+                                      : extensionCategories.audio.includes(item.extension)
+                                        ? <div className="flex items-center justify-center rounded-t-md aspect-video">
+                                            <Music className="stroke-[0.5] h-24 w-24"/>
+                                          </div>
+                                        : <div className="flex items-center justify-center rounded-t-md aspect-video">
+                                            <File className="stroke-[0.5] h-24 w-24"/>
+                                          </div>
                                   }
                                 </button>
                                 <div className="flex gap-x-2 items-center p-2">
