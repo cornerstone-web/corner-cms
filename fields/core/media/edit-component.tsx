@@ -19,6 +19,7 @@ import { getSchemaByName } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Field } from "@/types/field";
+import { toast } from "sonner";
 
 const generateId = () => uuidv4().slice(0, 8);
 
@@ -194,8 +195,30 @@ const MediaFileEditComponent = forwardRef(
     );
 
     const handleRemove = useCallback(() => {
+      const currentPath = file?.path;
       setFile(null);
-    }, []);
+
+      // Fire-and-forget R2 deletion for absolute URLs — field value clears immediately
+      if (currentPath?.startsWith('http') && config) {
+        const deletePromise = fetch(
+          `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/media/r2-delete`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: currentPath }),
+          },
+        ).then(async (res) => {
+          const data = await res.json() as { status: string; message?: string };
+          if (data.status !== 'success') throw new Error(data.message ?? 'Delete failed');
+        });
+
+        toast.promise(deletePromise, {
+          loading: 'Deleting file…',
+          success: 'File deleted from storage.',
+          error: (err: any) => `Could not delete file from storage: ${err.message}`,
+        });
+      }
+    }, [file, config]);
 
     const handleSelected = useCallback((newPaths: string[]) => {
       if (newPaths.length === 0) {
