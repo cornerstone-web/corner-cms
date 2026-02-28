@@ -45,7 +45,7 @@ const write = (value: any, field: Field, config: Record<string, any>): string | 
 };
 
 const getAllowedExtensions = (field: Field, mediaConfig?: any): string[] | undefined => {
-  const baseExtensions = ["mp3", "m4a", "wav"];
+  const baseExtensions = [...(extensionCategories['audio'] || [])];
 
   if (!mediaConfig) {
     if (!field.options?.extensions && !field.options?.categories) return baseExtensions;

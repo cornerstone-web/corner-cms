@@ -8,7 +8,7 @@ const extensionCategories: Record<string, string[]> = {
   image: ["jpg", "jpeg", "apng", "png", "gif", "svg", "ico", "avif", "bmp", "tif", "tiff", "webp"],
   document: ["pdf", "doc", "docx", "ppt", "pptx", "vxls", "xlsx", "txt", "rtf"],
   video: ["mp4", "avi", "mov", "wmv", "flv", "mpeg", "webm", "ogv", "ts", "3gp", "3g2"],
-  audio: ["mp3", "wav", "aac", "ogg", "flac", "weba", "oga", "opus", "mid", "midi", "3gp", "3g2"],
+  audio: ["mp3", "m4a", "wav", "aac", "ogg", "flac", "weba", "oga", "opus", "mid", "midi", "3gp", "3g2"],
   compressed: ["zip", "rar", "7z", "tar", "gz", "tgz", "bz", "bz2"],
   code: ["js", "jsx", "ts", "tsx", "html", "css", "scss", "json", "xml", "yaml", "yml", "md", "py", "rb", "php", "java", "c", "cpp", "h", "cs", "go", "rs", "sql"],
   font: ["ttf", "otf", "woff", "woff2", "eot"],
