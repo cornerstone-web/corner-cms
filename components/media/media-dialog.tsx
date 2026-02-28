@@ -28,7 +28,8 @@ const MediaDialog = forwardRef(({
   maxSelected,
   initialPath,
   children,
-  extensions
+  extensions,
+  title
 }: {
   media?: string,
   onSubmit: (images: string[]) => void,
@@ -36,7 +37,8 @@ const MediaDialog = forwardRef(({
   maxSelected?: number,
   initialPath?: string,
   children?: React.ReactNode,
-  extensions?: string[]
+  extensions?: string[],
+  title?: string
 }, ref) => {
   const { config } = useConfig();
   if (!config) throw new Error(`Configuration not found.`);
@@ -78,7 +80,7 @@ const MediaDialog = forwardRef(({
       }
       <DialogContent className="w-full sm:max-w-screen-xl sm:w-[calc(100vw-6rem)] h-[calc(100vh-6rem)] grid-rows-[auto_minmax(0,1fr)_auto]">
         <DialogHeader>
-          <DialogTitle>Select images</DialogTitle>
+          <DialogTitle>{title ?? "Select file"}</DialogTitle>
           <DialogDescription></DialogDescription>
         </DialogHeader>
         
