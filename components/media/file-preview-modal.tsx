@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, File, Loader } from "lucide-react";
+import { MediaPreview } from "@/components/media/media-preview";
 import {
   Dialog,
   DialogContent,
@@ -79,6 +80,8 @@ export function FilePreviewModal({ file, files, mediaName, onClose }: FilePrevie
   const hasNext = idx >= 0 && idx < files.length - 1;
 
   const isImage = current ? extensionCategories.image.includes(current.extension) : false;
+  const isVideo = current ? extensionCategories.video.includes(current.extension) : false;
+  const isAudio = current ? extensionCategories.audio.includes(current.extension) : false;
 
   return (
     <Dialog open={!!file} onOpenChange={(open) => !open && onClose()}>
@@ -109,6 +112,20 @@ export function FilePreviewModal({ file, files, mediaName, onClose }: FilePrevie
               title={current.name}
               className="w-full border-0"
               style={{ height: "65vh" }}
+            />
+          ) : current && isVideo ? (
+            <MediaPreview
+              name={mediaName}
+              path={current.path}
+              type="video"
+              className="max-h-[65vh] w-full"
+            />
+          ) : current && isAudio ? (
+            <MediaPreview
+              name={mediaName}
+              path={current.path}
+              type="audio"
+              className="w-full px-6"
             />
           ) : current ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
