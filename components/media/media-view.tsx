@@ -16,7 +16,6 @@ import { FolderCreate} from "@/components/folder-create";
 import { FileOptions } from "@/components/file/file-options";
 import { PathBreadcrumb } from "@/components/path-breadcrumb";
 import { MediaUpload} from "./media-upload";
-import { MediaPreview } from "./media-preview";
 import { FilePreviewModal } from "./file-preview-modal";
 import {
   Dialog,
@@ -460,12 +459,19 @@ const MediaView = ({
               </DialogDescription>
             </DialogHeader>
             <div className="bg-muted/30 flex items-center justify-center p-4">
-              {r2PreviewFile && (
-                <MediaPreview
-                  name=""
-                  path={r2PreviewFile.url}
-                  type={category as "video" | "audio"}
-                  className={category === "video" ? "max-h-[65vh] w-full" : "w-full"}
+              {r2PreviewFile && category === "video" && (
+                <video
+                  src={r2PreviewFile.url}
+                  controls
+                  className="max-h-[65vh] w-full"
+                  preload="metadata"
+                />
+              )}
+              {r2PreviewFile && category === "audio" && (
+                <audio
+                  src={r2PreviewFile.url}
+                  controls
+                  className="w-full"
                 />
               )}
             </div>
