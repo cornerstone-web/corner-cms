@@ -1,13 +1,13 @@
 "use client";
 
-import { forwardRef, useCallback, useState, useEffect, useMemo } from "react";
+import { forwardRef, useCallback, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MediaUpload } from "@/components/media/media-upload";
 import { MediaDialog } from "@/components/media/media-dialog";
 import { MediaPreview } from "@/components/media/media-preview";
 import { Trash2, Upload, FolderOpen, ArrowUpRight } from "lucide-react";
 import { useConfig } from "@/contexts/config-context";
-import { getFileName, normalizePath, extensionCategories } from "@/lib/utils/file";
+import { getFileName, extensionCategories } from "@/lib/utils/file";
 import {
   Tooltip,
   TooltipContent,
@@ -15,11 +15,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { v4 as uuidv4 } from "uuid";
-import { getSchemaByName } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Field } from "@/types/field";
-import { toast } from "sonner";
 
 const generateId = () => uuidv4().slice(0, 8);
 
@@ -35,54 +33,20 @@ export interface ComponentProps {
   [key: string]: any;
 }
 
-function getAllowedExtensions(
-  type: "video" | "audio",
-  field: Field,
-  mediaConfig?: any,
-): string[] | undefined {
-  const baseExtensions = [...(extensionCategories[type] || [])];
-
-  if (!mediaConfig) {
-    if (!field.options?.extensions && !field.options?.categories) return baseExtensions;
-    if (field.options?.extensions && Array.isArray(field.options.extensions)) {
-      return [...field.options.extensions];
-    } else if (Array.isArray(field.options?.categories)) {
-      return field.options.categories.flatMap(
-        (category: string) => extensionCategories[category] || [],
-      );
-    }
-    return baseExtensions;
-  }
-
-  if (!field.options?.extensions && !field.options?.categories)
-    return mediaConfig?.extensions || baseExtensions;
-
-  let extensions = baseExtensions;
-  if (field.options?.extensions && Array.isArray(field.options?.extensions)) {
-    extensions = [...field.options.extensions];
-  } else if (Array.isArray(field.options?.categories)) {
-    extensions = field.options.categories.flatMap(
-      (category: string) => extensionCategories[category] || [],
-    );
-  }
-
-  if (extensions.length > 0 && mediaConfig?.extensions && Array.isArray(mediaConfig.extensions)) {
-    extensions = extensions.filter((ext: string) => mediaConfig.extensions.includes(ext));
-  }
-
-  return extensions;
-}
+// Hardcoded extensions per media category — no mediaConfig dependency needed
+const FIELD_EXTENSIONS: Record<"video" | "audio", string[]> = {
+  video: extensionCategories.video ?? [],
+  audio: extensionCategories.audio ?? [],
+};
 
 const MediaTeaser = ({
   file,
   config,
-  mediaConfig,
   mediaFieldConfig,
   onRemove,
 }: {
   file: string;
   config: any;
-  mediaConfig: any;
   mediaFieldConfig: MediaFieldConfig;
   onRemove: () => void;
 }) => {
@@ -91,7 +55,7 @@ const MediaTeaser = ({
   return (
     <div className="space-y-2">
       <MediaPreview
-        name={mediaConfig.name}
+        name=""
         path={file}
         type={mediaFieldConfig.type}
         className={
@@ -157,30 +121,7 @@ const MediaFileEditComponent = forwardRef(
       value ? { id: generateId(), path: value } : null,
     );
 
-    const mediaConfig = useMemo(() => {
-      return config?.object?.media?.length && field.options?.media !== false
-        ? field.options?.media && typeof field.options.media === "string"
-          ? getSchemaByName(config.object, field.options.media, "media")
-          : config.object.media[0]
-        : undefined;
-    }, [field.options?.media, config?.object]);
-
-    const rootPath = useMemo(() => {
-      if (!field.options?.path) return mediaConfig?.input;
-      const normalizedPath = normalizePath(field.options.path as string);
-      const normalizedMediaPath = normalizePath(mediaConfig?.input ?? "");
-      if (!normalizedPath.startsWith(normalizedMediaPath)) {
-        console.warn(
-          `"${field.options.path}" is not within media root "${mediaConfig?.input}". Defaulting to media root.`,
-        );
-        return mediaConfig?.input;
-      }
-      return normalizedPath;
-    }, [field.options?.path, mediaConfig?.input]);
-
-    const allowedExtensions = useMemo(() => {
-      return getAllowedExtensions(mediaFieldConfig.type, field, mediaConfig ?? undefined);
-    }, [mediaFieldConfig.type, field, mediaConfig]);
+    const allowedExtensions = FIELD_EXTENSIONS[mediaFieldConfig.type];
 
     useEffect(() => {
       onChange(file?.path ?? undefined);
@@ -195,30 +136,8 @@ const MediaFileEditComponent = forwardRef(
     );
 
     const handleRemove = useCallback(() => {
-      const currentPath = file?.path;
       setFile(null);
-
-      // Fire-and-forget R2 deletion for absolute URLs — field value clears immediately
-      if (currentPath?.startsWith('http') && config) {
-        const deletePromise = fetch(
-          `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/media/r2-delete`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: currentPath }),
-          },
-        ).then(async (res) => {
-          const data = await res.json() as { status: string; message?: string };
-          if (data.status !== 'success') throw new Error(data.message ?? 'Delete failed');
-        });
-
-        toast.promise(deletePromise, {
-          loading: 'Deleting file…',
-          success: 'File deleted from storage.',
-          error: (err: any) => `Could not delete file from storage: ${err.message}`,
-        });
-      }
-    }, [file, config]);
+    }, []);
 
     const handleSelected = useCallback((newPaths: string[]) => {
       if (newPaths.length === 0) {
@@ -228,29 +147,13 @@ const MediaFileEditComponent = forwardRef(
       }
     }, []);
 
-    if (!mediaConfig) {
-      return (
-        <p className="text-muted-foreground bg-muted rounded-md px-3 py-2">
-          No media configuration found.{" "}
-          <a
-            href={`/${config?.owner}/${config?.repo}/${encodeURIComponent(config?.branch || "")}/settings`}
-            className="underline hover:text-foreground"
-          >
-            Check your settings
-          </a>
-          .
-        </p>
-      );
-    }
-
     return (
       <MediaUpload
-        path={rootPath}
-        media={mediaConfig.name}
         extensions={allowedExtensions}
         onUpload={handleUpload}
         multiple={false}
         uploadTarget="r2"
+        category={mediaFieldConfig.type}
       >
         <MediaUpload.DropZone>
           <div className="space-y-2">
@@ -258,7 +161,6 @@ const MediaFileEditComponent = forwardRef(
               <MediaTeaser
                 file={file.path}
                 config={config}
-                mediaConfig={mediaConfig}
                 mediaFieldConfig={mediaFieldConfig}
                 onRemove={handleRemove}
               />
@@ -274,8 +176,7 @@ const MediaFileEditComponent = forwardRef(
                 <TooltipProvider>
                   <Tooltip>
                     <MediaDialog
-                      media={mediaConfig.name}
-                      initialPath={rootPath}
+                      category={mediaFieldConfig.type}
                       maxSelected={1}
                       extensions={allowedExtensions}
                       onSubmit={handleSelected}
