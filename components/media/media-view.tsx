@@ -407,36 +407,54 @@ const MediaView = ({
                     </p>
                   : r2Files.length > 0
                     ? <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 p-1">
-                        {r2Files.map((file) => (
+                        {r2Files.map((file, index) => (
                           <li key={file.url}>
-                            <div className="rounded-md border border-border overflow-hidden">
-                              <button
-                                type="button"
-                                className="w-full flex items-center justify-center aspect-video bg-muted/30 hover:bg-muted/60 transition-colors cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                onClick={() => setR2PreviewFile(file)}
-                                aria-label={`Preview ${file.name}`}
-                              >
-                                {category === "video"
-                                  ? <Film className="stroke-[0.5] h-24 w-24 text-muted-foreground"/>
-                                  : <Music className="stroke-[0.5] h-24 w-24 text-muted-foreground"/>
-                                }
-                              </button>
-                              <div className="flex gap-x-2 items-center p-2">
-                                <div className="overflow-hidden mr-auto h-9">
-                                  <div className="text-sm font-medium truncate" title={file.name}>{file.name}</div>
-                                  <div className="text-xs text-muted-foreground truncate">{getFileSize(file.size)}</div>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                                  onClick={() => handleR2Delete(file.url, file.name)}
-                                  aria-label={`Delete ${file.name}`}
+                            <label htmlFor={`r2-item-${index}`}>
+                              {onSelect && (
+                                <input
+                                  type="checkbox"
+                                  id={`r2-item-${index}`}
+                                  className="peer sr-only"
+                                  checked={selected.includes(file.url)}
+                                  onChange={() => handleSelect(file.url)}
+                                />
+                              )}
+                              <div className={onSelect ? "rounded-md border border-border overflow-hidden hover:bg-muted peer-checked:ring-offset-background peer-checked:ring-offset-2 peer-checked:ring-2 peer-checked:ring-ring relative" : "rounded-md border border-border overflow-hidden"}>
+                                <button
+                                  type="button"
+                                  className="w-full flex items-center justify-center aspect-video bg-muted/30 hover:bg-muted/60 transition-colors cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  onClick={(e) => { e.preventDefault(); setR2PreviewFile(file); }}
+                                  aria-label={`Preview ${file.name}`}
                                 >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                  {category === "video"
+                                    ? <Film className="stroke-[0.5] h-24 w-24 text-muted-foreground"/>
+                                    : <Music className="stroke-[0.5] h-24 w-24 text-muted-foreground"/>
+                                  }
+                                </button>
+                                <div className="flex gap-x-2 items-center p-2">
+                                  <div className="overflow-hidden mr-auto h-9">
+                                    <div className="text-sm font-medium truncate" title={file.name}>{file.name}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{getFileSize(file.size)}</div>
+                                  </div>
+                                  {!onSelect && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                                      onClick={() => handleR2Delete(file.url, file.name)}
+                                      aria-label={`Delete ${file.name}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                                {onSelect && selected.includes(file.url) && (
+                                  <div className="text-primary-foreground bg-primary p-0.5 rounded-full absolute top-2 left-2">
+                                    <Check className="stroke-[3] w-3 h-3"/>
+                                  </div>
+                                )}
                               </div>
-                            </div>
+                            </label>
                           </li>
                         ))}
                       </ul>
