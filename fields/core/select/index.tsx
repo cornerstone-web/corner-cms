@@ -20,6 +20,13 @@ const schema = (field: Field) => {
     zodSchema = field.required
       ? zodSchema
       : z.union([z.literal(""), zodSchema]).optional().nullable();
+
+    // Coerce numeric values to strings — YAML may store option values as numbers
+    // (e.g. columns: [2, 3, 4]) causing validation failures against the string enum
+    zodSchema = z.preprocess(
+      (val) => typeof val === "number" ? String(val) : val,
+      zodSchema
+    );
   } else {
     zodSchema = z.string();
     if (field.required) zodSchema = zodSchema.min(1, "This field is required");
