@@ -16,7 +16,15 @@ import { FolderCreate} from "@/components/folder-create";
 import { FileOptions } from "@/components/file/file-options";
 import { PathBreadcrumb } from "@/components/path-breadcrumb";
 import { MediaUpload} from "./media-upload";
+import { MediaPreview } from "./media-preview";
 import { FilePreviewModal } from "./file-preview-modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Message } from "@/components/message";
 import { Thumbnail } from "@/components/thumbnail";
 import { Button } from "@/components/ui/button";
@@ -115,7 +123,7 @@ const MediaView = ({
     if (isR2Category) {
       return CATEGORY_EXTENSIONS[category];
     }
-    if (!mediaConfig?.extensions && !extensions) return [];
+    if (!mediaConfig?.extensions && !extensions) return CATEGORY_EXTENSIONS[category];
     const allowedExtensions = extensions
       ? mediaConfig?.extensions
         ? extensions.filter((ext: string) => mediaConfig.extensions.includes(ext))
@@ -165,6 +173,7 @@ const MediaView = ({
   const [r2Files, setR2Files] = useState<R2File[]>([]);
   const [r2Loading, setR2Loading] = useState(false);
   const [r2Error, setR2Error] = useState<string | null>(null);
+  const [r2PreviewFile, setR2PreviewFile] = useState<R2File | null>(null);
 
   const fetchR2Files = useCallback(async () => {
     if (!isR2Category) return;
@@ -402,12 +411,17 @@ const MediaView = ({
                         {r2Files.map((file) => (
                           <li key={file.url}>
                             <div className="rounded-md border border-border overflow-hidden">
-                              <div className="flex items-center justify-center aspect-video bg-muted/30">
+                              <button
+                                type="button"
+                                className="w-full flex items-center justify-center aspect-video bg-muted/30 hover:bg-muted/60 transition-colors cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                onClick={() => setR2PreviewFile(file)}
+                                aria-label={`Preview ${file.name}`}
+                              >
                                 {category === "video"
                                   ? <Film className="stroke-[0.5] h-24 w-24 text-muted-foreground"/>
                                   : <Music className="stroke-[0.5] h-24 w-24 text-muted-foreground"/>
                                 }
-                              </div>
+                              </button>
                               <div className="flex gap-x-2 items-center p-2">
                                 <div className="overflow-hidden mr-auto h-9">
                                   <div className="text-sm font-medium truncate" title={file.name}>{file.name}</div>
@@ -435,6 +449,28 @@ const MediaView = ({
             </div>
           </MediaUpload.DropZone>
         </MediaUpload>
+
+        {/* R2 preview dialog */}
+        <Dialog open={!!r2PreviewFile} onOpenChange={(open) => !open && setR2PreviewFile(null)}>
+          <DialogContent className="sm:max-w-3xl p-0 gap-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <DialogTitle className="text-base truncate pr-8">{r2PreviewFile?.name}</DialogTitle>
+              <DialogDescription className="text-xs">
+                {r2PreviewFile ? getFileSize(r2PreviewFile.size) : ""}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="bg-muted/30 flex items-center justify-center p-4">
+              {r2PreviewFile && (
+                <MediaPreview
+                  name=""
+                  path={r2PreviewFile.url}
+                  type={category as "video" | "audio"}
+                  className={category === "video" ? "max-h-[65vh] w-full" : "w-full"}
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

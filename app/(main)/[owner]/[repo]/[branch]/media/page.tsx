@@ -51,7 +51,7 @@ export default function Page({
 
       {/* Media content for the active category */}
       <div className="flex flex-col relative flex-1">
-        <MediaView category={category} />
+        <MediaView key={category} category={category} />
       </div>
     </div>
   );
