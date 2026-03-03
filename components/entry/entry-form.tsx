@@ -875,12 +875,14 @@ const ToggleFieldGroup = ({
   parentName,
   renderFields: renderFieldsFn,
   isTemplateMode = false,
+  controlledFieldsMap,
 }: {
   toggleField: Field;
   controlledFields: Field[];
   parentName?: string;
   renderFields: Function;
   isTemplateMode?: boolean;
+  controlledFieldsMap?: Map<string, Field[]>;
 }) => {
   const { watch, clearErrors } = useFormContext();
   const toggleFieldName = parentName
@@ -894,7 +896,9 @@ const ToggleFieldGroup = ({
   useEffect(() => {
     controlledFields.forEach((controlledField) => {
       const isDisabled = controlledField.controlledByValue !== undefined
-        ? toggleValue !== controlledField.controlledByValue
+        ? Array.isArray(controlledField.controlledByValue)
+          ? !controlledField.controlledByValue.includes(String(toggleValue))
+          : toggleValue !== controlledField.controlledByValue
         : controlledField.controlledByInverse
           ? toggleValue
           : !toggleValue;
@@ -925,12 +929,42 @@ const ToggleFieldGroup = ({
         // Determine disabled state: controlledByValue takes precedence (select controllers),
         // then controlledByInverse (inverted boolean), then standard boolean logic
         const isDisabled = controlledField.controlledByValue !== undefined
-          ? toggleValue !== controlledField.controlledByValue
+          ? Array.isArray(controlledField.controlledByValue)
+            ? !controlledField.controlledByValue.includes(String(toggleValue))
+            : toggleValue !== controlledField.controlledByValue
           : controlledField.controlledByInverse
             ? toggleValue
             : !toggleValue;
 
         if (isDisabled) return null;
+
+        // If this controlled field is itself a toggle/select that controls other fields,
+        // render it as a nested ToggleFieldGroup so its children appear correctly.
+        const subControlledFields = controlledFieldsMap?.get(controlledField.name);
+        if (
+          (controlledField.type === "boolean" || controlledField.type === "select") &&
+          subControlledFields &&
+          subControlledFields.length > 0
+        ) {
+          const visibleSubControlledFields = subControlledFields.filter(
+            (cf: Field) =>
+              !cf.hidden &&
+              (!isTemplateMode || cf.templateEditable === true || cf.type === "block")
+          );
+          if (visibleSubControlledFields.length > 0) {
+            return (
+              <ToggleFieldGroup
+                key={controlledFieldName}
+                toggleField={controlledField}
+                controlledFields={visibleSubControlledFields}
+                parentName={parentName}
+                renderFields={renderFieldsFn}
+                controlledFieldsMap={controlledFieldsMap}
+                isTemplateMode={isTemplateMode}
+              />
+            );
+          }
+        }
 
         if (
           controlledField.list === true ||
@@ -1227,6 +1261,7 @@ const EntryForm = ({
                 controlledFields={visibleControlledFields}
                 parentName={parentName}
                 renderFields={renderFields}
+                controlledFieldsMap={controlledFieldsMap}
                 isTemplateMode={isTemplateMode}
               />
             );
