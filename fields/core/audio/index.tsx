@@ -109,8 +109,8 @@ const schema = (field: Field, configObject?: Record<string, any>) => {
     const checkPath = (path: unknown) => {
       if (typeof path !== 'string' || path === "") return;
 
-      // Path Prefix Check
-      if (mediaInputPath && !path.startsWith(mediaInputPath)) {
+      // Path Prefix Check (skip for absolute URLs, e.g. R2 https:// paths)
+      if (mediaInputPath && !path.startsWith('http') && !path.startsWith(mediaInputPath)) {
         ctx.addIssue({ code: ZodIssueCode.custom, message: `Path must start with the media directory: ${mediaInputPath}` });
       }
 
