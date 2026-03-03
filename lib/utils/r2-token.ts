@@ -62,6 +62,35 @@ export async function generateDeleteToken(
   return { token, r2Key, expiry };
 }
 
+/**
+ * Generate a short-lived HMAC-SHA256 list token for corner-media.
+ * Token authorizes GET /list for the specific prefix within TTL.
+ * Uses "list:{prefix}:{expiry}" message prefix to prevent token reuse.
+ */
+export async function generateListToken(
+  prefix: string,
+  secret: string,
+): Promise<{ token: string; expiry: number }> {
+  const expiry = Date.now() + TOKEN_TTL_MS;
+  const message = `list:${prefix}:${expiry}`;
+
+  const keyData = new TextEncoder().encode(secret);
+  const msgData = new TextEncoder().encode(message);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+  const token = bufferToBase64url(signature);
+
+  return { token, expiry };
+}
+
 function bufferToBase64url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
