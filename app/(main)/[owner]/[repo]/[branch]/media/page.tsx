@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-// TODO Task 8: swap this import for @/components/media/media-view once the
-// category-based MediaView is implemented.
-import { MediaView } from "@/components/media/media-view-stub";
+import { MediaView } from "@/components/media/media-view";
 
 const VALID_CATEGORIES = ["images", "video", "audio", "files", "bulletins"] as const;
 type MediaCategory = (typeof VALID_CATEGORIES)[number];
