@@ -29,8 +29,9 @@ export async function GET(
 
     const secret = process.env.CORNER_MEDIA_SECRET;
     const cornerMediaUrl = process.env.CORNER_MEDIA_URL;
+    const r2PublicUrl = process.env.R2_PUBLIC_URL;
 
-    if (!secret || !cornerMediaUrl) {
+    if (!secret || !cornerMediaUrl || !r2PublicUrl) {
       return Response.json(
         { status: 'error', message: 'Media not configured' },
         { status: 503 }
@@ -56,10 +57,11 @@ export async function GET(
       files: Array<{ key: string; name: string; publicUrl: string; size: number; uploadedAt: string | null }>;
     };
 
-    // Normalize to the shape the frontend expects
+    // Construct URLs from R2_PUBLIC_URL (pages-cms env) + key — avoids any
+    // protocol misconfiguration on the corner-media worker's PUBLIC_URL secret.
     const data = files.map((f) => ({
       name: f.name,
-      url: f.publicUrl,
+      url: `${r2PublicUrl}/${f.key}`,
       size: f.size,
       uploadedAt: f.uploadedAt,
     }));
