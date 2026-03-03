@@ -377,8 +377,7 @@ const MediaView = ({
       <div className="flex-1 flex flex-col space-y-4">
         <header className="flex items-center gap-x-2">
           <div className="sm:flex-1" />
-          {/* TODO Task 9: pass category prop to MediaUpload once it accepts it */}
-          <MediaUpload uploadTarget="r2" onUpload={handleR2Upload} extensions={filteredExtensions} multiple>
+          <MediaUpload uploadTarget="r2" category={category as "video" | "audio"} onUpload={handleR2Upload} extensions={filteredExtensions} multiple>
             <MediaUpload.Trigger>
               <Button type="button" size="sm" className="gap-2">
                 <Upload className="h-3.5 w-3.5"/>
@@ -388,7 +387,7 @@ const MediaView = ({
           </MediaUpload>
         </header>
 
-        <MediaUpload uploadTarget="r2" onUpload={handleR2Upload} extensions={filteredExtensions} multiple>
+        <MediaUpload uploadTarget="r2" category={category as "video" | "audio"} onUpload={handleR2Upload} extensions={filteredExtensions} multiple>
           <MediaUpload.DropZone className="flex-1 overflow-auto scrollbar">
             <div className="h-full relative flex flex-col" ref={filesGridRef}>
               {r2Loading

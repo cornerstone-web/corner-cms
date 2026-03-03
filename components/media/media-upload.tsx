@@ -23,6 +23,7 @@ interface MediaUploadProps {
   extensions?: string[];
   multiple?: boolean;
   uploadTarget?: "github" | "r2";
+  category?: "video" | "audio";
 }
 
 interface MediaUploadTriggerProps {
@@ -34,7 +35,7 @@ interface MediaUploadDropZoneProps {
   className?: string;
 }
 
-function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple, uploadTarget = "github" }: MediaUploadProps) {
+function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple, uploadTarget = "github", category }: MediaUploadProps) {
   const { config } = useConfig();
   if (!config) throw new Error(`Configuration not found.`);
 
@@ -73,7 +74,7 @@ function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ filename: file.name }),
+                body: JSON.stringify({ filename: file.name, ...(category ? { category } : {}) }),
               }
             );
             if (!tokenRes.ok) throw new Error("Failed to get upload token");
@@ -143,7 +144,7 @@ function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple
     } catch (error) {
       console.error(error);
     }
-  }, [config, path, configMedia?.name, onUpload, uploadTarget]);
+  }, [config, path, configMedia?.name, onUpload, uploadTarget, category]);
 
   const contextValue = useMemo(() => ({
     handleFiles,
