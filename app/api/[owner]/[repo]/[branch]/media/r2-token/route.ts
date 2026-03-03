@@ -7,7 +7,7 @@ import { generateUploadToken } from "@/lib/utils/r2-token";
  *
  * POST /api/[owner]/[repo]/[branch]/media/r2-token
  *
- * Body: { filename: string }
+ * Body: { filename: string; category: "video" | "audio" }
  * Returns: { uploadUrl: string, publicUrl: string }
  *
  * Requires authentication.
@@ -22,16 +22,21 @@ export async function POST(
 
     const { owner, repo } = params;
 
-    const body = await request.json() as { filename?: string };
+    const body = await request.json() as { filename?: string; category?: string };
     const filename = body?.filename;
+    const category = body?.category;
+
     if (!filename || typeof filename !== 'string') {
       return Response.json({ status: 'error', message: 'Missing filename' }, { status: 400 });
+    }
+    if (!category || !['video', 'audio'].includes(category)) {
+      return Response.json({ status: 'error', message: 'Missing or invalid category (must be "video" or "audio")' }, { status: 400 });
     }
 
     // Sanitize filename — no path traversal, no special characters
     const safeName = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const uuid = randomUUID();
-    const r2Key = `${owner}/${repo}/${uuid}-${safeName}`;
+    const r2Key = `${owner}/${repo}/${category}/${uuid}-${safeName}`;
 
     const secret = process.env.CORNER_MEDIA_SECRET;
     const cornerMediaUrl = process.env.CORNER_MEDIA_URL;
