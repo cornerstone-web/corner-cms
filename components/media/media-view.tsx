@@ -315,7 +315,8 @@ const MediaView = ({
     if (onUpload) onUpload(entry);
   }, [fetchR2Files, onUpload]);
 
-  const handleR2Delete = useCallback(async (fileUrl: string) => {
+  const handleR2Delete = useCallback(async (fileUrl: string, fileName: string) => {
+    if (!window.confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
     try {
       const res = await fetch(
         `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/media/r2-delete`,
@@ -416,7 +417,7 @@ const MediaView = ({
                                   variant="ghost"
                                   size="icon"
                                   className="shrink-0 text-muted-foreground hover:text-destructive"
-                                  onClick={() => handleR2Delete(file.url)}
+                                  onClick={() => handleR2Delete(file.url, file.name)}
                                   aria-label={`Delete ${file.name}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
