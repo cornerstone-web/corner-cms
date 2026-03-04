@@ -22,6 +22,8 @@ interface MediaUploadProps {
   media?: string;
   extensions?: string[];
   multiple?: boolean;
+  uploadTarget?: "github" | "r2";
+  category?: "video" | "audio";
 }
 
 interface MediaUploadTriggerProps {
@@ -33,7 +35,7 @@ interface MediaUploadDropZoneProps {
   className?: string;
 }
 
-function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple }: MediaUploadProps) {
+function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple, uploadTarget = "github", category }: MediaUploadProps) {
   const { config } = useConfig();
   if (!config) throw new Error(`Configuration not found.`);
 
@@ -64,6 +66,41 @@ function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple
         const reader = new FileReader();
         const file = files[i];
 
+        // R2 upload path — PUT binary directly to corner-media
+        if (uploadTarget === "r2") {
+          const r2UploadPromise = (async () => {
+            const tokenRes = await fetch(
+              `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/media/r2-token`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ filename: file.name, ...(category ? { category } : {}) }),
+              }
+            );
+            if (!tokenRes.ok) throw new Error("Failed to get upload token");
+            const { uploadUrl, publicUrl } = await tokenRes.json() as { uploadUrl: string; publicUrl: string };
+
+            const uploadRes = await fetch(uploadUrl, {
+              method: "PUT",
+              headers: { "Content-Type": file.type },
+              body: file,
+            });
+            if (!uploadRes.ok) throw new Error("R2 upload failed");
+
+            return { path: publicUrl, url: publicUrl, name: file.name };
+          })();
+
+          toast.promise(r2UploadPromise, {
+            loading: `Uploading ${file.name}`,
+            success: (data) => {
+              onUpload?.(data as any);
+              return `${file.name} uploaded successfully.`;
+            },
+            error: (error: any) => error.message,
+          });
+          continue;
+        }
+
         const uploadPromise = new Promise((resolve, reject) => {
           reader.onload = async () => {
             try {
@@ -84,7 +121,7 @@ function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple
 
               const data = await response.json();
               if (data.status !== "success") throw new Error(data.message);
-              
+
               resolve(data);
             } catch (error) {
               reject(error);
@@ -107,7 +144,7 @@ function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple
     } catch (error) {
       console.error(error);
     }
-  }, [config, path, configMedia?.name, onUpload]);
+  }, [config, path, configMedia?.name, onUpload, uploadTarget, category]);
 
   const contextValue = useMemo(() => ({
     handleFiles,

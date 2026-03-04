@@ -285,6 +285,7 @@ const EditComponent = forwardRef((props: any, ref: React.Ref<HTMLInputElement>) 
               <TooltipProvider>
                 <Tooltip>
                   <MediaDialog
+                    category="images"
                     media={mediaConfig.name}
                     initialPath={rootPath}
                     maxSelected={remainingSlots}

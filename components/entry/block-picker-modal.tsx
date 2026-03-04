@@ -136,7 +136,7 @@ export function BlockPickerModal({
           // Mobile: full-screen
           "h-[100dvh] w-full max-w-full rounded-none sm:rounded-lg",
           // Desktop: large modal
-          "sm:h-auto sm:max-h-[80vh] sm:max-w-4xl sm:w-[90vw]",
+          "sm:h-[80vh] sm:max-w-4xl sm:w-[90vw]",
         )}
       >
         {/* Header */}

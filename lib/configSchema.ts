@@ -217,8 +217,8 @@ const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.
         controlledByInverse: z.boolean({
           message: "'controlledByInverse' must be a boolean."
         }).optional(),
-        controlledByValue: z.string({
-          message: "'controlledByValue' must be a string."
+        controlledByValue: z.union([z.string(), z.array(z.string())], {
+          message: "'controlledByValue' must be a string or array of strings."
         }).optional()
       },
       ...baseObjectSchema

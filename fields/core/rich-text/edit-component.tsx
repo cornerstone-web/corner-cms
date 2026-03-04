@@ -469,13 +469,14 @@ const EditComponent = forwardRef((props: any, ref) => {
           </div>
         </BubbleMenu>}
         <EditorContent editor={editor} />
-        {mediaConfig && <MediaDialog 
-          ref={mediaDialogRef} 
+        {mediaConfig && <MediaDialog
+          ref={mediaDialogRef}
+          category="images"
           media={mediaConfig?.name}
           initialPath={rootPath}
           extensions={allowedExtensions}
-          selected={[]} 
-          onSubmit={handleMediaDialogSubmit} 
+          selected={[]}
+          onSubmit={handleMediaDialogSubmit}
         />}
       </div>
     </>
