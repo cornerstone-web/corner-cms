@@ -171,3 +171,141 @@ describe('list field — min/max constraints', () => {
     ok([maxList], { items: ['a', 'b', 'c'] });
   });
 });
+
+// ---------------------------------------------------------------------------
+// object field (non-list)
+// ---------------------------------------------------------------------------
+
+describe('object field (non-list)', () => {
+  const objectField = {
+    name: 'metadata',
+    type: 'object',
+    fields: [
+      { name: 'author', type: 'string', required: true },
+      { name: 'date', type: 'string' },
+    ],
+  };
+
+  it('accepts a valid object with required inner field', () => {
+    ok([objectField], { metadata: { author: 'Alice' } });
+  });
+
+  it('rejects when required inner field is missing', () => {
+    fail([objectField], { metadata: {} });
+  });
+
+  it('rejects when required inner field is empty', () => {
+    fail([objectField], { metadata: { author: '' } });
+  });
+
+  it('accepts when outer object is absent (non-required outer field)', () => {
+    ok([objectField], {});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// template mode (isTemplateMode: true)
+// ---------------------------------------------------------------------------
+
+describe('template mode — skips non-templateEditable fields', () => {
+  const fields = [
+    { name: 'variant', type: 'string', required: true, templateEditable: true },
+    { name: 'title', type: 'string', required: true },   // not templateEditable
+    { name: 'body', type: 'string', required: true },    // not templateEditable
+  ];
+
+  const parseT = (data: any) => generateZodSchema(fields, false, true).safeParse(data);
+
+  it('requires templateEditable fields in template mode', () => {
+    expect(parseT({ variant: '' }).success).toBe(false);
+  });
+
+  it('accepts when templateEditable field is provided', () => {
+    expect(parseT({ variant: 'hero' }).success).toBe(true);
+  });
+
+  it('does not require non-templateEditable fields in template mode', () => {
+    // title and body are required: true but not templateEditable — excluded in template mode
+    expect(parseT({ variant: 'hero' }).success).toBe(true);
+  });
+
+  it('does not fail when non-templateEditable required fields are missing', () => {
+    expect(parseT({ variant: 'hero' }).success).toBe(true);
+  });
+});
+
+describe('template mode — non-template mode includes all fields', () => {
+  const fields = [
+    { name: 'variant', type: 'string', required: true, templateEditable: true },
+    { name: 'title', type: 'string', required: true },
+  ];
+
+  it('requires both fields in normal mode', () => {
+    fail(fields, { variant: 'hero' }); // title missing → fail
+    ok(fields, { variant: 'hero', title: 'Hello' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// controlledBy — boolean toggle
+// ---------------------------------------------------------------------------
+
+describe('controlledBy — boolean toggle (required when toggle is on)', () => {
+  const fields = [
+    { name: 'showTitle', type: 'boolean' },
+    { name: 'title', type: 'string', required: true, controlledBy: 'showTitle' },
+  ];
+
+  it('enforces required when toggle is on and field is empty', () => {
+    fail(fields, { showTitle: true, title: '' });
+  });
+
+  it('enforces required when toggle is on and field is absent', () => {
+    fail(fields, { showTitle: true });
+  });
+
+  it('skips required when toggle is off', () => {
+    ok(fields, { showTitle: false, title: '' });
+  });
+
+  it('skips required when toggle is absent', () => {
+    ok(fields, { title: '' });
+  });
+
+  it('passes when toggle is on and field has a value', () => {
+    ok(fields, { showTitle: true, title: 'Hello' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// controlledByInverse — required when toggle is off/absent
+// ---------------------------------------------------------------------------
+
+describe('controlledByInverse — required when toggle is falsy', () => {
+  const fields = [
+    { name: 'hideExtra', type: 'boolean' },
+    {
+      name: 'extraText',
+      type: 'string',
+      required: true,
+      controlledBy: 'hideExtra',
+      controlledByInverse: true,
+    },
+  ];
+
+  it('enforces required when toggle is off (false)', () => {
+    fail(fields, { hideExtra: false, extraText: '' });
+  });
+
+  it('enforces required when toggle is absent', () => {
+    fail(fields, { extraText: '' });
+  });
+
+  it('skips required when toggle is on (true)', () => {
+    ok(fields, { hideExtra: true, extraText: '' });
+  });
+
+  it('passes when toggle is off and field has a value', () => {
+    ok(fields, { hideExtra: false, extraText: 'Some text' });
+  });
+});
