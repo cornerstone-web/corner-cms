@@ -17,6 +17,7 @@ import {
 } from "@/components/entry/preview/shared";
 import { siteConfigSchema, type SiteConfigFormValues } from "./schema";
 import { IdentitySection } from "./sections/IdentitySection";
+import { BrandingSection } from "./sections/BrandingSection";
 import { ContactSection } from "./sections/ContactSection";
 import { ServiceTimesSection } from "./sections/ServiceTimesSection";
 import { ThemeSection } from "./sections/ThemeSection";
@@ -218,7 +219,13 @@ export function SiteConfigEditor() {
                 </TabsList>
 
                 <TabsContent value="identity" className="mt-6">
-                  <IdentitySection control={form.control} />
+                  <div className="space-y-8">
+                    <IdentitySection control={form.control} />
+                    <div>
+                      <h3 className="text-sm font-medium mb-4">Branding</h3>
+                      <BrandingSection />
+                    </div>
+                  </div>
                 </TabsContent>
                 <TabsContent value="contact" className="mt-6">
                   <ContactSection control={form.control} />
