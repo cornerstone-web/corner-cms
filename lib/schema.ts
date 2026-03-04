@@ -353,6 +353,12 @@ const generateZodSchema = (
           arraySchema = arraySchema.min(1, { message: `Field requires at least one item.` });
         }
         fieldSchema = arraySchema;
+        // Non-required list fields must also be optional so that undefined (absent from
+        // saved YAML) is accepted. Conditionally-required lists get their enforcement via
+        // superRefine on the parent, same as non-list fields.
+        if (!field.required || isConditionallyRequired) {
+          fieldSchema = fieldSchema.optional();
+        }
       }
 
       if (!field.list) {
