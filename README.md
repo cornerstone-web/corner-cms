@@ -36,6 +36,24 @@ Fields can be marked `templateEditable: true` to control visibility in template 
 
 Fields can declare `controlledBy: toggleFieldName` to group themselves under a boolean toggle in the entry form. Controlled fields render indented beneath their toggle and appear muted when the toggle is off. Required validation is only enforced when the toggle is on.
 
+Nested chains are supported — a controlled field can itself be a select that controls further fields via `controlledByValue`. The entry form handles recursive `ToggleFieldGroup` rendering automatically.
+
+### R2 Media Integration
+
+Video and audio fields are backed by [corner-media](https://github.com/cornerstone-web/corner-media) — a Cloudflare Worker that proxies uploads/deletes/listings to Cloudflare R2. The CMS generates short-lived HMAC tokens server-side; the browser uploads directly to corner-media without ever receiving R2 credentials.
+
+**Unified media page** — `/media` shows all media in 5 category tabs: Images, Videos, Audio, Documents, Other. Videos and Audio tabs display R2-hosted files; the others show GitHub-hosted files.
+
+**Field types**: `video` and `audio` behave like `image` but store absolute `https://` URLs (not repo-relative paths). Zod schemas in `cornerstone-core` pass these through unchanged.
+
+**Required env vars** (in addition to the standard set):
+
+| Variable | Description |
+|----------|-------------|
+| `CORNER_MEDIA_URL` | corner-media Worker URL |
+| `CORNER_MEDIA_SECRET` | Shared HMAC secret — must match the `CORNER_MEDIA_SECRET` Worker secret |
+| `R2_PUBLIC_URL` | Public R2 base URL (e.g. `https://media.cornerstoneweb.dev`) |
+
 ## Local Development
 
 ### 1. Install dependencies

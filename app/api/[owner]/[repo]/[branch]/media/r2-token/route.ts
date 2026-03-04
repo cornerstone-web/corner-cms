@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 import { getAuth } from "@/lib/auth";
+import { getToken } from "@/lib/token";
+import { checkRepoAccess } from "@/lib/githubCache";
 import { generateUploadToken } from "@/lib/utils/r2-token";
 
 /**
@@ -21,6 +23,14 @@ export async function POST(
     if (!session) return new Response(null, { status: 401 });
 
     const { owner, repo } = params;
+
+    const ghToken = await getToken(user, owner, repo);
+    if (!ghToken) throw new Error("Token not found");
+
+    if (user.githubId) {
+      const hasAccess = await checkRepoAccess(ghToken, owner, repo, user.githubId);
+      if (!hasAccess) throw new Error(`No access to repository ${owner}/${repo}.`);
+    }
 
     const body = await request.json() as { filename?: string; category?: string };
     const filename = body?.filename;

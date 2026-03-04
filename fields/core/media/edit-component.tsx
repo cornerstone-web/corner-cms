@@ -130,7 +130,7 @@ const MediaFileEditComponent = forwardRef(
     const handleUpload = useCallback(
       (fileData: any) => {
         if (!config) return;
-        setFile({ id: generateId(), path: fileData.path });
+        setFile({ id: generateId(), path: fileData.url ?? fileData.path });
       },
       [config],
     );

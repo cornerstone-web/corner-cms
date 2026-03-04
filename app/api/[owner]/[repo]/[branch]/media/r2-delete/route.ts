@@ -40,6 +40,11 @@ export async function POST(
     }
     const r2Key = url.slice(base.length);
 
+    const expectedPrefix = `${params.owner}/${params.repo}/`;
+    if (!r2Key.startsWith(expectedPrefix)) {
+      return Response.json({ status: 'error', message: 'Not authorized to delete this file.' }, { status: 403 });
+    }
+
     const { token, expiry } = await generateDeleteToken(r2Key, secret);
     const deleteUrl = `${cornerMediaUrl}/file?key=${encodeURIComponent(r2Key)}&exp=${expiry}&token=${token}`;
 

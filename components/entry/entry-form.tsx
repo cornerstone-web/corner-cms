@@ -898,7 +898,7 @@ const ToggleFieldGroup = ({
       const isDisabled = controlledField.controlledByValue !== undefined
         ? Array.isArray(controlledField.controlledByValue)
           ? !controlledField.controlledByValue.includes(String(toggleValue))
-          : toggleValue !== controlledField.controlledByValue
+          : String(toggleValue) !== controlledField.controlledByValue
         : controlledField.controlledByInverse
           ? toggleValue
           : !toggleValue;
@@ -931,7 +931,7 @@ const ToggleFieldGroup = ({
         const isDisabled = controlledField.controlledByValue !== undefined
           ? Array.isArray(controlledField.controlledByValue)
             ? !controlledField.controlledByValue.includes(String(toggleValue))
-            : toggleValue !== controlledField.controlledByValue
+            : String(toggleValue) !== controlledField.controlledByValue
           : controlledField.controlledByInverse
             ? toggleValue
             : !toggleValue;
