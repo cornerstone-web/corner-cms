@@ -15,7 +15,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "db:generate": "npx drizzle-kit generate",
-    "db:migrate": "npx drizzle-kit migrate",
+    "db:migrate": "npx tsx db/migrate.ts",
     "db:clear-cache": "npx tsx db/scripts/clear-cache.ts"
   },
   "dependencies": {
@@ -106,6 +106,7 @@
     "eslint-config-next": "14.2.3",
     "npm": "^10.8.1",
     "postcss": "^8.4.38",
+    "postgres": "^3.4.8",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",
     "uninstall": "^0.0.0",
