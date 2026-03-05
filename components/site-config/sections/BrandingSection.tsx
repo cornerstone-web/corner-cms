@@ -5,6 +5,7 @@ import { Upload, Loader, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/config-context";
 import { Button } from "@/components/ui/button";
+import { compressImage } from "@/lib/utils/image-compression";
 
 type BrandingFile = "logo" | "favicon";
 
@@ -18,52 +19,27 @@ const CONSTRAINTS = {
   logo: {
     label: "Logo",
     accept: "image/png",
-    hint: "PNG · max 500 KB · max 2000×800 px",
-    maxBytes: 500 * 1024,
-    maxWidth: 2000,
-    maxHeight: 800,
+    hint: "PNG · auto-compressed to fit",
+    maxBytes: null,
   },
   favicon: {
     label: "Favicon",
     accept: "image/svg+xml",
     hint: "SVG · max 50 KB",
     maxBytes: 50 * 1024,
-    maxWidth: null,
-    maxHeight: null,
   },
 } as const;
 
-async function validateLogo(file: File): Promise<string | null> {
+function validateLogo(file: File): string | null {
   if (file.type !== "image/png") return "Logo must be a PNG file";
-  if (file.size > CONSTRAINTS.logo.maxBytes)
-    return `Logo must be smaller than ${CONSTRAINTS.logo.maxBytes / 1024} KB`;
-
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      if (img.width > CONSTRAINTS.logo.maxWidth || img.height > CONSTRAINTS.logo.maxHeight) {
-        resolve(
-          `Logo must be at most ${CONSTRAINTS.logo.maxWidth}×${CONSTRAINTS.logo.maxHeight} px (uploaded: ${img.width}×${img.height} px)`
-        );
-      } else {
-        resolve(null);
-      }
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve("Invalid image file");
-    };
-    img.src = url;
-  });
+  return null;
 }
 
 function validateFavicon(file: File): string | null {
   const isSvg =
     file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
   if (!isSvg) return "Favicon must be an SVG file";
-  if (file.size > CONSTRAINTS.favicon.maxBytes)
+  if (CONSTRAINTS.favicon.maxBytes && file.size > CONSTRAINTS.favicon.maxBytes)
     return `Favicon must be smaller than ${CONSTRAINTS.favicon.maxBytes / 1024} KB`;
   return null;
 }
@@ -194,20 +170,23 @@ export function BrandingSection() {
   const handleUpload = async (type: BrandingFile, file: File) => {
     if (!apiBase) return;
 
-    // Client-side validation
-    const error =
-      type === "logo" ? await validateLogo(file) : validateFavicon(file);
+    // Validate file type first (before compression)
+    const error = type === "logo" ? validateLogo(file) : validateFavicon(file);
     if (error) {
       toast.error(error);
       return;
     }
+
+    // Compress logo to fit within the logo profile (SVGs pass through as-is)
+    const fileToUpload =
+      type === "logo" ? await compressImage(file, "logo") : file;
 
     const setter = type === "logo" ? setLogo : setFavicon;
     const currentState = type === "logo" ? logo : favicon;
 
     setter((prev) => ({ ...prev, loading: true }));
     try {
-      const dataUrl = await readFileAsBase64(file);
+      const dataUrl = await readFileAsBase64(fileToUpload);
 
       const res = await fetch(apiBase, {
         method: "POST",
@@ -223,7 +202,7 @@ export function BrandingSection() {
       if (result.status === "error") throw new Error(result.message);
 
       // Update preview with a fresh object URL and new SHA
-      const previewUrl = URL.createObjectURL(file);
+      const previewUrl = URL.createObjectURL(fileToUpload);
       setter({ sha: result.data.sha, previewUrl, loading: false });
       toast.success(
         `${type === "logo" ? "Logo" : "Favicon"} updated successfully.`

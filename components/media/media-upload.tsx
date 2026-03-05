@@ -3,6 +3,7 @@
 import { useRef, isValidElement, cloneElement, useMemo, useCallback, createContext, useContext, useState } from "react";
 import { useConfig } from "@/contexts/config-context";
 import { joinPathSegments } from "@/lib/utils/file";
+import { compressImage } from "@/lib/utils/image-compression";
 import { toast } from "sonner";
 import { getSchemaByName } from "@/lib/schema";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,10 @@ function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple
           continue;
         }
 
+        // Compress raster images before upload (SVGs and non-images pass through)
+        const isRasterImage = file.type.startsWith("image/") && file.type !== "image/svg+xml";
+        const fileToUpload = isRasterImage ? await compressImage(file, "content") : file;
+
         const uploadPromise = new Promise((resolve, reject) => {
           reader.onload = async () => {
             try {
@@ -130,7 +135,7 @@ function MediaUploadRoot({ children, path, onUpload, media, extensions, multiple
           reader.onerror = () => reject(new Error("Failed to read file"));
         });
 
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(fileToUpload);
 
         toast.promise(uploadPromise, {
           loading: `Uploading ${file.name}`,
