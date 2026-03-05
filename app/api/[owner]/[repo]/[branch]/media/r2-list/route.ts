@@ -1,6 +1,6 @@
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
-import { checkRepoAccess } from "@/lib/githubCache";
+
 import { generateListToken } from "@/lib/utils/r2-token";
 
 /**
@@ -15,18 +15,14 @@ export async function GET(
   { params }: { params: { owner: string; repo: string; branch: string } }
 ) {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const { owner, repo } = params;
 
     const ghToken = await getToken(user, owner, repo);
     if (!ghToken) throw new Error("Token not found");
 
-    if (user.githubId) {
-      const hasAccess = await checkRepoAccess(ghToken, owner, repo, user.githubId);
-      if (!hasAccess) throw new Error(`No access to repository ${owner}/${repo}.`);
-    }
     const url = new URL(request.url);
     const category = url.searchParams.get('category');
 

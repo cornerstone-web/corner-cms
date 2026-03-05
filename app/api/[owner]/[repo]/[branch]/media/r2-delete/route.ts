@@ -16,8 +16,8 @@ export async function POST(
   { params }: { params: { owner: string; repo: string; branch: string } }
 ) {
   try {
-    const { session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const body = await request.json() as { url?: string };
     const url = body?.url;

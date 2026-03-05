@@ -24,8 +24,8 @@ export async function POST(
   { params }: { params: { owner: string, repo: string, branch: string, path: string } }
 ) {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -173,7 +173,8 @@ export async function POST(
         throw new Error(`Invalid type "${data.type}".`);
     }
     
-    const response = await githubSaveFile(token, params.owner, params.repo, params.branch, normalizedPath, contentBase64, data.sha);
+    const author = user.name && user.email ? { name: user.name, email: user.email } : undefined;
+    const response = await githubSaveFile(token, params.owner, params.repo, params.branch, normalizedPath, contentBase64, data.sha, author);
   
     const savedPath = response?.data.content?.path;
 
@@ -232,10 +233,11 @@ const githubSaveFile = async (
   path: string,
   contentBase64: string,
   sha?: string,
+  author?: { name: string; email: string },
 ) => {
   // We disable retries for 409 errors as it means the file has changed (conflict on SHA)
   const octokit = createOctokitInstance(token, { retry: { doNotRetry: [409] } });
-  
+
   try {
     // First attempt: try with original path
     const response = await octokit.rest.repos.createOrUpdateFileContents({
@@ -246,6 +248,7 @@ const githubSaveFile = async (
       content: contentBase64,
       branch,
       sha: sha || undefined,
+      ...(author ? { author, committer: author } : {}),
     });
 
     if (response.data.content && response.data.commit) {
@@ -291,6 +294,7 @@ const githubSaveFile = async (
             message: `Create ${newPath} (via Pages CMS)`,
             content: contentBase64,
             branch,
+            ...(author ? { author, committer: author } : {}),
           });
 
           if (response.data.content && response.data.commit) {
@@ -311,8 +315,8 @@ export async function DELETE(
   { params }: { params: { owner: string, repo: string, branch: string, path: string } }
 ) {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -365,6 +369,7 @@ export async function DELETE(
     }
     
     const octokit = createOctokitInstance(token);
+    const author = user.name && user.email ? { name: user.name, email: user.email } : undefined;
     const response = await octokit.rest.repos.deleteFile({
       owner: params.owner,
       repo: params.repo,
@@ -372,6 +377,7 @@ export async function DELETE(
       path: params.path,
       sha: sha,
       message: `Delete ${params.path} (via Pages CMS)`,
+      ...(author ? { author, committer: author } : {}),
     });
 
     // Update cache after successful deletion

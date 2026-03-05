@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { cn } from "@/lib/utils";
-import { FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
+import { FileStack, FileText, FolderOpen, Settings } from "lucide-react";
 import { useSiteFeatures } from "@/hooks/use-site-features";
 
 const RepoNavItem = ({
@@ -81,22 +81,12 @@ const RepoNav = ({
       }
       : null;
 
-    const collaboratorsItem = configObject && Object.keys(configObject).length !== 0 && user?.githubId
-      ? {
-        key: "collaborators",
-        icon: <Users className="h-5 w-5 mr-2" />,
-        href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collaborators`,
-        label: "Collaborators"
-      }
-      : null;
-
     return [
       ...contentItems,
       ...mediaItems,
       settingsItem,
-      collaboratorsItem
     ].filter(Boolean);
-  }, [config, user?.githubId, features]);
+  }, [config, features]);
 
   if (!items.length) return null;
 

@@ -13,8 +13,8 @@ export default async function Layout({
   children: React.ReactNode;
   params: { owner: string; repo: string; };
 }) {
-  const { session, user } = await getAuth();
-  if (!session) return redirect("/sign-in");
+  const { user } = await getAuth();
+  if (!user) return redirect("/auth/login");
 
   const token = await getToken(user, owner, repo);
   if (!token) throw new Error("Token not found");
