@@ -1,17 +1,56 @@
-// Home page — full role-based implementation is in Step 4.
-// This file is replaced in Step 4 with the church portal card / super admin dashboard.
-import { getAuth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getAuth } from "@/lib/auth";
+import { db } from "@/db";
+import { churchesTable } from "@/db/schema";
+import { isNull } from "drizzle-orm";
 import { MainRootLayout } from "./main-root-layout";
+import { ChurchPortalCard } from "@/components/home/church-portal-card";
+import { SuperAdminDashboard } from "@/components/home/super-admin-dashboard";
 
 export default async function Page() {
   const { user } = await getAuth();
   if (!user) return redirect("/auth/login");
 
+  if (user.isSuperAdmin) {
+    const churches = await db
+      .select({
+        id: churchesTable.id,
+        displayName: churchesTable.displayName,
+        slug: churchesTable.slug,
+        githubRepoName: churchesTable.githubRepoName,
+        cfPagesUrl: churchesTable.cfPagesUrl,
+        status: churchesTable.status,
+        updatedAt: churchesTable.updatedAt,
+      })
+      .from(churchesTable)
+      .where(isNull(churchesTable.deletedAt))
+      .orderBy(churchesTable.displayName);
+
+    return (
+      <MainRootLayout>
+        <SuperAdminDashboard churches={churches} />
+      </MainRootLayout>
+    );
+  }
+
+  if (user.churchAssignment) {
+    return (
+      <MainRootLayout>
+        <ChurchPortalCard assignment={user.churchAssignment} />
+      </MainRootLayout>
+    );
+  }
+
+  // No church assigned and not super admin
   return (
     <MainRootLayout>
-      <div className="max-w-screen-sm mx-auto p-4 md:p-6">
-        <p className="text-muted-foreground">Loading your portal…</p>
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="text-center space-y-2 max-w-sm">
+          <h2 className="font-semibold text-lg">No church assigned</h2>
+          <p className="text-muted-foreground text-sm">
+            You haven&apos;t been assigned to a church yet. Contact your administrator to get access.
+          </p>
+        </div>
       </div>
     </MainRootLayout>
   );

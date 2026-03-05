@@ -10,7 +10,7 @@ type SerialFormat = "json" | "yaml" | "toml";
 type Format = FrontmatterFormat | SerialFormat;
 
 // Parse straight YAML/JSON/TOML and YAML/JSON/TOML frontmatter strings into an object
-const parse = (content: string = "", options: { delimiters?: string, format?: Format } = {}) => {
+const parse = (content: string = "", options: { delimiters?: string | string[], format?: Format } = {}) => {
   const format = options.format || "yaml-frontmatter";
   
   // YAML/JSON/TOML without frontmatter
@@ -62,7 +62,7 @@ const deserialize = (content: string = "", format: SerialFormat = "yaml") => {
 };
 
 // Convert an object into straight YAML/JSON/TOML or YAML/JSON/TOML frontmatter strings
-const stringify = (contentObject: Record<string, any> = {}, options: { delimiters?: string, format?: Format } = {}) => {
+const stringify = (contentObject: Record<string, any> = {}, options: { delimiters?: string | string[], format?: Format } = {}) => {
   const format = options.format || "yaml-frontmatter";
   
   // YAML/JSON/TOML without frontmatter
@@ -102,7 +102,7 @@ const serialize = (contentObject: Record<string, any> = {}, format: SerialFormat
 }
 
 // Sets the start/end delimiters for frontmatter
-const setDelimiter = (delimiters: string | [string, string] | null | undefined, format: FrontmatterFormat): [string, string] => {
+const setDelimiter = (delimiters: string | string[] | null | undefined, format: FrontmatterFormat): [string, string] => {
   if (delimiters == null) {
     switch (format) {
       case "toml-frontmatter":
