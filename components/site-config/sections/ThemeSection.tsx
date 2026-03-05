@@ -120,15 +120,15 @@ const THEME_OPTIONS = [
 ];
 
 const CUSTOM_THEME_FIELDS = [
-  { name: "primary" as const, label: "Primary" },
-  { name: "primaryForeground" as const, label: "Primary Foreground" },
-  { name: "secondary" as const, label: "Secondary" },
-  { name: "accent" as const, label: "Accent" },
-  { name: "background" as const, label: "Background" },
-  { name: "surface" as const, label: "Surface" },
-  { name: "text" as const, label: "Text" },
-  { name: "textMuted" as const, label: "Text Muted" },
-  { name: "border" as const, label: "Border" },
+  { name: "primary" as const, label: "Primary", default: "hsl(0 0% 0%)" },
+  { name: "primaryForeground" as const, label: "Primary Foreground", default: "hsl(0 0% 100%)" },
+  { name: "secondary" as const, label: "Secondary", default: "hsl(0 0% 20%)" },
+  { name: "accent" as const, label: "Accent", default: "hsl(0 0% 40%)" },
+  { name: "background" as const, label: "Background", default: "hsl(0 0% 100%)" },
+  { name: "surface" as const, label: "Surface", default: "hsl(0 0% 98%)" },
+  { name: "text" as const, label: "Text", default: "hsl(0 0% 10%)" },
+  { name: "textMuted" as const, label: "Text Muted", default: "hsl(0 0% 50%)" },
+  { name: "border" as const, label: "Border", default: "hsl(0 0% 90%)" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -176,8 +176,8 @@ export function ThemeSection({ control }: ThemeSectionProps) {
             Use HSL values (e.g., hsl(210 50% 40%)) or pick from the color swatch.
           </p>
           <div className="grid grid-cols-2 gap-4">
-            {CUSTOM_THEME_FIELDS.map(({ name, label }) => (
-              <ColorPickerField key={name} control={control} name={name} label={label} />
+            {CUSTOM_THEME_FIELDS.map(({ name, label, default: defaultValue }) => (
+              <ColorPickerField key={name} control={control} name={name} label={label} defaultValue={defaultValue} />
             ))}
           </div>
         </div>
@@ -196,17 +196,20 @@ function ColorPickerField({
   control,
   name,
   label,
+  defaultValue,
 }: {
   control: Control<SiteConfigFormValues>;
   name: (typeof CUSTOM_THEME_FIELDS)[number]["name"];
   label: string;
+  defaultValue: string;
 }) {
   return (
     <FormField
       control={control}
       name={`customTheme.${name}`}
       render={({ field }) => {
-        const hexValue = hslStringToHex(field.value ?? "");
+        const resolvedValue = field.value || defaultValue;
+        const hexValue = resolvedValue.match(/^#[0-9a-f]{3,6}$/i) ? resolvedValue : hslStringToHex(resolvedValue);
         return (
           <FormItem>
             <FormLabel className="text-xs">{label}</FormLabel>
@@ -219,7 +222,7 @@ function ColorPickerField({
               />
               <FormControl>
                 <Input
-                  placeholder="hsl(0 0% 0%)"
+                  placeholder={defaultValue}
                   {...field}
                   value={field.value ?? ""}
                 />
