@@ -46,9 +46,10 @@ export default async function Page() {
     <MainRootLayout>
       <div className="flex items-center justify-center h-full p-8">
         <div className="text-center space-y-2 max-w-sm">
-          <h2 className="font-semibold text-lg">No church assigned</h2>
+          <h2 className="font-semibold text-lg">No site assigned</h2>
           <p className="text-muted-foreground text-sm">
-            You haven&apos;t been assigned to a church yet. Contact your administrator to get access.
+            You haven&apos;t been assigned to a site yet. Contact your
+            administrator to get access.
           </p>
         </div>
       </div>

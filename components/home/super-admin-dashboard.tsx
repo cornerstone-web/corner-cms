@@ -23,7 +23,10 @@ type ChurchRow = {
   updatedAt: Date;
 };
 
-const statusVariant: Record<ChurchRow["status"], "default" | "secondary" | "destructive"> = {
+const statusVariant: Record<
+  ChurchRow["status"],
+  "default" | "secondary" | "destructive"
+> = {
   active: "default",
   provisioning: "secondary",
   suspended: "destructive",
@@ -46,13 +49,17 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-muted-foreground" />
-          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">Churches</h1>
-          <span className="text-sm text-muted-foreground">({churches.length})</span>
+          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">
+            Sites
+          </h1>
+          <span className="text-sm text-muted-foreground">
+            ({churches.length})
+          </span>
         </div>
         <Button asChild size="sm">
           <Link href="/admin/churches/new">
             <Plus className="h-4 w-4 mr-1.5" />
-            Provision New Church
+            Provision New Site
           </Link>
         </Button>
       </div>
@@ -60,14 +67,14 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
       {churches.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <Building2 className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="font-medium">No churches yet</p>
+          <p className="font-medium">No sites yet</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Provision your first church to get started.
+            Provision your first site to get started.
           </p>
           <Button asChild className="mt-4" size="sm">
             <Link href="/admin/churches/new">
               <Plus className="h-4 w-4 mr-1.5" />
-              Provision New Church
+              Provision New Site
             </Link>
           </Button>
         </div>
@@ -76,7 +83,7 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Church</TableHead>
+                <TableHead>Congregation</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Deployed URL</TableHead>
                 <TableHead>Last Updated</TableHead>
@@ -91,11 +98,16 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                     <TableCell>
                       <div>
                         <p className="font-medium">{church.displayName}</p>
-                        <p className="text-xs text-muted-foreground">{church.githubRepoName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {church.githubRepoName}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant[church.status]} className="capitalize">
+                      <Badge
+                        variant={statusVariant[church.status]}
+                        className="capitalize"
+                      >
                         {church.status}
                       </Badge>
                     </TableCell>
