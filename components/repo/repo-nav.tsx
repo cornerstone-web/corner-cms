@@ -97,7 +97,7 @@ const RepoNav = ({
       usersItem,
       settingsItem,
     ].filter(Boolean);
-  }, [config, features]);
+  }, [config, features, user]);
 
   if (!items.length) return null;
 
