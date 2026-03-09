@@ -32,7 +32,7 @@ function SubmitButton() {
           Provisioning…
         </>
       ) : (
-        "Provision Church"
+        "Provision Site"
       )}
     </Button>
   );
@@ -70,13 +70,15 @@ export function ProvisionChurchForm() {
         </Button>
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-muted-foreground" />
-          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">Provision New Church</h1>
+          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">
+            Provision New Site
+          </h1>
         </div>
       </div>
 
       <form action={formAction} className="space-y-5">
         <div className="space-y-1.5">
-          <Label htmlFor="displayName">Church Name</Label>
+          <Label htmlFor="displayName">Site Name</Label>
           <Input
             id="displayName"
             name="displayName"
@@ -107,12 +109,13 @@ export function ProvisionChurchForm() {
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Becomes the GitHub repo name and CF Pages project name. Lowercase letters, numbers, and hyphens only.
+            Becomes the GitHub repo name and CF Pages project name. Lowercase
+            letters, numbers, and hyphens only.
           </p>
         </div>
 
         <div className="rounded-lg border p-4 space-y-4">
-          <p className="text-sm font-medium">Church Admin Account</p>
+          <p className="text-sm font-medium">Site Admin Account</p>
 
           <div className="space-y-1.5">
             <Label htmlFor="adminName">Full Name</Label>
@@ -134,7 +137,8 @@ export function ProvisionChurchForm() {
               required
             />
             <p className="text-xs text-muted-foreground">
-              An Auth0 account will be created and a password-setup link sent to this address.
+              An Auth0 account will be created and a password-setup link sent to
+              this address.
             </p>
           </div>
         </div>
