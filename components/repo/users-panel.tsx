@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { useTransition, useState } from "react";
+import { useEffect, useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   inviteUser,
@@ -63,10 +63,12 @@ export function UsersPanel({
   const [inviteState, inviteAction] = useFormState(inviteUser, initialState);
 
   // Refresh after successful invite
-  if (inviteState.status === "success") {
-    router.refresh();
-    setShowInvite(false);
-  }
+  useEffect(() => {
+    if (inviteState.status === "success") {
+      router.refresh();
+      setShowInvite(false);
+    }
+  }, [inviteState.status]);
 
   function handleRoleChange(userId: string, role: "church_admin" | "editor") {
     setActionError(null);
