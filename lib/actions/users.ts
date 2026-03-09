@@ -63,7 +63,7 @@ export async function inviteUser(
           email,
           name,
           password: `${crypto.randomUUID()}Aa1!`,
-          email_verified: false,
+          email_verified: true,
           blocked: false,
         }),
       }
@@ -90,8 +90,8 @@ export async function inviteUser(
 
     if (!auth0UserId) throw new Error("Could not resolve Auth0 user.");
 
-    // Send password-change (invite) ticket
-    await fetch(
+    // Generate password-change ticket (7-day link)
+    const ticketRes = await fetch(
       `https://${process.env.AUTH0_DOMAIN}/api/v2/tickets/password-change`,
       {
         method: "POST",
@@ -103,23 +103,71 @@ export async function inviteUser(
           user_id: auth0UserId,
           result_url: process.env.APP_BASE_URL ?? "/",
           ttl_sec: 604800,
-          mark_email_as_verified: true,
         }),
       }
     );
+    const { ticket: resetUrl } = (await ticketRes.json()) as { ticket: string };
 
-    // Upsert DB user
-    const existing = await db.query.usersTable.findFirst({
+    // Fetch church display name for the email
+    const church = await db.query.churchesTable.findFirst({
+      where: eq(churchesTable.id, churchId),
+      columns: { displayName: true },
+    });
+    const siteName = church?.displayName ?? "your site";
+
+    // Send branded invite email via corner-apostle
+    const secret = process.env.CORNERSTONE_INTERNAL_SECRET ?? "";
+    console.log("[inviteUser] CORNER_APOSTLE_URL:", process.env.CORNER_APOSTLE_URL);
+    console.log("[inviteUser] secret length:", secret.length);
+    console.log("[inviteUser] secret set:", !!secret);
+    const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${secret}`,
+      },
+      body: JSON.stringify({ to: email, name, siteName, resetUrl }),
+    });
+    console.log("[inviteUser] corner-apostle status:", inviteRes.status);
+    console.log("[inviteUser] corner-apostle body:", await inviteRes.text());
+
+    // Upsert DB user — check by auth0Id first, then by email (handles re-invite
+    // after deletion, where Auth0 assigns a new user_id to the same email)
+    let existingUser = await db.query.usersTable.findFirst({
       where: eq(usersTable.auth0Id, auth0UserId),
     });
-    const dbUserId =
-      existing?.id ??
-      (
+    if (!existingUser) {
+      existingUser = await db.query.usersTable.findFirst({
+        where: eq(usersTable.email, email),
+      });
+    }
+    let dbUserId: string;
+    if (existingUser) {
+      // Restore soft-deleted row and sync auth0Id/name/email
+      await db
+        .update(usersTable)
+        .set({ auth0Id: auth0UserId, email, name, deletedAt: null })
+        .where(eq(usersTable.id, existingUser.id));
+      dbUserId = existingUser.id;
+    } else {
+      dbUserId = (
         await db
           .insert(usersTable)
           .values({ auth0Id: auth0UserId, email, name })
           .returning({ id: usersTable.id })
       )[0].id;
+    }
+
+    // Block invite if this user already has an active role at a different church
+    const activeElsewhere = await db.query.userChurchRolesTable.findFirst({
+      where: and(
+        eq(userChurchRolesTable.userId, dbUserId),
+        isNull(userChurchRolesTable.deletedAt)
+      ),
+    });
+    if (activeElsewhere && activeElsewhere.churchId !== churchId) {
+      throw new Error("This user already has an active account with another site.");
+    }
 
     // Check for existing (possibly soft-deleted) role row
     const existingRole = await db.query.userChurchRolesTable.findFirst({
@@ -185,9 +233,19 @@ export async function removeUserFromChurch(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await assertCanManageUsers(churchId);
+
+    // Look up auth0Id before deleting
+    const dbUser = await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, userId),
+    });
+    if (!dbUser) throw new Error("User not found.");
+
+    const now = new Date();
+
+    // Soft-delete the church role
     await db
       .update(userChurchRolesTable)
-      .set({ deletedAt: new Date() })
+      .set({ deletedAt: now })
       .where(
         and(
           eq(userChurchRolesTable.churchId, churchId),
@@ -195,6 +253,28 @@ export async function removeUserFromChurch(
           isNull(userChurchRolesTable.deletedAt)
         )
       );
+
+    // Soft-delete the user row
+    await db
+      .update(usersTable)
+      .set({ deletedAt: now })
+      .where(eq(usersTable.id, userId));
+
+    // Delete from Auth0
+    const mgmtToken = await getAuth0ManagementToken();
+    const deleteRes = await fetch(
+      `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${encodeURIComponent(dbUser.auth0Id)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${mgmtToken}` },
+      }
+    );
+    // 204 = deleted, 404 = already gone — both are fine
+    if (!deleteRes.ok && deleteRes.status !== 404) {
+      const body = await deleteRes.text();
+      throw new Error(`Auth0 user deletion failed (${deleteRes.status}): ${body}`);
+    }
+
     return { ok: true };
   } catch (err: unknown) {
     return { ok: false, error: err instanceof Error ? err.message : "Remove failed." };

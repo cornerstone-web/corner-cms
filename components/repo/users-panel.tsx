@@ -28,6 +28,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Loader2, UserPlus, Trash2 } from "lucide-react";
 
 type UserRow = {
@@ -80,7 +91,6 @@ export function UsersPanel({
   }
 
   function handleRemove(userId: string) {
-    if (!confirm("Remove this user from the site?")) return;
     setActionError(null);
     startTransition(async () => {
       const result = await removeUserFromChurch(churchId, userId);
@@ -197,14 +207,27 @@ export function UsersPanel({
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled={isPending}
-                      onClick={() => handleRemove(u.userId)}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon-sm" disabled={isPending}>
+                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove user?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {u.name || u.email} will lose access to this site. This can be undone by re-inviting them.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleRemove(u.userId)}>
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}
