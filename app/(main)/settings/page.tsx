@@ -5,7 +5,6 @@ import { getInitialsFromName } from "@/lib/utils/avatar";
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
 } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
@@ -60,11 +59,7 @@ export default async function Page() {
                   <Label className="text-right">Picture</Label>
                   <div className="col-span-3">
                     <Avatar className="h-24 w-24 rounded-md">
-                      <AvatarImage
-                        src={`https://unavatar.io/${user.email}?fallback=false`}
-                        alt={user.name || user.email}
-                      />
-                      <AvatarFallback className="rounded-md">
+                      <AvatarFallback className="rounded-md text-3xl">
                         {getInitialsFromName(user.name || user.email)}
                       </AvatarFallback>
                     </Avatar>

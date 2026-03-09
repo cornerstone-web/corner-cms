@@ -19,7 +19,6 @@ import {
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
 } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -40,11 +39,7 @@ export function User({
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon-sm" className={cn(className, "rounded-full")}>
           <Avatar className="h-8 w-8">
-            <AvatarImage
-              src={`https://unavatar.io/${user.email}?fallback=false`}
-              alt={user.name || user.email}
-            />
-            <AvatarFallback>{getInitialsFromName(user.name || user.email)}</AvatarFallback>
+            <AvatarFallback className="text-xs">{getInitialsFromName(user.name || user.email)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
