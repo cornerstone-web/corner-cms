@@ -19,6 +19,7 @@ export default async function Page() {
         slug: churchesTable.slug,
         githubRepoName: churchesTable.githubRepoName,
         cfPagesUrl: churchesTable.cfPagesUrl,
+        customDomain: churchesTable.customDomain,
         status: churchesTable.status,
         updatedAt: churchesTable.updatedAt,
       })

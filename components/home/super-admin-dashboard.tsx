@@ -19,6 +19,7 @@ type ChurchRow = {
   slug: string;
   githubRepoName: string;
   cfPagesUrl: string | null;
+  customDomain: string | null;
   status: "provisioning" | "active" | "suspended";
   updatedAt: Date;
 };
@@ -79,14 +80,14 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
           </Button>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Congregation</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Deployed URL</TableHead>
-                <TableHead>Last Updated</TableHead>
+                <TableHead className="hidden sm:table-cell">Live Site</TableHead>
+                <TableHead className="hidden md:table-cell">Last Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -111,22 +112,25 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                         {church.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {church.cfPagesUrl ? (
-                        <a
-                          href={church.cfPagesUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs hover:underline text-muted-foreground truncate max-w-[180px]"
-                        >
-                          {church.cfPagesUrl.replace(/^https?:\/\//, "")}
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
-                      ) : (
+                    <TableCell className="hidden sm:table-cell">
+                      {(church.customDomain || church.cfPagesUrl) ? (() => {
+                        const url = church.customDomain ?? church.cfPagesUrl!;
+                        return (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs hover:underline text-muted-foreground truncate max-w-[180px]"
+                          >
+                            {url.replace(/^https?:\/\//, "")}
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </a>
+                        );
+                      })() : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                       {formatRelativeDate(new Date(church.updatedAt))}
                     </TableCell>
                     <TableCell className="text-right">
@@ -134,13 +138,13 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                         <Button asChild variant="ghost" size="xs">
                           <Link href={`/${owner}/${repo}`}>
                             <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                            Edit
+                            <span className="hidden sm:inline">Edit</span>
                           </Link>
                         </Button>
                         <Button asChild variant="ghost" size="xs">
                           <Link href={`/admin/churches/${church.id}`}>
                             <Settings className="h-3.5 w-3.5 mr-1.5" />
-                            Manage
+                            <span className="hidden sm:inline">Manage</span>
                           </Link>
                         </Button>
                       </div>

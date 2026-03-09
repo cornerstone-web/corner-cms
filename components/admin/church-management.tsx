@@ -90,26 +90,24 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
             <ExternalLink className="h-3 w-3 shrink-0" />
           </a>
         </Row>
-        <Row label="Deployed URL">
-          {church.cfPagesUrl ? (
-            <a
-              href={church.cfPagesUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:underline text-muted-foreground"
-            >
-              {church.cfPagesUrl}
-              <ExternalLink className="h-3 w-3 shrink-0" />
-            </a>
-          ) : (
+        <Row label="Live Site">
+          {(church.customDomain || church.cfPagesUrl) ? (() => {
+            const url = church.customDomain ?? church.cfPagesUrl!;
+            return (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:underline text-muted-foreground truncate"
+              >
+                {url.replace(/^https?:\/\//, "")}
+                <ExternalLink className="h-3 w-3 shrink-0" />
+              </a>
+            );
+          })() : (
             <span className="text-muted-foreground">—</span>
           )}
         </Row>
-        {church.customDomain && (
-          <Row label="Custom Domain">
-            <span className="text-muted-foreground">{church.customDomain}</span>
-          </Row>
-        )}
         <Row label="Plan">
           <span className="text-muted-foreground capitalize">{church.plan}</span>
         </Row>
@@ -203,7 +201,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-3">
       <span className="text-muted-foreground shrink-0 w-32">{label}</span>
-      <div className="text-right">{children}</div>
+      <div className="text-right min-w-0 overflow-hidden">{children}</div>
     </div>
   );
 }
