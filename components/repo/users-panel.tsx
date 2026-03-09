@@ -7,6 +7,7 @@ import {
   inviteUser,
   updateUserRole,
   removeUserFromChurch,
+  resendInvite,
   type InviteState,
 } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, UserPlus, Trash2 } from "lucide-react";
+import { Check, Copy, Loader2, Mail, MailX, RefreshCw, Trash2, UserPlus } from "lucide-react";
 
 type UserRow = {
   userId: string;
@@ -70,6 +71,32 @@ export function UsersPanel({
   const [isPending, startTransition] = useTransition();
   const [showInvite, setShowInvite] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{
+    userId: string;
+    inviteUrl: string | null;
+    emailSent: boolean;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  function handleResend(userId: string) {
+    setActionError(null);
+    setResendResult(null);
+    startTransition(async () => {
+      const result = await resendInvite(churchId, userId);
+      if (!result.ok) {
+        setActionError(result.error ?? "Failed to resend invite.");
+      } else {
+        setResendResult({ userId, inviteUrl: result.inviteUrl, emailSent: result.emailSent });
+      }
+    });
+  }
 
   const [inviteState, inviteAction] = useFormState(inviteUser, initialState);
 
@@ -181,7 +208,7 @@ export function UsersPanel({
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead className="w-10" />
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -207,6 +234,16 @@ export function UsersPanel({
                     </Select>
                   </TableCell>
                   <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={isPending}
+                      onClick={() => handleResend(u.userId)}
+                      title="Resend invite"
+                    >
+                      <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon-sm" disabled={isPending}>
@@ -228,11 +265,50 @@ export function UsersPanel({
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Resend invite result */}
+      {resendResult && (
+        <div className="rounded-lg border p-4 space-y-3">
+          {resendResult.emailSent ? (
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <Mail className="h-4 w-4 shrink-0" />
+              Invite email resent successfully.
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-amber-600">
+              <MailX className="h-4 w-4 shrink-0" />
+              Email could not be sent. Share this link manually (expires in 7 days).
+            </div>
+          )}
+          {resendResult.inviteUrl && (
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={resendResult.inviteUrl}
+                className="text-xs font-mono"
+                onFocus={e => e.target.select()}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => handleCopy(resendResult.inviteUrl!)}
+              >
+                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setResendResult(null)}>
+            Dismiss
+          </Button>
         </div>
       )}
     </div>

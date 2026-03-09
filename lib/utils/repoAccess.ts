@@ -6,21 +6,28 @@
  *   2. User has a church role for the church whose github_repo_name matches
  *      `${owner}/${repo}` (case-insensitive).
  *
- * Throws an error (caught by the caller as a 403) when access is denied.
+ * Throws AccessDeniedError (→ 403) when access is denied.
  */
 
 import { User } from "@/types/user";
+
+export class AccessDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AccessDeniedError";
+  }
+}
 
 export function verifyRepoAccess(user: User, owner: string, repo: string): void {
   if (user.isSuperAdmin) return;
 
   const assignment = user.churchAssignment;
   if (!assignment) {
-    throw new Error(`You do not have access to "${owner}/${repo}".`);
+    throw new AccessDeniedError(`You do not have access to "${owner}/${repo}".`);
   }
 
   const expectedRepo = `${owner}/${repo}`.toLowerCase();
   if (assignment.githubRepoName.toLowerCase() !== expectedRepo) {
-    throw new Error(`You do not have access to "${owner}/${repo}".`);
+    throw new AccessDeniedError(`You do not have access to "${owner}/${repo}".`);
   }
 }

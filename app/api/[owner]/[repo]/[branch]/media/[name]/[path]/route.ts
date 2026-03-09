@@ -4,6 +4,7 @@ import { getFileExtension, normalizePath } from "@/lib/utils/file";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { getMediaCache } from "@/lib/githubCache";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 // Add docs
 
@@ -75,12 +76,7 @@ export async function GET(
         };
       }),
     });
-  } catch (error: any) {
-    console.error(error);
-    // TODO: better handling of GitHub errors
-    return Response.json({
-      status: "error",
-      message: error.status === 404 ? "Not found" : error.message,
-    });
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

@@ -2,6 +2,7 @@ import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import YAML from "yaml";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 /**
  * Block type → collections mapping.
@@ -149,11 +150,7 @@ export async function GET(
       status: "success",
       data: usage,
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json(
-      { status: "error", message: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

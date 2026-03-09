@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
@@ -27,7 +27,11 @@ export default async function ChurchPage({ params }: { params: { id: string } })
     .from(userChurchRolesTable)
     .innerJoin(usersTable, eq(userChurchRolesTable.userId, usersTable.id))
     .where(
-      eq(userChurchRolesTable.churchId, church.id),
+      and(
+        eq(userChurchRolesTable.churchId, church.id),
+        isNull(userChurchRolesTable.deletedAt),
+        isNull(usersTable.deletedAt),
+      )
     );
 
   return <ChurchManagement church={church} users={roleRows} />;

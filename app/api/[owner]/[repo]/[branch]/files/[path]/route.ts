@@ -9,6 +9,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { updateFileCache } from "@/lib/githubCache";
 import mergeWith from "lodash.mergewith";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 /**
  * Create, update and delete individual files in a GitHub repository.
@@ -215,12 +216,8 @@ export async function POST(
         url: response?.data.content?.download_url,
       }
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json({
-      status: "error",
-      message: error.message,
-    });
+  } catch (error) {
+    return handleRouteError(error);
   }
 };
 
@@ -401,11 +398,7 @@ export async function DELETE(
         path: response?.data.content?.path,
       }
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json({
-      status: "error",
-      message: error.message,
-    });
+  } catch (error) {
+    return handleRouteError(error);
   }
 };

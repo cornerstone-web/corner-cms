@@ -1,14 +1,13 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { provisionChurch, type ProvisionState } from "@/lib/actions/provision";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Building2, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, Check, Copy, Loader2, Mail, MailX } from "lucide-react";
 
 const initialState: ProvisionState = { status: "idle" };
 
@@ -39,16 +38,68 @@ function SubmitButton() {
 }
 
 export function ProvisionChurchForm() {
-  const router = useRouter();
   const [state, formAction] = useFormState(provisionChurch, initialState);
+  const [copied, setCopied] = useState(false);
   const slugRef = useRef<HTMLInputElement>(null);
   const slugManuallyEdited = useRef(false);
 
-  useEffect(() => {
-    if (state.status === "success") {
-      router.push("/");
-    }
-  }, [state, router]);
+  function handleCopy(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  if (state.status === "success") {
+    return (
+      <div className="max-w-screen-sm mx-auto p-4 md:p-6 space-y-6">
+        <div className="flex items-center gap-3">
+          <Building2 className="h-5 w-5 text-muted-foreground" />
+          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">Site Provisioned</h1>
+        </div>
+
+        <div className="rounded-lg border p-4 space-y-3">
+          {state.emailSent ? (
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <Mail className="h-4 w-4 shrink-0" />
+              Invite email sent successfully.
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-amber-600">
+              <MailX className="h-4 w-4 shrink-0" />
+              Email could not be sent. Share the invite link below with the admin manually.
+            </div>
+          )}
+
+          {state.adminInviteUrl && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground font-medium">Admin invite link (expires in 7 days)</p>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={state.adminInviteUrl}
+                  className="text-xs font-mono"
+                  onFocus={e => e.target.select()}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleCopy(state.adminInviteUrl!)}
+                >
+                  {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Button asChild>
+          <Link href="/">Go to Dashboard</Link>
+        </Button>
+      </div>
+    );
+  }
 
   function handleDisplayNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!slugManuallyEdited.current && slugRef.current) {

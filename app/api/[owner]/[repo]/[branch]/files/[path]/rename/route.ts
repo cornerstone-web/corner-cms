@@ -5,6 +5,7 @@ import { getFileExtension, normalizePath } from "@/lib/utils/file";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { updateFileCache } from "@/lib/githubCache";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 /**
  * Renames a file in a GitHub repository.
@@ -105,12 +106,8 @@ export async function POST(
         newPath: response?.newPath,
       }
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json({
-      status: "error",
-      message: error.message,
-    });
+  } catch (error) {
+    return handleRouteError(error);
   }
 };
 

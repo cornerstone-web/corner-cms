@@ -20,7 +20,7 @@ import { getAuth0ManagementToken } from "@/lib/auth0Management";
 export type ProvisionState =
   | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "success"; churchId: string };
+  | { status: "success"; churchId: string; adminInviteUrl: string | null; emailSent: boolean };
 
 export async function provisionChurch(
   _prev: ProvisionState,
@@ -121,6 +121,8 @@ export async function provisionChurch(
 
     // 4. Create Auth0 user + invite ticket
     let auth0UserId: string | undefined;
+    let adminInviteUrl: string | null = null;
+    let emailSent = false;
     try {
       const mgmtToken = await getAuth0ManagementToken();
 
@@ -161,9 +163,9 @@ export async function provisionChurch(
         }
       }
 
-      // Generate password-change (invite) ticket
+      // Generate password-change (invite) ticket and capture the URL
       if (auth0UserId) {
-        await fetch(`https://${process.env.AUTH0_DOMAIN}/api/v2/tickets/password-change`, {
+        const ticketRes = await fetch(`https://${process.env.AUTH0_DOMAIN}/api/v2/tickets/password-change`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${mgmtToken}`,
@@ -176,6 +178,35 @@ export async function provisionChurch(
             mark_email_as_verified: true,
           }),
         });
+        if (ticketRes.ok) {
+          const ticketData = await ticketRes.json();
+          adminInviteUrl = ticketData.ticket as string ?? null;
+        }
+
+        // Send invite email via corner-apostle
+        if (adminInviteUrl) {
+          try {
+            const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.CORNERSTONE_INTERNAL_SECRET ?? ""}`,
+              },
+              body: JSON.stringify({
+                to: adminEmail,
+                name: adminName,
+                siteName: displayName,
+                resetUrl: adminInviteUrl,
+              }),
+            });
+            emailSent = inviteRes.ok;
+            if (!inviteRes.ok) {
+              console.error("Invite email failed (non-fatal):", await inviteRes.text());
+            }
+          } catch (emailErr) {
+            console.error("Invite email error (non-fatal):", emailErr);
+          }
+        }
       }
     } catch (auth0Err) {
       console.error("Auth0 provisioning failed (non-fatal):", auth0Err);
@@ -200,7 +231,7 @@ export async function provisionChurch(
       });
     }
 
-    return { status: "success", churchId: church.id };
+    return { status: "success", churchId: church.id, adminInviteUrl, emailSent };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "An unexpected error occurred.";
     console.error("provisionChurch failed:", err);

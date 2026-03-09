@@ -8,6 +8,7 @@ import { getToken } from "@/lib/token";
 import { getCollectionCache } from "@/lib/githubCache";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import YAML from "yaml";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 export interface BrokenLink {
   url: string;
@@ -250,11 +251,7 @@ export async function GET(
         scannedAt: new Date().toISOString(),
       },
     } satisfies BrokenLinksResponse);
-  } catch (error: any) {
-    console.error(error);
-    return Response.json(
-      { status: "error", message: error.message } satisfies BrokenLinksResponse,
-      { status: 500 },
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

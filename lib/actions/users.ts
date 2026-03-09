@@ -117,9 +117,6 @@ export async function inviteUser(
 
     // Send branded invite email via corner-apostle
     const secret = process.env.CORNERSTONE_INTERNAL_SECRET ?? "";
-    console.log("[inviteUser] CORNER_APOSTLE_URL:", process.env.CORNER_APOSTLE_URL);
-    console.log("[inviteUser] secret length:", secret.length);
-    console.log("[inviteUser] secret set:", !!secret);
     const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
       method: "POST",
       headers: {
@@ -128,8 +125,6 @@ export async function inviteUser(
       },
       body: JSON.stringify({ to: email, name, siteName, resetUrl }),
     });
-    console.log("[inviteUser] corner-apostle status:", inviteRes.status);
-    console.log("[inviteUser] corner-apostle body:", await inviteRes.text());
 
     // Upsert DB user — check by auth0Id first, then by email (handles re-invite
     // after deletion, where Auth0 assigns a new user_id to the same email)
@@ -197,6 +192,73 @@ export async function inviteUser(
       status: "error",
       message: err instanceof Error ? err.message : "An unexpected error occurred.",
     };
+  }
+}
+
+// ─── resendInvite ─────────────────────────────────────────────────────────────
+
+export async function resendInvite(
+  churchId: string,
+  userId: string,
+): Promise<{ ok: boolean; inviteUrl: string | null; emailSent: boolean; error?: string }> {
+  try {
+    await assertCanManageUsers(churchId);
+
+    const dbUser = await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, userId),
+    });
+    if (!dbUser) throw new Error("User not found.");
+
+    const church = await db.query.churchesTable.findFirst({
+      where: eq(churchesTable.id, churchId),
+      columns: { displayName: true },
+    });
+
+    const mgmtToken = await getAuth0ManagementToken();
+
+    const ticketRes = await fetch(
+      `https://${process.env.AUTH0_DOMAIN}/api/v2/tickets/password-change`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${mgmtToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: dbUser.auth0Id,
+          result_url: process.env.APP_BASE_URL ?? "/",
+          ttl_sec: 604800, // 7 days
+          mark_email_as_verified: true,
+        }),
+      }
+    );
+    if (!ticketRes.ok) throw new Error(`Auth0 ticket generation failed (${ticketRes.status}).`);
+    const { ticket: inviteUrl } = (await ticketRes.json()) as { ticket: string };
+
+    let emailSent = false;
+    try {
+      const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.CORNERSTONE_INTERNAL_SECRET ?? ""}`,
+        },
+        body: JSON.stringify({
+          to: dbUser.email,
+          name: dbUser.name,
+          siteName: church?.displayName ?? "your site",
+          resetUrl: inviteUrl,
+        }),
+      });
+      emailSent = inviteRes.ok;
+      if (!inviteRes.ok) console.error("Resend invite email failed (non-fatal):", await inviteRes.text());
+    } catch (emailErr) {
+      console.error("Resend invite email error (non-fatal):", emailErr);
+    }
+
+    return { ok: true, inviteUrl, emailSent };
+  } catch (err: unknown) {
+    return { ok: false, inviteUrl: null, emailSent: false, error: err instanceof Error ? err.message : "Failed to resend invite." };
   }
 }
 

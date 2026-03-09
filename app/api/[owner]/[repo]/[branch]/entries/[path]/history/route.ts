@@ -5,6 +5,7 @@ import { getConfig } from "@/lib/utils/config";
 import { getFileExtension, normalizePath } from "@/lib/utils/file";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 /**
  * Fetches the history of a file from GitHub repositories.
@@ -56,11 +57,7 @@ export async function GET(
       status: "success",
       data: response.data
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json({
-      status: "error",
-      message: error.message,
-    });
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

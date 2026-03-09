@@ -3,6 +3,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import YAML from "yaml";
 import { siteConfigSchema } from "@/components/site-config/schema";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 const SITE_CONFIG_PATH = "src/config/site.config.yaml";
 
@@ -47,15 +48,8 @@ export async function GET(
         config,
       },
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json(
-      {
-        status: "error",
-        message: error.status === 404 ? "Site config not found" : error.message,
-      },
-      { status: error.status === 404 ? 404 : 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }
 
@@ -109,15 +103,7 @@ export async function POST(
         sha: response.data.content?.sha,
       },
     });
-  } catch (error: any) {
-    console.error(error);
-    const message =
-      error.status === 409
-        ? "Config has changed since you last loaded it. Please refresh and try again."
-        : error.message;
-    return Response.json(
-      { status: "error", message },
-      { status: error.status === 409 ? 409 : 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

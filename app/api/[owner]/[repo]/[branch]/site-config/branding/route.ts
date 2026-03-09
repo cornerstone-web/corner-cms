@@ -1,6 +1,7 @@
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 const PATHS = {
   logo: "public/images/logo.png",
@@ -60,15 +61,8 @@ export async function GET(
         downloadUrl: response.data.download_url,
       },
     });
-  } catch (error: any) {
-    if (error.status === 404) {
-      return Response.json({ status: "success", data: null });
-    }
-    console.error(error);
-    return Response.json(
-      { status: "error", message: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }
 
@@ -165,15 +159,7 @@ export async function POST(
         sha: response.data.content?.sha,
       },
     });
-  } catch (error: any) {
-    console.error(error);
-    const message =
-      error.status === 409
-        ? "File has changed since you last loaded it. Please refresh and try again."
-        : error.message;
-    return Response.json(
-      { status: "error", message },
-      { status: error.status === 409 ? 409 : 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

@@ -14,10 +14,12 @@ import { db } from "@/db";
 import { githubInstallationTokenTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { User } from "@/types/user";
+import { verifyRepoAccess } from "@/lib/utils/repoAccess";
 
 // Get the installation token for any owner/repo.
-// All users share the single org installation — access control is in verifyRepoAccess().
-const getToken = cache(async (_user: User, owner: string, repo: string) => {
+// Throws if the user does not have access to the repo.
+const getToken = cache(async (user: User, owner: string, repo: string) => {
+  verifyRepoAccess(user, owner, repo);
   return getInstallationToken(owner, repo);
 });
 

@@ -3,6 +3,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 
 import { generateUploadToken } from "@/lib/utils/r2-token";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 /**
  * Generate a short-lived HMAC upload token for corner-media.
@@ -58,8 +59,7 @@ export async function POST(
     const publicUrl = `${r2PublicUrl}/${r2Key}`;
 
     return Response.json({ uploadUrl, publicUrl });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json({ status: 'error', message: error.message }, { status: 500 });
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

@@ -1,6 +1,7 @@
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 /**
  * Creates a new branch in a GitHub repository.
@@ -47,11 +48,7 @@ export async function POST(
       message: `Branch "${data.name}" created successfully from"${params.branch}".`,
       data: response.data,
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json({
-      status: "error",
-      message: error.message,
-    });
+  } catch (error) {
+    return handleRouteError(error);
   }
 }
