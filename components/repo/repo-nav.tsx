@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { cn } from "@/lib/utils";
-import { FileStack, FileText, FolderOpen, Settings } from "lucide-react";
+import { FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
 import { useSiteFeatures } from "@/hooks/use-site-features";
 
 const RepoNavItem = ({
@@ -81,9 +81,20 @@ const RepoNav = ({
       }
       : null;
 
+    const usersItem =
+      user?.isSuperAdmin || user?.churchAssignment?.role === "church_admin"
+        ? {
+            key: "users",
+            icon: <Users className="h-5 w-5 mr-2" />,
+            href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/users`,
+            label: "Users",
+          }
+        : null;
+
     return [
       ...contentItems,
       ...mediaItems,
+      usersItem,
       settingsItem,
     ].filter(Boolean);
   }, [config, features]);
