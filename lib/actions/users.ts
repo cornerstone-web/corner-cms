@@ -11,7 +11,7 @@ import { getAuth0ManagementToken } from "@/lib/auth0Management";
 export type InviteState =
   | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "success" };
+  | { status: "success"; emailSent: boolean };
 
 // ─── Access guard ─────────────────────────────────────────────────────────────
 
@@ -125,6 +125,10 @@ export async function inviteUser(
       },
       body: JSON.stringify({ to: email, name, siteName, resetUrl }),
     });
+    if (!inviteRes.ok) {
+      const errText = await inviteRes.text().catch(() => "(no body)");
+      console.error("Invite email send failed:", errText);
+    }
 
     // Upsert DB user — check by auth0Id first, then by email (handles re-invite
     // after deletion, where Auth0 assigns a new user_id to the same email)
@@ -186,7 +190,7 @@ export async function inviteUser(
       });
     }
 
-    return { status: "success" };
+    return { status: "success", emailSent: inviteRes.ok };
   } catch (err: unknown) {
     return {
       status: "error",
