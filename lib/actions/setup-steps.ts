@@ -113,3 +113,36 @@ export async function saveServices(
   const result = await completeStep(churchId, "services");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
+
+export async function saveSocialLinks(
+  churchId: string,
+  slug: string,
+  links: Record<string, string>,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  await updateSiteConfig(slug, { footer: { socialLinks: links } }, "wizard: add social links");
+  const result = await completeStep(churchId, "social");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+export async function saveGiving(
+  churchId: string,
+  slug: string,
+  url: string,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  await updateSiteConfig(slug, { giving: { url } }, "wizard: add giving URL");
+  const result = await completeStep(churchId, "giving");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+export async function saveStreaming(
+  churchId: string,
+  slug: string,
+  youtubeApiKey: string,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  await updateSiteConfig(slug, { integrations: { youtubeApiKey } }, "wizard: add YouTube API key");
+  const result = await completeStep(churchId, "streaming");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
