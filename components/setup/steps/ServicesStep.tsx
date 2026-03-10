@@ -20,9 +20,8 @@ interface ServiceRow {
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-let nextId = 1;
 function makeRow(): ServiceRow {
-  return { id: nextId++, day: "Sunday", time: "", label: "" };
+  return { id: Date.now() + Math.random(), day: "Sunday", time: "", label: "" };
 }
 
 export default function ServicesStep({ church, onComplete }: StepProps) {
@@ -43,6 +42,10 @@ export default function ServicesStep({ church, onComplete }: StepProps) {
   }
 
   async function handleSubmit() {
+    if (rows.some((r) => !r.time.trim())) {
+      setError("Please add a time for each service");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -100,7 +103,8 @@ export default function ServicesStep({ church, onComplete }: StepProps) {
             <button
               type="button"
               onClick={() => removeRow(row.id)}
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-input text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
+              disabled={rows.length === 1}
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-input text-muted-foreground hover:text-destructive hover:border-destructive transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:border-input"
               aria-label="Remove service"
             >
               <svg
