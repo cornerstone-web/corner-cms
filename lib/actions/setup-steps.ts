@@ -146,3 +146,17 @@ export async function saveStreaming(
   const result = await completeStep(churchId, "streaming");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
+
+export async function saveFeature(
+  churchId: string,
+  slug: string,
+  feature: string,
+  enabled: boolean,
+  extra?: Record<string, unknown>,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const featureUpdate: Record<string, unknown> = { [feature]: enabled, ...extra };
+  await updateSiteConfig(slug, { features: featureUpdate }, `wizard: ${enabled ? "enable" : "skip"} ${feature}`);
+  const result = await completeStep(churchId, feature);
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
