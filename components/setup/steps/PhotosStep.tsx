@@ -24,23 +24,29 @@ export default function PhotosStep({ church, onComplete }: StepProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleFilesChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFilesChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    Promise.all(
-      files.map(
-        (file) =>
-          new Promise<PhotoEntry>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const result = reader.result as string;
-              const base64 = result.split(",")[1];
-              const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-              resolve({ base64, ext, name: file.name, previewUrl: result });
-            };
-            reader.readAsDataURL(file);
-          }),
-      ),
-    ).then(setPhotos);
+    try {
+      const entries = await Promise.all(
+        files.map(
+          (file) =>
+            new Promise<PhotoEntry>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                const base64 = result.split(",")[1];
+                const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+                resolve({ base64, ext, name: file.name, previewUrl: result });
+              };
+              reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+              reader.readAsDataURL(file);
+            }),
+        ),
+      );
+      setPhotos(entries);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to read one or more files.");
+    }
   }
 
   async function handleSubmit() {
@@ -147,7 +153,7 @@ export default function PhotosStep({ church, onComplete }: StepProps) {
               </p>
               <div className="grid grid-cols-4 gap-2">
                 {photos.map((photo, i) => (
-                  <div key={i} className="rounded overflow-hidden border bg-muted/30">
+                  <div key={`${photo.name}-${i}`} className="rounded overflow-hidden border bg-muted/30">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={photo.previewUrl}

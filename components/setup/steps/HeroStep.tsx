@@ -51,6 +51,7 @@ export default function HeroStep({ church, onComplete }: StepProps) {
         const base64 = await fileToBase64(file);
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
         await saveHero(church.id, church.slug, { imageBase64: base64, imageExt: ext });
+        setIsLoading(false);
         onComplete();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -61,9 +62,15 @@ export default function HeroStep({ church, onComplete }: StepProps) {
         setError("Please enter a YouTube video URL.");
         return;
       }
+      const trimmed = videoUrl.trim();
+      if (!trimmed.includes("youtube.com") && !trimmed.includes("youtu.be")) {
+        setError("Please enter a valid YouTube URL.");
+        return;
+      }
       setIsLoading(true);
       try {
-        await saveHero(church.id, church.slug, { videoUrl: videoUrl.trim() });
+        await saveHero(church.id, church.slug, { videoUrl: trimmed });
+        setIsLoading(false);
         onComplete();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
