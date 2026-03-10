@@ -3,7 +3,7 @@ import { getInstallationToken } from "@/lib/token";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 
 const GITHUB_ORG = process.env.GITHUB_ORG ?? "cornerstone-web";
-const TEMPLATE_REPO = process.env.CORNER_TEMPLATE_REPO_NAME ?? "corner-template";
+const CORNERSTONE_REPO = process.env.CORNERSTONE_REPO ?? "cornerstone";
 
 // ─── Pure utilities ───────────────────────────────────────────────────────────
 
@@ -43,18 +43,107 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 // ─── GitHub API operations ────────────────────────────────────────────────────
 
 export async function createRepoFromTemplate(repoName: string): Promise<void> {
-  const token = await getInstallationToken(GITHUB_ORG, TEMPLATE_REPO);
+  const token = await getInstallationToken(GITHUB_ORG, CORNERSTONE_REPO);
   const octokit = createOctokitInstance(token);
-  await octokit.rest.repos.createUsingTemplate({
-    template_owner: GITHUB_ORG,
-    template_repo: TEMPLATE_REPO,
-    owner: GITHUB_ORG,
+
+  // 1. Create the new empty repo
+  await octokit.rest.repos.createInOrg({
+    org: GITHUB_ORG,
     name: repoName,
     private: true,
-    include_all_branches: false,
+    auto_init: false,
   });
-  // Brief wait for GitHub to finish initializing the repo
-  await new Promise((r) => setTimeout(r, 3000));
+
+  // 2. Get the tree of corner-template from the cornerstone monorepo
+  const templatePrefix = "corner-template/";
+
+  const { data: repoData } = await octokit.rest.repos.get({
+    owner: GITHUB_ORG,
+    repo: CORNERSTONE_REPO,
+  });
+  const defaultBranch = repoData.default_branch;
+
+  const { data: refData } = await octokit.rest.git.getRef({
+    owner: GITHUB_ORG,
+    repo: CORNERSTONE_REPO,
+    ref: `heads/${defaultBranch}`,
+  });
+  const commitSha = refData.object.sha;
+
+  const { data: treeData } = await octokit.rest.git.getTree({
+    owner: GITHUB_ORG,
+    repo: CORNERSTONE_REPO,
+    tree_sha: commitSha,
+    recursive: "1",
+  });
+
+  // Filter to only corner-template/ files, skip .gitkeep files
+  const templateFiles = (treeData.tree ?? []).filter(
+    (item) =>
+      item.path?.startsWith(templatePrefix) &&
+      item.type === "blob" &&
+      !item.path.endsWith(".gitkeep")
+  );
+
+  if (templateFiles.length === 0) {
+    throw new Error("corner-template directory not found or empty in cornerstone repo");
+  }
+
+  // 3. Fetch file contents and re-create blobs in the new repo
+  const fileContents: { path: string; content: string; mode: string }[] = [];
+  for (const item of templateFiles) {
+    const { data: fileData } = await octokit.rest.repos.getContent({
+      owner: GITHUB_ORG,
+      repo: CORNERSTONE_REPO,
+      path: item.path!,
+      ref: commitSha,
+    });
+    const file = fileData as { content: string; encoding: string };
+    fileContents.push({
+      path: item.path!.slice(templatePrefix.length),
+      content: file.content, // already base64
+      mode: item.mode ?? "100644",
+    });
+  }
+
+  // 4. Create blobs in the new repo
+  const newTreeEntries: { path: string; mode: string; type: string; sha: string }[] = [];
+  for (const file of fileContents) {
+    const { data: blob } = await octokit.rest.git.createBlob({
+      owner: GITHUB_ORG,
+      repo: repoName,
+      content: file.content,
+      encoding: "base64",
+    });
+    newTreeEntries.push({
+      path: file.path,
+      mode: file.mode as "100644",
+      type: "blob",
+      sha: blob.sha,
+    });
+  }
+
+  // 5. Create tree, commit, and set as main branch
+  const { data: newTree } = await octokit.rest.git.createTree({
+    owner: GITHUB_ORG,
+    repo: repoName,
+    tree: newTreeEntries as Parameters<typeof octokit.rest.git.createTree>[0]["tree"],
+  });
+
+  const { data: newCommit } = await octokit.rest.git.createCommit({
+    owner: GITHUB_ORG,
+    repo: repoName,
+    message: "chore: initialize from corner-template",
+    tree: newTree.sha,
+    parents: [],
+  });
+
+  await octokit.rest.git.createRef({
+    owner: GITHUB_ORG,
+    repo: repoName,
+    ref: "refs/heads/main",
+    sha: newCommit.sha,
+  });
 }
 
 export async function getFileWithSha(
