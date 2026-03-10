@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable } from "@/db/schema";
-import { isNull } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { MainRootLayout } from "./main-root-layout";
 import { ChurchPortalCard } from "@/components/home/church-portal-card";
 import { SuperAdminDashboard } from "@/components/home/super-admin-dashboard";
@@ -35,6 +35,15 @@ export default async function Page() {
   }
 
   if (user.churchAssignment) {
+    const church = await db.query.churchesTable.findFirst({
+      where: eq(churchesTable.id, user.churchAssignment.churchId),
+      columns: { status: true },
+    });
+
+    if (church?.status === "provisioning") {
+      return redirect("/setup");
+    }
+
     return (
       <MainRootLayout>
         <ChurchPortalCard assignment={user.churchAssignment} />
