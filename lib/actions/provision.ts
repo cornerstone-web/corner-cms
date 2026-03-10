@@ -1,20 +1,19 @@
 "use server";
 
 /**
- * Provision a new church:
- * 1. Fork template repo into the org
- * 2. Insert churches DB record
- * 3. Create CF Pages project (if CF env vars present)
- * 4. Create Auth0 user + password-change invite ticket
- * 5. Insert users + user_church_roles DB records
+ * Lightweight provision for a new church:
+ * 1. Insert churches DB record (status: provisioning)
+ * 2. Create Auth0 user + password-change invite ticket
+ * 3. Insert users + user_church_roles DB records
+ *
+ * GitHub repo creation and CF Pages setup happen during the church admin's
+ * onboarding wizard (triggered on first /setup load).
  */
 
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
-import { getInstallationToken } from "@/lib/token";
-import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 
 export type ProvisionState =
@@ -45,81 +44,16 @@ export async function provisionChurch(
   }
 
   const org = process.env.GITHUB_ORG ?? "cornerstone-web";
-  const templateRepoName = process.env.GITHUB_TEMPLATE_REPO ?? "template-repo";
   const githubRepoName = `${org}/${slug}`;
 
   try {
-    // 1. Fork the template repo
-    const token = await getInstallationToken(org, templateRepoName);
-    const octokit = createOctokitInstance(token);
-
-    await octokit.rest.repos.createFork({
-      owner: org,
-      repo: templateRepoName,
-      organization: org,
-      name: slug,
-      default_branch_only: true,
-    });
-
-    // 2. Insert church record
+    // 1. Insert church record
     const [church] = await db
       .insert(churchesTable)
       .values({ githubRepoName, slug, displayName, status: "provisioning" })
       .returning({ id: churchesTable.id });
 
-    // 3. Create CF Pages project (optional — requires CF_ACCOUNT_ID + CF_API_TOKEN)
-    const cfAccountId = process.env.CF_ACCOUNT_ID;
-    const cfApiToken = process.env.CF_API_TOKEN;
-    if (cfAccountId && cfApiToken) {
-      try {
-        const cfRes = await fetch(
-          `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/pages/projects`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${cfApiToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              name: slug,
-              production_branch: "main",
-              source: {
-                type: "github",
-                config: {
-                  owner: org,
-                  repo_name: slug,
-                  production_branch: "main",
-                  pr_comments_enabled: false,
-                  deployments_enabled: true,
-                },
-              },
-              build_config: {
-                build_command: "npm run build",
-                destination_dir: "dist",
-                root_dir: "",
-              },
-            }),
-          },
-        );
-        if (cfRes.ok) {
-          const cfData = await cfRes.json();
-          const cfPagesProjectName = cfData.result?.name as string | undefined;
-          const subdomain = cfData.result?.subdomain as string | undefined;
-          const cfPagesUrl = subdomain ? `https://${subdomain}.pages.dev` : undefined;
-          await db
-            .update(churchesTable)
-            .set({ cfPagesProjectName, cfPagesUrl })
-            .where(eq(churchesTable.id, church.id));
-        } else {
-          const errBody = await cfRes.json();
-          console.error("CF Pages project creation failed (non-fatal):", errBody);
-        }
-      } catch (cfErr) {
-        console.error("CF Pages creation error (non-fatal):", cfErr);
-      }
-    }
-
-    // 4. Create Auth0 user + invite ticket
+    // 2. Create Auth0 user + invite ticket
     let auth0UserId: string | undefined;
     let adminInviteUrl: string | null = null;
     let emailSent = false;
@@ -212,7 +146,7 @@ export async function provisionChurch(
       console.error("Auth0 provisioning failed (non-fatal):", auth0Err);
     }
 
-    // 5. Insert user + role into DB
+    // 3. Insert user + role into DB
     if (auth0UserId) {
       const existing = await db.query.usersTable.findFirst({
         where: eq(usersTable.auth0Id, auth0UserId),
