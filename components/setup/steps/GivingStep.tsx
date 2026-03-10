@@ -20,6 +20,14 @@ export default function GivingStep({ church, onComplete }: StepProps) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
+    if (hasGiving === null) {
+      setError("Please make a selection.");
+      return;
+    }
+    if (hasGiving === true && givingUrl.trim() === "") {
+      setError("Please enter your giving platform URL.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {

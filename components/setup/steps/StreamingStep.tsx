@@ -20,6 +20,14 @@ export default function StreamingStep({ church, onComplete }: StepProps) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
+    if (streamsLive === null) {
+      setError("Please make a selection.");
+      return;
+    }
+    if (streamsLive === true && youtubeApiKey.trim() === "") {
+      setError("Please enter your YouTube API key.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
