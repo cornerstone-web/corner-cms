@@ -48,8 +48,8 @@ export async function GET(request: Request) {
     return Response.json({ error: "Church not found" }, { status: 404 });
   }
 
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const apiToken = process.env.CF_API_TOKEN;
   const projectName = church.cfPagesProjectName;
 
   if (!accountId || !apiToken || !projectName) {

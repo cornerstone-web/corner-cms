@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
-import { createRepoFromTemplate, updateSiteConfig, commitFile, tryGetSha } from "@/lib/github/wizard";
+import { createRepoFromTemplate, updateSiteConfig, commitFile, tryGetSha, getFileWithSha } from "@/lib/github/wizard";
 import { generateNav, WizardFeatures } from "@/lib/wizard/nav-gen";
 import { generateHomeBlocks, HomeGenOptions } from "@/lib/wizard/home-gen";
 import YAML from "yaml";
@@ -123,8 +123,18 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
 
     const repoName = church.slug;
 
-    // 1. Commit auto-generated navigation
-    const nav = generateNav(opts.features);
+    // 1. Commit auto-generated navigation.
+    // Read current site.config.yaml to pick up the giving URL committed by GivingStep,
+    // since LaunchStep doesn't track it in WizardFeatures.
+    let givingUrl: string | undefined;
+    try {
+      const { content: configYaml } = await getFileWithSha(repoName, "src/config/site.config.yaml");
+      const currentConfig = YAML.parse(configYaml) as Record<string, unknown>;
+      givingUrl = (currentConfig?.giving as { url?: string } | undefined)?.url;
+    } catch {
+      // Config not yet written — giving URL not set, proceed without it
+    }
+    const nav = generateNav({ ...opts.features, givingUrl });
     await updateSiteConfig(repoName, { navigation: nav }, "chore: set navigation from wizard");
 
     // 2. Commit home page blocks
