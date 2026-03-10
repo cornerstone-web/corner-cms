@@ -12,6 +12,11 @@ import { eq } from "drizzle-orm";
  *
  * Auth: must be authenticated as church_admin for the queried church, or isSuperAdmin.
  */
+
+type CfStage = { name: string; status: string };
+type CfDeployment = { url?: string; stages?: CfStage[]; latest_stage?: { status: string } };
+type CfResponse = { result: CfDeployment[] };
+
 export async function GET(request: Request) {
   const { user } = await getAuth();
   if (!user) return new Response(null, { status: 401 });
@@ -33,10 +38,10 @@ export async function GET(request: Request) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Fetch church record to get CF Pages project name
+  // Fetch church record to get CF Pages project name and custom domain
   const church = await db.query.churchesTable.findFirst({
     where: eq(churchesTable.id, churchId),
-    columns: { cfPagesProjectName: true },
+    columns: { cfPagesProjectName: true, cfPagesUrl: true },
   });
 
   if (!church) {
@@ -51,8 +56,8 @@ export async function GET(request: Request) {
     return Response.json({ error: "Cloudflare Pages not configured for this church" }, { status: 502 });
   }
 
-  // Fetch the most recent deployment from CF Pages API
-  const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}/deployments`;
+  // Fetch the most recent deployment from CF Pages API (per_page=1 avoids fetching 25 deployments)
+  const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}/deployments?per_page=1`;
 
   let cfRes: Response;
   try {
@@ -70,10 +75,6 @@ export async function GET(request: Request) {
     return Response.json({ error: "Cloudflare API returned an error" }, { status: 502 });
   }
 
-  type CfStage = { name: string; status: string };
-  type CfDeployment = { url?: string; stages: CfStage[] };
-  type CfResponse = { result: CfDeployment[] };
-
   const cfData = (await cfRes.json()) as CfResponse;
   const deployment = cfData.result?.[0];
 
@@ -82,13 +83,13 @@ export async function GET(request: Request) {
     return Response.json({ status: "building" });
   }
 
-  const deployStage = deployment.stages?.find((s) => s.name === "deploy");
+  const latestStatus = deployment.latest_stage?.status;
 
-  if (deployStage?.status === "success") {
-    return Response.json({ status: "success", url: deployment.url });
+  if (latestStatus === "success") {
+    return Response.json({ status: "success", url: church.cfPagesUrl ?? deployment.url });
   }
 
-  if (deployStage?.status === "failure") {
+  if (latestStatus === "failure") {
     return Response.json({ status: "failure" });
   }
 
