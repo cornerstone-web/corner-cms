@@ -13,6 +13,11 @@ export type InviteState =
   | { status: "error"; message: string }
   | { status: "success"; emailSent: boolean };
 
+/** Pure helper: given email send success/failure, resolve the invite return status. */
+export function resolveInviteEmailStatus(emailSent: boolean): { status: "success"; emailSent: boolean } {
+  return { status: "success", emailSent };
+}
+
 // ─── Access guard ─────────────────────────────────────────────────────────────
 
 async function assertCanManageUsers(churchId: string) {
@@ -106,6 +111,7 @@ export async function inviteUser(
         }),
       }
     );
+    if (!ticketRes.ok) throw new Error(`Auth0 ticket generation failed (${ticketRes.status}).`);
     const { ticket: resetUrl } = (await ticketRes.json()) as { ticket: string };
 
     // Fetch church display name for the email
@@ -117,17 +123,23 @@ export async function inviteUser(
 
     // Send branded invite email via corner-apostle
     const secret = process.env.CORNERSTONE_INTERNAL_SECRET ?? "";
-    const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${secret}`,
-      },
-      body: JSON.stringify({ to: email, name, siteName, resetUrl }),
-    });
-    if (!inviteRes.ok) {
-      const errText = await inviteRes.text().catch(() => "(no body)");
-      console.error("Invite email send failed:", errText);
+    let emailSent = false;
+    try {
+      const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ to: email, name, siteName, resetUrl }),
+      });
+      emailSent = inviteRes.ok;
+      if (!inviteRes.ok) {
+        const errText = await inviteRes.text().catch(() => "(no body)");
+        console.error("Invite email send failed (non-fatal):", errText);
+      }
+    } catch (emailErr) {
+      console.error("Invite email error (non-fatal):", emailErr);
     }
 
     // Upsert DB user — check by auth0Id first, then by email (handles re-invite
@@ -190,7 +202,7 @@ export async function inviteUser(
       });
     }
 
-    return { status: "success", emailSent: inviteRes.ok };
+    return resolveInviteEmailStatus(emailSent);
   } catch (err: unknown) {
     return {
       status: "error",
