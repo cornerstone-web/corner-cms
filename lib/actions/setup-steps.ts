@@ -1,6 +1,6 @@
 "use server";
 
-import { updateSiteConfig, commitBinaryFile } from "@/lib/github/wizard";
+import { updateSiteConfig, commitBinaryFile, commitFile, tryGetSha, slugify } from "@/lib/github/wizard";
 import { completeStep } from "@/lib/actions/setup";
 import { getAuth } from "@/lib/auth";
 
@@ -158,5 +158,244 @@ export async function saveFeature(
   const featureUpdate: Record<string, unknown> = { [feature]: enabled, ...extra };
   await updateSiteConfig(slug, { features: featureUpdate }, `wizard: ${enabled ? "enable" : "skip"} ${feature}`);
   const result = await completeStep(churchId, feature);
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── Content file helpers ──────────────────────────────────────────────────────
+
+function fm(fields: Record<string, unknown>): string {
+  const lines = ["---"];
+  for (const [k, v] of Object.entries(fields)) {
+    if (v === undefined || v === null) continue;
+    if (typeof v === "string") lines.push(`${k}: "${v.replace(/"/g, '\\"')}"`);
+    else lines.push(`${k}: ${JSON.stringify(v)}`);
+  }
+  lines.push("---");
+  lines.push("");
+  return lines.join("\n");
+}
+
+export async function commitContentFile(
+  churchId: string,
+  slug: string,
+  path: string,
+  content: string,
+  message: string,
+  stepKey: string,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, message);
+  const result = await completeStep(churchId, stepKey);
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+export async function commitContentBinaryFile(
+  churchId: string,
+  slug: string,
+  path: string,
+  base64: string,
+  message: string,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const sha = await tryGetSha(slug, path);
+  await commitBinaryFile(slug, path, base64, sha, message);
+}
+
+// ─── First Sermon ─────────────────────────────────────────────────────────────
+
+export async function saveFirstSermon(
+  churchId: string,
+  slug: string,
+  fields: {
+    title: string;
+    date: string;
+    speaker: string;
+    series?: string;
+    description?: string;
+  },
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const fileSlug = slugify(fields.title) || "first-sermon";
+  const path = `src/content/sermons/${fileSlug}.md`;
+  const content = fm({
+    title: fields.title,
+    date: fields.date,
+    speaker: fields.speaker,
+    ...(fields.series ? { series: fields.series } : {}),
+    ...(fields.description ? { description: fields.description } : {}),
+    draft: false,
+    blocks: [{ type: "video-embed", youtubeUrl: "" }],
+  });
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, "wizard: add first sermon");
+  const result = await completeStep(churchId, "first-sermon");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── First Series ─────────────────────────────────────────────────────────────
+
+export async function saveFirstSeries(
+  churchId: string,
+  slug: string,
+  fields: { title: string; description?: string },
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const fileSlug = slugify(fields.title) || "first-series";
+  const path = `src/content/series/${fileSlug}.md`;
+  const content = fm({
+    title: fields.title,
+    ...(fields.description ? { description: fields.description } : {}),
+    draft: false,
+  });
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, "wizard: add first series");
+  const result = await completeStep(churchId, "first-series");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── First Ministries ─────────────────────────────────────────────────────────
+
+export async function saveFirstMinistries(
+  churchId: string,
+  slug: string,
+  ministries: { name: string; description?: string; icon?: string }[],
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  for (const ministry of ministries) {
+    if (!ministry.name.trim()) continue;
+    const fileSlug = slugify(ministry.name) || "ministry";
+    const path = `src/content/ministries/${fileSlug}.md`;
+    const content = fm({
+      title: ministry.name,
+      ...(ministry.description ? { description: ministry.description } : {}),
+      ...(ministry.icon ? { icon: ministry.icon } : {}),
+      draft: false,
+    });
+    const sha = await tryGetSha(slug, path);
+    await commitFile(slug, path, content, sha, "wizard: add ministry");
+  }
+  const result = await completeStep(churchId, "first-ministry");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── First Event ──────────────────────────────────────────────────────────────
+
+export async function saveFirstEvent(
+  churchId: string,
+  slug: string,
+  fields: {
+    title: string;
+    date: string;
+    time: string;
+    location?: string;
+    description?: string;
+  },
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const fileSlug = slugify(fields.title) || "first-event";
+  const path = `src/content/events/${fileSlug}.md`;
+  const content = fm({
+    title: fields.title,
+    date: fields.date,
+    time: fields.time,
+    ...(fields.location ? { location: fields.location } : {}),
+    ...(fields.description ? { description: fields.description } : {}),
+    draft: false,
+  });
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, "wizard: add first event");
+  const result = await completeStep(churchId, "first-event");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── First Article ────────────────────────────────────────────────────────────
+
+export async function saveFirstArticle(
+  churchId: string,
+  slug: string,
+  fields: { title: string; author: string; description?: string },
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const fileSlug = slugify(fields.title) || "first-article";
+  const path = `src/content/articles/${fileSlug}.md`;
+  const today = new Date().toISOString().split("T")[0];
+  const content = fm({
+    title: fields.title,
+    author: fields.author,
+    date: today,
+    ...(fields.description ? { description: fields.description } : {}),
+    draft: false,
+  });
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, "wizard: add first article");
+  const result = await completeStep(churchId, "first-article");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── Staff Members ────────────────────────────────────────────────────────────
+
+export async function saveStaffMembers(
+  churchId: string,
+  slug: string,
+  members: { name: string; title?: string; bio?: string; photoBase64?: string; photoExt?: string }[],
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  for (const member of members) {
+    if (!member.name.trim()) continue;
+    const fileSlug = slugify(member.name) || "staff";
+    if (member.photoBase64) {
+      const ext = member.photoExt ?? "jpg";
+      const photoPath = `public/staff/${fileSlug}.${ext}`;
+      const photoSha = await tryGetSha(slug, photoPath);
+      await commitBinaryFile(slug, photoPath, member.photoBase64, photoSha, "wizard: add staff photo");
+    }
+    const hasPhoto = Boolean(member.photoBase64);
+    const ext = member.photoExt ?? "jpg";
+    const mdPath = `src/content/staff/${fileSlug}.md`;
+    const content = fm({
+      name: member.name,
+      ...(member.title ? { title: member.title } : {}),
+      ...(member.bio ? { bio: member.bio } : {}),
+      ...(hasPhoto ? { photo: `/staff/${fileSlug}.${ext}` } : {}),
+      draft: false,
+    });
+    const sha = await tryGetSha(slug, mdPath);
+    await commitFile(slug, mdPath, content, sha, "wizard: add staff member");
+  }
+  const result = await completeStep(churchId, "first-staff");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── Leaders ──────────────────────────────────────────────────────────────────
+
+export async function saveLeaders(
+  churchId: string,
+  slug: string,
+  leaders: { name: string; role: string; photoBase64?: string; photoExt?: string }[],
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  for (const leader of leaders) {
+    if (!leader.name.trim()) continue;
+    const fileSlug = slugify(leader.name) || "leader";
+    if (leader.photoBase64) {
+      const ext = leader.photoExt ?? "jpg";
+      const photoPath = `public/leadership/${fileSlug}.${ext}`;
+      const photoSha = await tryGetSha(slug, photoPath);
+      await commitBinaryFile(slug, photoPath, leader.photoBase64, photoSha, "wizard: add leader photo");
+    }
+    const hasPhoto = Boolean(leader.photoBase64);
+    const ext = leader.photoExt ?? "jpg";
+    const mdPath = `src/content/leadership/${fileSlug}.md`;
+    const content = fm({
+      name: leader.name,
+      role: leader.role,
+      ...(hasPhoto ? { photo: `/leadership/${fileSlug}.${ext}` } : {}),
+      draft: false,
+    });
+    const sha = await tryGetSha(slug, mdPath);
+    await commitFile(slug, mdPath, content, sha, "wizard: add leader");
+  }
+  const result = await completeStep(churchId, "first-leaders");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
