@@ -5,6 +5,7 @@ import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
+import { resolveInviteEmailStatus } from "@/lib/utils/invite";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -12,11 +13,6 @@ export type InviteState =
   | { status: "idle" }
   | { status: "error"; message: string }
   | { status: "success"; emailSent: boolean };
-
-/** Pure helper: given email send success/failure, resolve the invite return status. */
-export function resolveInviteEmailStatus(emailSent: boolean): { status: "success"; emailSent: boolean } {
-  return { status: "success", emailSent };
-}
 
 // ─── Access guard ─────────────────────────────────────────────────────────────
 

@@ -14,7 +14,7 @@ vi.mock("react", async (importOriginal) => {
   return { ...actual, cache: (fn: unknown) => fn };
 });
 
-import { resolveInviteEmailStatus } from "../users";
+import { resolveInviteEmailStatus } from "@/lib/utils/invite";
 
 describe("resolveInviteEmailStatus", () => {
   it("returns emailSent: true when email succeeded", () => {
