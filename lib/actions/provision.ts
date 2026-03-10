@@ -19,7 +19,7 @@ import { getAuth0ManagementToken } from "@/lib/auth0Management";
 export type ProvisionState =
   | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "success"; churchId: string; adminInviteUrl: string | null; emailSent: boolean };
+  | { status: "success"; churchId: string; adminInviteUrl: string | null; emailSent: boolean; adminEmail: string };
 
 export async function provisionChurch(
   _prev: ProvisionState,
@@ -165,7 +165,7 @@ export async function provisionChurch(
       });
     }
 
-    return { status: "success", churchId: church.id, adminInviteUrl, emailSent };
+    return { status: "success", churchId: church.id, adminInviteUrl, emailSent, adminEmail };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "An unexpected error occurred.";
     console.error("provisionChurch failed:", err);
