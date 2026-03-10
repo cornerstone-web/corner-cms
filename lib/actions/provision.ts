@@ -13,8 +13,15 @@
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
+import { churchesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
+import {
+  createOrResolveAuth0User,
+  generatePasswordTicket,
+  sendInviteEmail,
+  createOrRestoreDbUser,
+  assignChurchRole,
+} from "@/lib/utils/user-helpers";
 
 export type ProvisionState =
   | { status: "idle" }
@@ -53,116 +60,23 @@ export async function provisionChurch(
       .values({ githubRepoName, slug, displayName, status: "provisioning" })
       .returning({ id: churchesTable.id });
 
-    // 2. Create Auth0 user + invite ticket
+    // 2. Create Auth0 user + invite ticket (non-fatal — church record still created if this fails)
     let auth0UserId: string | undefined;
     let adminInviteUrl: string | null = null;
     let emailSent = false;
     try {
       const mgmtToken = await getAuth0ManagementToken();
-
-      const createUserRes = await fetch(`https://${process.env.AUTH0_DOMAIN}/api/v2/users`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${mgmtToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connection: "Username-Password-Authentication",
-          email: adminEmail,
-          name: adminName,
-          // Random password — the invite ticket forces a reset, so this is never used
-          password: `${crypto.randomUUID()}Aa1!`,
-          email_verified: false,
-          blocked: false,
-        }),
-      });
-
-      if (createUserRes.ok) {
-        const auth0User = await createUserRes.json();
-        auth0UserId = auth0User.user_id as string;
-      } else {
-        const errBody = await createUserRes.json();
-        if (errBody.statusCode === 409) {
-          // User exists — look up by email
-          const searchRes = await fetch(
-            `https://${process.env.AUTH0_DOMAIN}/api/v2/users-by-email?email=${encodeURIComponent(adminEmail)}`,
-            { headers: { Authorization: `Bearer ${mgmtToken}` } },
-          );
-          if (searchRes.ok) {
-            const existing = await searchRes.json();
-            auth0UserId = existing[0]?.user_id as string | undefined;
-          }
-        } else {
-          console.error("Auth0 user creation failed (non-fatal):", errBody);
-        }
-      }
-
-      // Generate password-change (invite) ticket and capture the URL
-      if (auth0UserId) {
-        const ticketRes = await fetch(`https://${process.env.AUTH0_DOMAIN}/api/v2/tickets/password-change`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${mgmtToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: auth0UserId,
-            result_url: process.env.APP_BASE_URL ?? "/",
-            ttl_sec: 604800, // 7 days
-            mark_email_as_verified: true,
-          }),
-        });
-        if (ticketRes.ok) {
-          const ticketData = await ticketRes.json();
-          adminInviteUrl = ticketData.ticket as string ?? null;
-        }
-
-        // Send invite email via corner-apostle
-        if (adminInviteUrl) {
-          try {
-            const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${process.env.CORNERSTONE_INTERNAL_SECRET ?? ""}`,
-              },
-              body: JSON.stringify({
-                to: adminEmail,
-                name: adminName,
-                siteName: displayName,
-                resetUrl: adminInviteUrl,
-              }),
-            });
-            emailSent = inviteRes.ok;
-            if (!inviteRes.ok) {
-              console.error("Invite email failed (non-fatal):", await inviteRes.text());
-            }
-          } catch (emailErr) {
-            console.error("Invite email error (non-fatal):", emailErr);
-          }
-        }
-      }
+      auth0UserId = await createOrResolveAuth0User(adminEmail, adminName, mgmtToken);
+      adminInviteUrl = await generatePasswordTicket(auth0UserId, mgmtToken);
+      emailSent = await sendInviteEmail(adminEmail, adminName, displayName, adminInviteUrl);
     } catch (auth0Err) {
       console.error("Auth0 provisioning failed (non-fatal):", auth0Err);
     }
 
     // 3. Insert user + role into DB
     if (auth0UserId) {
-      const existing = await db.query.usersTable.findFirst({
-        where: eq(usersTable.auth0Id, auth0UserId),
-      });
-      const dbUserId = existing?.id ?? (
-        await db
-          .insert(usersTable)
-          .values({ auth0Id: auth0UserId, email: adminEmail, name: adminName })
-          .returning({ id: usersTable.id })
-      )[0].id;
-
-      await db.insert(userChurchRolesTable).values({
-        userId: dbUserId,
-        churchId: church.id,
-        role: "church_admin",
-      });
+      const dbUserId = await createOrRestoreDbUser(auth0UserId, adminEmail, adminName);
+      await assignChurchRole(dbUserId, church.id, "church_admin");
     }
 
     return { status: "success", churchId: church.id, adminInviteUrl, emailSent, adminEmail };

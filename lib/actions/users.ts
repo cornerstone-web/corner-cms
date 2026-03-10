@@ -6,6 +6,13 @@ import { db } from "@/db";
 import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 import { resolveInviteEmailStatus } from "@/lib/utils/invite";
+import {
+  createOrResolveAuth0User,
+  generatePasswordTicket,
+  sendInviteEmail,
+  createOrRestoreDbUser,
+  assignChurchRole,
+} from "@/lib/utils/user-helpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,155 +55,17 @@ export async function inviteUser(
     await assertCanManageUsers(churchId);
 
     const mgmtToken = await getAuth0ManagementToken();
+    const auth0UserId = await createOrResolveAuth0User(email, name, mgmtToken);
+    const resetUrl = await generatePasswordTicket(auth0UserId, mgmtToken);
 
-    // Create or find Auth0 user
-    let auth0UserId: string | undefined;
-    const createRes = await fetch(
-      `https://${process.env.AUTH0_DOMAIN}/api/v2/users`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${mgmtToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connection: "Username-Password-Authentication",
-          email,
-          name,
-          password: `${crypto.randomUUID()}Aa1!`,
-          email_verified: true,
-          blocked: false,
-        }),
-      }
-    );
-
-    if (createRes.ok) {
-      auth0UserId = ((await createRes.json()) as any).user_id as string;
-    } else {
-      const err = await createRes.json();
-      if (err.statusCode === 409) {
-        // User exists — look up by email
-        const searchRes = await fetch(
-          `https://${process.env.AUTH0_DOMAIN}/api/v2/users-by-email?email=${encodeURIComponent(email)}`,
-          { headers: { Authorization: `Bearer ${mgmtToken}` } }
-        );
-        if (searchRes.ok) {
-          const existing = await searchRes.json();
-          auth0UserId = existing[0]?.user_id as string | undefined;
-        }
-      } else {
-        throw new Error(`Auth0 user creation failed: ${err.message ?? createRes.status}`);
-      }
-    }
-
-    if (!auth0UserId) throw new Error("Could not resolve Auth0 user.");
-
-    // Generate password-change ticket (7-day link)
-    const ticketRes = await fetch(
-      `https://${process.env.AUTH0_DOMAIN}/api/v2/tickets/password-change`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${mgmtToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: auth0UserId,
-          result_url: process.env.APP_BASE_URL ?? "/",
-          ttl_sec: 604800,
-        }),
-      }
-    );
-    if (!ticketRes.ok) throw new Error(`Auth0 ticket generation failed (${ticketRes.status}).`);
-    const { ticket: resetUrl } = (await ticketRes.json()) as { ticket: string };
-
-    // Fetch church display name for the email
     const church = await db.query.churchesTable.findFirst({
       where: eq(churchesTable.id, churchId),
       columns: { displayName: true },
     });
-    const siteName = church?.displayName ?? "your site";
+    const emailSent = await sendInviteEmail(email, name, church?.displayName ?? "your site", resetUrl);
 
-    // Send branded invite email via corner-apostle
-    const secret = process.env.CORNERSTONE_INTERNAL_SECRET ?? "";
-    let emailSent = false;
-    try {
-      const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${secret}`,
-        },
-        body: JSON.stringify({ to: email, name, siteName, resetUrl }),
-      });
-      emailSent = inviteRes.ok;
-      if (!inviteRes.ok) {
-        const errText = await inviteRes.text().catch(() => "(no body)");
-        console.error("Invite email send failed (non-fatal):", errText);
-      }
-    } catch (emailErr) {
-      console.error("Invite email error (non-fatal):", emailErr);
-    }
-
-    // Upsert DB user — check by auth0Id first, then by email (handles re-invite
-    // after deletion, where Auth0 assigns a new user_id to the same email)
-    let existingUser = await db.query.usersTable.findFirst({
-      where: eq(usersTable.auth0Id, auth0UserId),
-    });
-    if (!existingUser) {
-      existingUser = await db.query.usersTable.findFirst({
-        where: eq(usersTable.email, email),
-      });
-    }
-    let dbUserId: string;
-    if (existingUser) {
-      // Restore soft-deleted row and sync auth0Id/name/email
-      await db
-        .update(usersTable)
-        .set({ auth0Id: auth0UserId, email, name, deletedAt: null })
-        .where(eq(usersTable.id, existingUser.id));
-      dbUserId = existingUser.id;
-    } else {
-      dbUserId = (
-        await db
-          .insert(usersTable)
-          .values({ auth0Id: auth0UserId, email, name })
-          .returning({ id: usersTable.id })
-      )[0].id;
-    }
-
-    // Block invite if this user already has an active role at a different church
-    const activeElsewhere = await db.query.userChurchRolesTable.findFirst({
-      where: and(
-        eq(userChurchRolesTable.userId, dbUserId),
-        isNull(userChurchRolesTable.deletedAt)
-      ),
-    });
-    if (activeElsewhere && activeElsewhere.churchId !== churchId) {
-      throw new Error("This user already has an active account with another site.");
-    }
-
-    // Check for existing (possibly soft-deleted) role row
-    const existingRole = await db.query.userChurchRolesTable.findFirst({
-      where: and(
-        eq(userChurchRolesTable.userId, dbUserId),
-        eq(userChurchRolesTable.churchId, churchId)
-      ),
-    });
-
-    if (existingRole) {
-      // Restore and update role
-      await db
-        .update(userChurchRolesTable)
-        .set({ role: role as "church_admin" | "editor", deletedAt: null })
-        .where(eq(userChurchRolesTable.id, existingRole.id));
-    } else {
-      await db.insert(userChurchRolesTable).values({
-        userId: dbUserId,
-        churchId,
-        role: role as "church_admin" | "editor",
-      });
-    }
+    const dbUserId = await createOrRestoreDbUser(auth0UserId, email, name);
+    await assignChurchRole(dbUserId, churchId, role as "church_admin" | "editor");
 
     return resolveInviteEmailStatus(emailSent);
   } catch (err: unknown) {
@@ -227,50 +96,22 @@ export async function resendInvite(
     });
 
     const mgmtToken = await getAuth0ManagementToken();
-
-    const ticketRes = await fetch(
-      `https://${process.env.AUTH0_DOMAIN}/api/v2/tickets/password-change`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${mgmtToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: dbUser.auth0Id,
-          result_url: process.env.APP_BASE_URL ?? "/",
-          ttl_sec: 604800, // 7 days
-          mark_email_as_verified: true,
-        }),
-      }
+    const inviteUrl = await generatePasswordTicket(dbUser.auth0Id, mgmtToken);
+    const emailSent = await sendInviteEmail(
+      dbUser.email,
+      dbUser.name,
+      church?.displayName ?? "your site",
+      inviteUrl,
     );
-    if (!ticketRes.ok) throw new Error(`Auth0 ticket generation failed (${ticketRes.status}).`);
-    const { ticket: inviteUrl } = (await ticketRes.json()) as { ticket: string };
-
-    let emailSent = false;
-    try {
-      const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.CORNERSTONE_INTERNAL_SECRET ?? ""}`,
-        },
-        body: JSON.stringify({
-          to: dbUser.email,
-          name: dbUser.name,
-          siteName: church?.displayName ?? "your site",
-          resetUrl: inviteUrl,
-        }),
-      });
-      emailSent = inviteRes.ok;
-      if (!inviteRes.ok) console.error("Resend invite email failed (non-fatal):", await inviteRes.text());
-    } catch (emailErr) {
-      console.error("Resend invite email error (non-fatal):", emailErr);
-    }
 
     return { ok: true, inviteUrl, emailSent };
   } catch (err: unknown) {
-    return { ok: false, inviteUrl: null, emailSent: false, error: err instanceof Error ? err.message : "Failed to resend invite." };
+    return {
+      ok: false,
+      inviteUrl: null,
+      emailSent: false,
+      error: err instanceof Error ? err.message : "Failed to resend invite.",
+    };
   }
 }
 
@@ -290,7 +131,7 @@ export async function updateUserRole(
         and(
           eq(userChurchRolesTable.churchId, churchId),
           eq(userChurchRolesTable.userId, userId),
-          isNull(userChurchRolesTable.deletedAt)
+          isNull(userChurchRolesTable.deletedAt),
         )
       );
     return { ok: true };
@@ -308,7 +149,6 @@ export async function removeUserFromChurch(
   try {
     await assertCanManageUsers(churchId);
 
-    // Look up auth0Id before deleting
     const dbUser = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, userId),
     });
@@ -316,7 +156,6 @@ export async function removeUserFromChurch(
 
     const now = new Date();
 
-    // Soft-delete the church role
     await db
       .update(userChurchRolesTable)
       .set({ deletedAt: now })
@@ -324,29 +163,23 @@ export async function removeUserFromChurch(
         and(
           eq(userChurchRolesTable.churchId, churchId),
           eq(userChurchRolesTable.userId, userId),
-          isNull(userChurchRolesTable.deletedAt)
+          isNull(userChurchRolesTable.deletedAt),
         )
       );
 
-    // Soft-delete the user row
     await db
       .update(usersTable)
       .set({ deletedAt: now })
       .where(eq(usersTable.id, userId));
 
-    // Delete from Auth0
     const mgmtToken = await getAuth0ManagementToken();
     const deleteRes = await fetch(
       `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${encodeURIComponent(dbUser.auth0Id)}`,
-      {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${mgmtToken}` },
-      }
+      { method: "DELETE", headers: { Authorization: `Bearer ${mgmtToken}` } }
     );
     // 204 = deleted, 404 = already gone — both are fine
     if (!deleteRes.ok && deleteRes.status !== 404) {
-      const body = await deleteRes.text();
-      throw new Error(`Auth0 user deletion failed (${deleteRes.status}): ${body}`);
+      throw new Error(`Auth0 user deletion failed (${deleteRes.status}): ${await deleteRes.text()}`);
     }
 
     return { ok: true };
