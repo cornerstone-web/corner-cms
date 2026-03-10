@@ -161,6 +161,49 @@ export async function saveFeature(
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
+// ─── Home Page ────────────────────────────────────────────────────────────────
+
+export async function saveHero(
+  churchId: string,
+  slug: string,
+  opts: { imageBase64?: string; imageExt?: string; videoUrl?: string },
+): Promise<void> {
+  await assertChurchAccess(churchId);
+
+  if (opts.imageBase64) {
+    const ext = opts.imageExt ?? "jpg";
+    const heroPath = `public/hero.${ext}`;
+    const sha = await tryGetSha(slug, heroPath);
+    await commitBinaryFile(slug, heroPath, opts.imageBase64, sha, "wizard: add hero image");
+    await updateSiteConfig(slug, { heroImage: `/hero.${ext}` }, "wizard: set hero image");
+  } else if (opts.videoUrl) {
+    await updateSiteConfig(slug, { heroVideo: opts.videoUrl }, "wizard: set hero video");
+  }
+
+  const result = await completeStep(churchId, "hero");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+export async function savePhotos(
+  churchId: string,
+  slug: string,
+  photos: { base64: string; ext: string; name: string }[],
+): Promise<void> {
+  await assertChurchAccess(churchId);
+
+  await Promise.all(
+    photos.map(async (photo) => {
+      const filename = slugify(photo.name.replace(/\.[^.]+$/, "")) + "." + photo.ext;
+      const photoPath = `public/marquee/${filename}`;
+      const sha = await tryGetSha(slug, photoPath);
+      await commitBinaryFile(slug, photoPath, photo.base64, sha, "wizard: add marquee photo");
+    }),
+  );
+
+  const result = await completeStep(churchId, "photos");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
 // ─── Content file helpers ──────────────────────────────────────────────────────
 
 function fm(fields: Record<string, unknown>): string {
