@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { saveLogo } from "@/lib/actions/setup-steps";
+import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -36,7 +37,8 @@ export default function LogoStep({ church, onComplete }: StepProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const base64 = await fileToBase64(file);
+      const compressed = await compressImage(file, "logo");
+      const base64 = await fileToBase64(compressed);
       await saveLogo(church.id, church.slug, base64);
       onComplete();
     } catch (err) {

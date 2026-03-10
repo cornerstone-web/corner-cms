@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { savePhotos } from "@/lib/actions/setup-steps";
 import { completeStep } from "@/lib/actions/setup";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -28,20 +29,18 @@ export default function PhotosStep({ church, onComplete }: StepProps) {
     const files = Array.from(e.target.files ?? []);
     try {
       const entries = await Promise.all(
-        files.map(
-          (file) =>
-            new Promise<PhotoEntry>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const result = reader.result as string;
-                const base64 = result.split(",")[1];
-                const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-                resolve({ base64, ext, name: file.name, previewUrl: result });
-              };
-              reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
-              reader.readAsDataURL(file);
-            }),
-        ),
+        files.map(async (file) => {
+          const compressed = await compressImage(file, "content");
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve((reader.result as string).split(",")[1]);
+            reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+            reader.readAsDataURL(compressed);
+          });
+          const ext = compressed.type.split("/")[1] ?? "jpg";
+          const previewUrl = URL.createObjectURL(compressed);
+          return { base64, ext, name: file.name, previewUrl };
+        }),
       );
       setPhotos(entries);
     } catch (err) {

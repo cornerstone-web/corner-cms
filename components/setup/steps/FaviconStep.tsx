@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { saveFavicon } from "@/lib/actions/setup-steps";
+import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -28,9 +29,9 @@ export default function FaviconStep({ church, onComplete }: StepProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const nameParts = file.name.split(".");
-      const ext = nameParts.length > 1 ? nameParts[nameParts.length - 1].toLowerCase() : "png";
-      const base64 = await fileToBase64(file);
+      const compressed = await compressImage(file, "logo");
+      const ext = "png";
+      const base64 = await fileToBase64(compressed);
       await saveFavicon(church.id, church.slug, base64, ext);
       onComplete();
     } catch (err) {

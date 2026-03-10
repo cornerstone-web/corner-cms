@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveLeaders } from "@/lib/actions/setup-steps";
+import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -56,9 +57,10 @@ export default function LeadersStep({ church, onComplete }: StepProps) {
   async function handlePhotoChange(id: number, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
-    const preview = URL.createObjectURL(file);
-    const base64 = await fileToBase64(file);
-    const ext = file.name.split(".").pop() ?? "jpg";
+    const compressed = await compressImage(file, "content");
+    const preview = URL.createObjectURL(compressed);
+    const base64 = await fileToBase64(compressed);
+    const ext = compressed.type.split("/")[1] ?? "jpg";
     setRows((prev) =>
       prev.map((r) => (r.id === id ? { ...r, photoPreview: preview, photoBase64: base64, photoExt: ext } : r)),
     );

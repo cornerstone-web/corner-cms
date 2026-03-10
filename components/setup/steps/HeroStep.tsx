@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveHero } from "@/lib/actions/setup-steps";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -48,8 +49,9 @@ export default function HeroStep({ church, onComplete }: StepProps) {
       }
       setIsLoading(true);
       try {
-        const base64 = await fileToBase64(file);
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const compressed = await compressImage(file, "content");
+        const base64 = await fileToBase64(compressed);
+        const ext = compressed.type.split("/")[1] ?? "jpg";
         await saveHero(church.id, church.slug, { imageBase64: base64, imageExt: ext });
         setIsLoading(false);
         onComplete();
