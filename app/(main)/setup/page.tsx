@@ -4,6 +4,7 @@ import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
 import { initWizard } from "@/lib/actions/setup";
+import WizardShell from "@/components/setup/WizardShell";
 
 export default async function SetupPage() {
   const { user } = await getAuth();
@@ -39,8 +40,9 @@ export default async function SetupPage() {
   const completedSteps = new Set(completedStepRows.map((r) => r.stepKey));
 
   return (
-    <div>
-      Wizard coming soon
-    </div>
+    <WizardShell
+      church={{ id: church.id, displayName: church.displayName, slug: church.slug }}
+      completedStepsArray={[...completedSteps]}
+    />
   );
 }
