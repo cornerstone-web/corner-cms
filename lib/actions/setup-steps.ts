@@ -262,8 +262,8 @@ export async function saveFirstMinistries(
   ministries: { name: string; description?: string; icon?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  for (const ministry of ministries) {
-    if (!ministry.name.trim()) continue;
+  await Promise.all(ministries.map(async (ministry) => {
+    if (!ministry.name.trim()) return;
     const fileSlug = slugify(ministry.name) || "ministry";
     const path = `src/content/ministries/${fileSlug}.md`;
     const content = fm({
@@ -274,7 +274,7 @@ export async function saveFirstMinistries(
     });
     const sha = await tryGetSha(slug, path);
     await commitFile(slug, path, content, sha, "wizard: add ministry");
-  }
+  }));
   const result = await completeStep(churchId, "first-ministry");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
@@ -341,8 +341,8 @@ export async function saveStaffMembers(
   members: { name: string; title?: string; bio?: string; photoBase64?: string; photoExt?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  for (const member of members) {
-    if (!member.name.trim()) continue;
+  await Promise.all(members.map(async (member) => {
+    if (!member.name.trim()) return;
     const fileSlug = slugify(member.name) || "staff";
     if (member.photoBase64) {
       const ext = member.photoExt ?? "jpg";
@@ -362,7 +362,7 @@ export async function saveStaffMembers(
     });
     const sha = await tryGetSha(slug, mdPath);
     await commitFile(slug, mdPath, content, sha, "wizard: add staff member");
-  }
+  }));
   const result = await completeStep(churchId, "first-staff");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
@@ -375,8 +375,8 @@ export async function saveLeaders(
   leaders: { name: string; role: string; photoBase64?: string; photoExt?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  for (const leader of leaders) {
-    if (!leader.name.trim()) continue;
+  await Promise.all(leaders.map(async (leader) => {
+    if (!leader.name.trim()) return;
     const fileSlug = slugify(leader.name) || "leader";
     if (leader.photoBase64) {
       const ext = leader.photoExt ?? "jpg";
@@ -395,7 +395,7 @@ export async function saveLeaders(
     });
     const sha = await tryGetSha(slug, mdPath);
     await commitFile(slug, mdPath, content, sha, "wizard: add leader");
-  }
+  }));
   const result = await completeStep(churchId, "first-leaders");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
