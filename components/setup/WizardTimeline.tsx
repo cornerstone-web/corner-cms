@@ -8,11 +8,12 @@ interface WizardTimelineProps {
   visibleSteps: StepDef[];
   completedSteps: Set<string>;
   currentStep: StepKey;
+  progressStep: StepKey;
   onNavigate: (step: StepKey) => void;
   className?: string;
 }
 
-export default function WizardTimeline({ visibleSteps, completedSteps, currentStep, onNavigate, className }: WizardTimelineProps) {
+export default function WizardTimeline({ visibleSteps, completedSteps, currentStep, progressStep, onNavigate, className }: WizardTimelineProps) {
   const visibleKeys = new Set(visibleSteps.map(s => s.key));
 
   return (
@@ -30,7 +31,7 @@ export default function WizardTimeline({ visibleSteps, completedSteps, currentSt
               {groupSteps.map(step => {
                 const isCompleted = completedSteps.has(step.key);
                 const isCurrent = currentStep === step.key;
-                const isClickable = isCompleted; // can revisit completed steps
+                const isClickable = isCompleted || step.key === progressStep;
 
                 return (
                   <li key={step.key}>

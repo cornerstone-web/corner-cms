@@ -71,6 +71,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
     () => new Set(completedStepsArray)
   );
   const [currentStep, setCurrentStep] = useState<StepKey>(() => getCurrentStep(new Set(completedStepsArray)));
+  const progressStep = getCurrentStep(completedSteps);
   const [launched, setLaunched] = useState<{ cfPagesUrl: string } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -97,7 +98,9 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
     const social = extractSocialLinks((cfg.footer as Record<string, unknown> | undefined)?.socialLinks);
 
     switch (currentStep) {
-      case "welcome": return <WelcomeStep {...base} />;
+      case "welcome": return <WelcomeStep {...base}
+        onNavigateToIdentity={completedSteps.has("welcome") ? () => setCurrentStep("identity") : undefined}
+      />;
       case "identity": return <IdentityStep {...base}
         initialName={(cfg.name as string) || church.displayName}
         initialDescription={(cfg.description as string) || ""}
@@ -169,6 +172,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
       visibleSteps={visibleSteps}
       completedSteps={completedSteps}
       currentStep={currentStep}
+      progressStep={progressStep}
       onNavigate={setCurrentStep}
     />
   );
@@ -178,6 +182,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
       visibleSteps={visibleSteps}
       completedSteps={completedSteps}
       currentStep={currentStep}
+      progressStep={progressStep}
       onNavigate={(step) => { setCurrentStep(step); setSheetOpen(false); }}
       className="border-r-0 w-full"
     />
