@@ -438,29 +438,19 @@ export async function saveLeaders(
 
 // ─── Contact Form Verification ────────────────────────────────────────────────
 
-async function getContactEmail(slug: string): Promise<string | undefined> {
-  try {
-    const { content } = await getFileWithSha(slug, "src/config/site.config.yaml");
-    const config = YAML.parse(content) as Record<string, unknown>;
-    return (config?.contact as { email?: string } | undefined)?.email;
-  } catch {
-    return undefined;
-  }
-}
-
 /**
- * Creates a CF Email Routing destination address for the church's contact email,
+ * Creates a CF Email Routing destination address for the given email,
  * which triggers a verification email to that address.
  * Idempotent — safe to call again if the address already exists.
  */
 export async function initiateContactFormVerification(
   churchId: string,
   slug: string,
+  email: string,
 ): Promise<{ ok: boolean; email?: string; alreadyVerified?: boolean; error?: string }> {
   await assertChurchAccess(churchId);
 
-  const email = await getContactEmail(slug);
-  if (!email) return { ok: false, error: "No contact email found. Please complete the Contact Info step first." };
+  if (!email) return { ok: false, error: "Please enter an email address." };
 
   const accountId = process.env.CF_ACCOUNT_ID;
   const apiToken = process.env.CF_API_TOKEN;
@@ -481,7 +471,7 @@ export async function initiateContactFormVerification(
 
   if (res.status === 409) {
     // Address already registered — check if already verified
-    const check = await checkContactFormVerification(churchId, slug);
+    const check = await checkContactFormVerification(churchId, slug, email);
     return { ok: true, email, alreadyVerified: check.verified };
   }
 
@@ -497,11 +487,11 @@ export async function initiateContactFormVerification(
 export async function checkContactFormVerification(
   churchId: string,
   slug: string,
+  email: string,
 ): Promise<{ verified: boolean; email?: string; error?: string }> {
   await assertChurchAccess(churchId);
 
-  const email = await getContactEmail(slug);
-  if (!email) return { verified: false, error: "No contact email found." };
+  if (!email) return { verified: false, error: "No email provided." };
 
   const accountId = process.env.CF_ACCOUNT_ID;
   const apiToken = process.env.CF_API_TOKEN;

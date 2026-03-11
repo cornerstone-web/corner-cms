@@ -63,6 +63,7 @@ export default async function SetupPage() {
       initialConfig={initialConfig}
       initialLogoUrl={logoUrl ?? undefined}
       initialFaviconUrl={faviconUrl ?? undefined}
+      userEmail={user.email ?? undefined}
     />
   );
 }

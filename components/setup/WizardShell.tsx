@@ -51,6 +51,7 @@ interface WizardShellProps {
   initialConfig: Record<string, unknown>;
   initialLogoUrl?: string;
   initialFaviconUrl?: string;
+  userEmail?: string;
 }
 
 function extractSocialLinks(raw: unknown): Record<string, string> {
@@ -66,7 +67,7 @@ function extractSocialLinks(raw: unknown): Record<string, string> {
   return {};
 }
 
-export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl }: WizardShellProps) {
+export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl, userEmail }: WizardShellProps) {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(
     () => new Set(completedStepsArray)
   );
@@ -119,7 +120,9 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
         initialEmail={(contact.email as string) || ""}
         initialPhone={(contact.phone as string) || ""}
       />;
-      case "contact-form": return <ContactFormStep {...base} />;
+      case "contact-form": return <ContactFormStep {...base}
+        initialEmail={userEmail || ""}
+      />;
       case "location": return <LocationStep {...base}
         initialStreet={address.street || ""}
         initialCity={address.city || ""}

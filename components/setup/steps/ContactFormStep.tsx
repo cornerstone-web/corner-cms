@@ -4,17 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import { initiateContactFormVerification, checkContactFormVerification } from "@/lib/actions/setup-steps";
 import { completeStep } from "@/lib/actions/setup";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ContactFormStepProps {
   church: { id: string; slug: string };
   onComplete: (stepKey: string) => void;
+  initialEmail?: string;
 }
 
 type Status = "idle" | "sending" | "waiting" | "verified" | "error";
 
-export default function ContactFormStep({ church, onComplete }: ContactFormStepProps) {
+export default function ContactFormStep({ church, onComplete, initialEmail }: ContactFormStepProps) {
+  const [formEmail, setFormEmail] = useState(initialEmail ?? "");
   const [status, setStatus] = useState<Status>("idle");
-  const [email, setEmail] = useState<string | undefined>();
+  const [verifiedEmail, setVerifiedEmail] = useState<string | undefined>();
   const [errorMsg, setErrorMsg] = useState<string | undefined>();
   const [completing, setCompleting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -25,27 +29,32 @@ export default function ContactFormStep({ church, onComplete }: ContactFormStepP
   }, []);
 
   async function handleSendVerification() {
+    if (!formEmail.trim()) {
+      setErrorMsg("Please enter an email address.");
+      setStatus("error");
+      return;
+    }
     setStatus("sending");
     setErrorMsg(undefined);
-    const res = await initiateContactFormVerification(church.id, church.slug);
+    const res = await initiateContactFormVerification(church.id, church.slug, formEmail.trim());
     if (!res.ok) {
       setStatus("error");
       setErrorMsg(res.error ?? "Something went wrong.");
       return;
     }
-    setEmail(res.email);
+    setVerifiedEmail(res.email);
     if (res.alreadyVerified) {
       setStatus("verified");
       return;
     }
     setStatus("waiting");
-    startPolling();
+    startPolling(formEmail.trim());
   }
 
-  function startPolling() {
+  function startPolling(email: string) {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
-      const check = await checkContactFormVerification(church.id, church.slug);
+      const check = await checkContactFormVerification(church.id, church.slug, email);
       if (check.verified) {
         clearInterval(pollRef.current!);
         pollRef.current = null;
@@ -60,13 +69,29 @@ export default function ContactFormStep({ church, onComplete }: ContactFormStepP
     onComplete("contact-form");
   }
 
+  const locked = status === "sending" || status === "waiting" || status === "verified";
+
   return (
-    <div className="space-y-5">
-      <p className="text-muted-foreground">
-        Your site includes a contact form on the Contact page. Before we can route
-        form submissions to your inbox, Cloudflare needs to verify that you own the
-        email address.
-      </p>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold">Contact Form</h2>
+        <p className="text-muted-foreground text-sm">
+          Your site includes a contact form. All messages submitted through the site
+          will be delivered to the email address below — verify it to activate the form.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="form-email">Form recipient email</Label>
+        <Input
+          id="form-email"
+          type="email"
+          value={formEmail}
+          onChange={(e) => setFormEmail(e.target.value)}
+          placeholder="hello@yourchurch.org"
+          disabled={locked}
+        />
+      </div>
 
       {status === "idle" && (
         <Button onClick={handleSendVerification}>
@@ -81,7 +106,7 @@ export default function ContactFormStep({ church, onComplete }: ContactFormStepP
       {status === "waiting" && (
         <div className="space-y-3">
           <p className="text-sm">
-            A verification email was sent to <strong>{email}</strong>. Click the
+            A verification email was sent to <strong>{verifiedEmail}</strong>. Click the
             link in that email, then wait — this page will update automatically.
           </p>
           <p className="text-xs text-muted-foreground">Checking every 5 seconds…</p>
@@ -94,7 +119,7 @@ export default function ContactFormStep({ church, onComplete }: ContactFormStepP
       {status === "verified" && (
         <div className="space-y-4">
           <p className="text-sm font-medium text-green-600">
-            ✓ {email} is verified. Form submissions will be delivered to this address.
+            ✓ {verifiedEmail} is verified. Form submissions will be delivered to this address.
           </p>
           <Button onClick={handleComplete} disabled={completing}>
             {completing ? "Saving…" : "Continue →"}
