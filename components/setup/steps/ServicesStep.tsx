@@ -9,6 +9,7 @@ import { saveServices } from "@/lib/actions/setup-steps";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialServiceTimes?: { day: string; time: string; name?: string; label?: string }[];
 }
 
 interface ServiceRow {
@@ -24,8 +25,18 @@ function makeRow(): ServiceRow {
   return { id: Date.now() + Math.random(), day: "Sunday", time: "", label: "" };
 }
 
-export default function ServicesStep({ church, onComplete }: StepProps) {
-  const [rows, setRows] = useState<ServiceRow[]>(() => [makeRow()]);
+export default function ServicesStep({ church, onComplete, initialServiceTimes }: StepProps) {
+  const [rows, setRows] = useState<ServiceRow[]>(() => {
+    if (initialServiceTimes && initialServiceTimes.length > 0) {
+      return initialServiceTimes.map((s, i) => ({
+        id: i,
+        day: s.day || "Sunday",
+        time: s.time || "",
+        label: s.label ?? s.name ?? "",
+      }));
+    }
+    return [makeRow()];
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

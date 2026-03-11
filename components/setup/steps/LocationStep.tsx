@@ -9,13 +9,17 @@ import { saveLocation } from "@/lib/actions/setup-steps";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialStreet?: string;
+  initialCity?: string;
+  initialState?: string;
+  initialZip?: string;
 }
 
-export default function LocationStep({ church, onComplete }: StepProps) {
-  const [street, setStreet] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zip, setZip] = useState("");
+export default function LocationStep({ church, onComplete, initialStreet, initialCity, initialState, initialZip }: StepProps) {
+  const [street, setStreet] = useState(initialStreet ?? "");
+  const [city, setCity] = useState(initialCity ?? "");
+  const [state, setState] = useState(initialState ?? "");
+  const [zip, setZip] = useState(initialZip ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

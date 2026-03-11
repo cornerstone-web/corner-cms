@@ -9,10 +9,11 @@ import { cn } from "@/lib/utils";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialEnabled?: boolean;
 }
 
-export default function SermonFeatureStep({ church, onComplete }: StepProps) {
-  const [selection, setSelection] = useState<boolean | null>(null);
+export default function SermonFeatureStep({ church, onComplete, initialEnabled }: StepProps) {
+  const [selection, setSelection] = useState<boolean | null>(initialEnabled ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

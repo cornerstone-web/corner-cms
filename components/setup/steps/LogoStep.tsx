@@ -9,11 +9,12 @@ import { compressImage } from "@/lib/utils/image-compression";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialLogoUrl?: string;
 }
 
-export default function LogoStep({ church, onComplete }: StepProps) {
+export default function LogoStep({ church, onComplete, initialLogoUrl }: StepProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(initialLogoUrl ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,14 +31,19 @@ export default function LogoStep({ church, onComplete }: StepProps) {
   }
 
   async function handleSubmit() {
-    if (!file) {
+    if (!file && !preview) {
       setError("Please select a logo image.");
+      return;
+    }
+    if (!file && preview) {
+      // Already has a logo — advance without re-uploading
+      onComplete();
       return;
     }
     setIsLoading(true);
     setError(null);
     try {
-      const compressed = await compressImage(file, "logo");
+      const compressed = await compressImage(file!, "logo");
       const base64 = await fileToBase64(compressed);
       await saveLogo(church.id, church.slug, base64);
       onComplete();

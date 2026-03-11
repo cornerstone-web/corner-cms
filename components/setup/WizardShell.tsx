@@ -11,6 +11,7 @@ import LogoStep from "./steps/LogoStep";
 import FaviconStep from "./steps/FaviconStep";
 import ThemeStep from "./steps/ThemeStep";
 import ContactStep from "./steps/ContactStep";
+import ContactFormStep from "./steps/ContactFormStep";
 import LocationStep from "./steps/LocationStep";
 import ServicesStep from "./steps/ServicesStep";
 import SocialStep from "./steps/SocialStep";
@@ -42,9 +43,24 @@ interface WizardShellProps {
     slug: string;
   };
   completedStepsArray: string[];
+  initialConfig: Record<string, unknown>;
+  rawFileBaseUrl: string;
 }
 
-export default function WizardShell({ church, completedStepsArray }: WizardShellProps) {
+function extractSocialLinks(raw: unknown): Record<string, string> {
+  if (!raw) return {};
+  if (Array.isArray(raw)) {
+    const out: Record<string, string> = {};
+    for (const item of raw) {
+      if (item?.platform && item?.url) out[item.platform as string] = item.url as string;
+    }
+    return out;
+  }
+  if (typeof raw === "object") return raw as Record<string, string>;
+  return {};
+}
+
+export default function WizardShell({ church, completedStepsArray, initialConfig, rawFileBaseUrl }: WizardShellProps) {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(
     () => new Set(completedStepsArray)
   );
@@ -66,38 +82,68 @@ export default function WizardShell({ church, completedStepsArray }: WizardShell
   const visibleSteps = getVisibleSteps(completedSteps);
 
   function renderCurrentStep() {
-    const stepProps = { church, onComplete: () => handleComplete(currentStep) };
+    const base = { church, onComplete: () => handleComplete(currentStep) };
+    const cfg = initialConfig;
+    const contact = (cfg.contact as Record<string, unknown> | undefined) ?? {};
+    const address = (contact.address as Record<string, string> | undefined) ?? {};
+    const features = (cfg.features as Record<string, boolean> | undefined) ?? {};
+    const social = extractSocialLinks((cfg.footer as Record<string, unknown> | undefined)?.socialLinks);
 
     switch (currentStep) {
-      case "welcome": return <WelcomeStep {...stepProps} />;
-      case "identity": return <IdentityStep {...stepProps} />;
-      case "logo": return <LogoStep {...stepProps} />;
-      case "favicon": return <FaviconStep {...stepProps} />;
-      case "theme": return <ThemeStep {...stepProps} />;
-      case "contact": return <ContactStep {...stepProps} />;
-      case "location": return <LocationStep {...stepProps} />;
-      case "services": return <ServicesStep {...stepProps} />;
-      case "social": return <SocialStep {...stepProps} />;
-      case "giving": return <GivingStep {...stepProps} />;
-      case "streaming": return <StreamingStep {...stepProps} />;
-      case "sermons": return <SermonFeatureStep {...stepProps} />;
-      case "series": return <SeriesFeatureStep {...stepProps} />;
-      case "ministries": return <MinistriesFeatureStep {...stepProps} />;
-      case "events": return <EventsFeatureStep {...stepProps} />;
-      case "articles": return <ArticlesFeatureStep {...stepProps} />;
-      case "staff": return <StaffFeatureStep {...stepProps} />;
-      case "bulletins": return <BulletinsFeatureStep {...stepProps} />;
-      case "leadership": return <LeadershipFeatureStep {...stepProps} />;
-      case "members": return <MembersFeatureStep {...stepProps} />;
-      case "first-sermon": return <FirstSermonStep {...stepProps} />;
-      case "first-series": return <FirstSeriesStep {...stepProps} />;
-      case "first-ministry": return <FirstMinistryStep {...stepProps} />;
-      case "first-event": return <FirstEventStep {...stepProps} />;
-      case "first-article": return <FirstArticleStep {...stepProps} />;
-      case "first-staff": return <StaffStep {...stepProps} />;
-      case "first-leaders": return <LeadersStep {...stepProps} />;
-      case "hero": return <HeroStep {...stepProps} />;
-      case "photos": return <PhotosStep {...stepProps} />;
+      case "welcome": return <WelcomeStep {...base} />;
+      case "identity": return <IdentityStep {...base}
+        initialName={(cfg.name as string) || church.displayName}
+        initialTagline={(cfg.tagline as string) || ""}
+      />;
+      case "logo": return <LogoStep {...base}
+        initialLogoUrl={cfg.logoPath ? `${rawFileBaseUrl}/public/logo.png` : undefined}
+      />;
+      case "favicon": return <FaviconStep {...base} />;
+      case "theme": return <ThemeStep {...base}
+        initialTheme={(cfg.theme as string) || "default"}
+        initialCustomColors={(cfg.customTheme as Record<string, string>) || {}}
+      />;
+      case "contact": return <ContactStep {...base}
+        initialEmail={(contact.email as string) || ""}
+        initialPhone={(contact.phone as string) || ""}
+      />;
+      case "contact-form": return <ContactFormStep {...base} />;
+      case "location": return <LocationStep {...base}
+        initialStreet={address.street || ""}
+        initialCity={address.city || ""}
+        initialState={address.state || ""}
+        initialZip={address.zip || ""}
+      />;
+      case "services": return <ServicesStep {...base}
+        initialServiceTimes={(cfg.serviceTimes as { day: string; time: string; name?: string; label?: string }[]) || []}
+      />;
+      case "social": return <SocialStep {...base}
+        initialSocial={social}
+      />;
+      case "giving": return <GivingStep {...base}
+        initialGivingUrl={((cfg.giving as Record<string, string> | undefined)?.url) || ""}
+      />;
+      case "streaming": return <StreamingStep {...base}
+        initialYoutubeApiKey={((cfg.integrations as Record<string, string> | undefined)?.youtubeApiKey) || ""}
+      />;
+      case "sermons": return <SermonFeatureStep {...base} initialEnabled={features.sermons} />;
+      case "series": return <SeriesFeatureStep {...base} initialEnabled={features.series} />;
+      case "ministries": return <MinistriesFeatureStep {...base} initialEnabled={features.ministries} />;
+      case "events": return <EventsFeatureStep {...base} initialEnabled={features.events} />;
+      case "articles": return <ArticlesFeatureStep {...base} initialEnabled={features.articles} />;
+      case "staff": return <StaffFeatureStep {...base} initialEnabled={features.staff} />;
+      case "bulletins": return <BulletinsFeatureStep {...base} initialEnabled={features.bulletins} />;
+      case "leadership": return <LeadershipFeatureStep {...base} initialEnabled={features.leadership} />;
+      case "members": return <MembersFeatureStep {...base} initialEnabled={features.members} />;
+      case "first-sermon": return <FirstSermonStep {...base} />;
+      case "first-series": return <FirstSeriesStep {...base} />;
+      case "first-ministry": return <FirstMinistryStep {...base} />;
+      case "first-event": return <FirstEventStep {...base} />;
+      case "first-article": return <FirstArticleStep {...base} />;
+      case "first-staff": return <StaffStep {...base} />;
+      case "first-leaders": return <LeadersStep {...base} />;
+      case "hero": return <HeroStep {...base} />;
+      case "photos": return <PhotosStep {...base} />;
       case "launched": return (
         <LaunchStep
           church={church}

@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
+import YAML from "yaml";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
 import { initWizard } from "@/lib/actions/setup";
+import { getFileWithSha } from "@/lib/github/wizard";
 import WizardShell from "@/components/setup/WizardShell";
 
 export default async function SetupPage() {
@@ -39,10 +41,24 @@ export default async function SetupPage() {
   });
   const completedSteps = new Set(completedStepRows.map((r) => r.stepKey));
 
+  // Load current site config to pre-populate completed steps
+  let initialConfig: Record<string, unknown> = {};
+  try {
+    const { content } = await getFileWithSha(church.slug, "src/config/site.config.yaml");
+    initialConfig = YAML.parse(content) as Record<string, unknown>;
+  } catch {
+    // Config not yet written (first visit) — steps will use empty defaults
+  }
+
+  const githubOrg = process.env.GITHUB_ORG ?? "cornerstone-web";
+  const rawFileBaseUrl = `https://raw.githubusercontent.com/${githubOrg}/${church.slug}/main`;
+
   return (
     <WizardShell
       church={{ id: church.id, displayName: church.displayName, slug: church.slug }}
       completedStepsArray={[...completedSteps]}
+      initialConfig={initialConfig}
+      rawFileBaseUrl={rawFileBaseUrl}
     />
   );
 }

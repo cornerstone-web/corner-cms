@@ -9,11 +9,13 @@ import { saveIdentity } from "@/lib/actions/setup-steps";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialName?: string;
+  initialTagline?: string;
 }
 
-export default function IdentityStep({ church, onComplete }: StepProps) {
-  const [name, setName] = useState(church.displayName);
-  const [tagline, setTagline] = useState("");
+export default function IdentityStep({ church, onComplete, initialName, initialTagline }: StepProps) {
+  const [name, setName] = useState(initialName ?? church.displayName);
+  const [tagline, setTagline] = useState(initialTagline ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -11,11 +11,12 @@ import { cn } from "@/lib/utils";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialGivingUrl?: string;
 }
 
-export default function GivingStep({ church, onComplete }: StepProps) {
-  const [hasGiving, setHasGiving] = useState<boolean | null>(null);
-  const [givingUrl, setGivingUrl] = useState("");
+export default function GivingStep({ church, onComplete, initialGivingUrl }: StepProps) {
+  const [hasGiving, setHasGiving] = useState<boolean | null>(initialGivingUrl ? true : null);
+  const [givingUrl, setGivingUrl] = useState(initialGivingUrl ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -1,6 +1,7 @@
 "use server";
 
-import { updateSiteConfig, commitBinaryFile, commitFile, tryGetSha, slugify } from "@/lib/github/wizard";
+import { updateSiteConfig, commitBinaryFile, commitFile, tryGetSha, slugify, getFileWithSha } from "@/lib/github/wizard";
+import YAML from "yaml";
 import { completeStep } from "@/lib/actions/setup";
 import { getAuth } from "@/lib/auth";
 
@@ -62,15 +63,13 @@ export async function saveTheme(
   churchId: string,
   slug: string,
   preset: string,
-  primaryColor?: string,
+  customTheme?: Record<string, string>,
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  const themeUpdate = {
-    theme: {
-      preset,
-      ...(primaryColor ? { primaryColor } : {}),
-    },
-  };
+  const themeUpdate: Record<string, unknown> = { theme: preset };
+  if (preset === "custom" && customTheme) {
+    themeUpdate.customTheme = customTheme;
+  }
   await updateSiteConfig(slug, themeUpdate, "wizard: set theme");
   const result = await completeStep(churchId, "theme");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
@@ -441,4 +440,88 @@ export async function saveLeaders(
   }));
   const result = await completeStep(churchId, "first-leaders");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── Contact Form Verification ────────────────────────────────────────────────
+
+async function getContactEmail(slug: string): Promise<string | undefined> {
+  try {
+    const { content } = await getFileWithSha(slug, "src/config/site.config.yaml");
+    const config = YAML.parse(content) as Record<string, unknown>;
+    return (config?.contact as { email?: string } | undefined)?.email;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Creates a CF Email Routing destination address for the church's contact email,
+ * which triggers a verification email to that address.
+ * Idempotent — safe to call again if the address already exists.
+ */
+export async function initiateContactFormVerification(
+  churchId: string,
+  slug: string,
+): Promise<{ ok: boolean; email?: string; alreadyVerified?: boolean; error?: string }> {
+  await assertChurchAccess(churchId);
+
+  const email = await getContactEmail(slug);
+  if (!email) return { ok: false, error: "No contact email found. Please complete the Contact Info step first." };
+
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const apiToken = process.env.CF_API_TOKEN;
+  if (!accountId || !apiToken) return { ok: false, error: "Cloudflare not configured." };
+
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/routing/addresses`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    },
+  );
+
+  if (res.ok) {
+    return { ok: true, email };
+  }
+
+  if (res.status === 409) {
+    // Address already registered — check if already verified
+    const check = await checkContactFormVerification(churchId, slug);
+    return { ok: true, email, alreadyVerified: check.verified };
+  }
+
+  const errBody = await res.json().catch(() => ({}));
+  console.error("CF Email Routing address creation failed:", errBody);
+  return { ok: false, error: "Failed to initiate email verification." };
+}
+
+/**
+ * Checks whether the church's contact email has been verified as a
+ * CF Email Routing destination address.
+ */
+export async function checkContactFormVerification(
+  churchId: string,
+  slug: string,
+): Promise<{ verified: boolean; email?: string; error?: string }> {
+  await assertChurchAccess(churchId);
+
+  const email = await getContactEmail(slug);
+  if (!email) return { verified: false, error: "No contact email found." };
+
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const apiToken = process.env.CF_API_TOKEN;
+  if (!accountId || !apiToken) return { verified: false, error: "Cloudflare not configured." };
+
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/routing/addresses?per_page=50`,
+    { headers: { Authorization: `Bearer ${apiToken}` } },
+  );
+
+  if (!res.ok) return { verified: false, error: "Failed to reach Cloudflare API." };
+
+  const data = await res.json() as { result?: { email: string; verified: string | null }[] };
+  const address = data.result?.find((a) => a.email === email);
+
+  return { verified: !!address?.verified, email };
 }

@@ -9,15 +9,16 @@ import { saveSocialLinks } from "@/lib/actions/setup-steps";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialSocial?: Record<string, string>;
 }
 
-export default function SocialStep({ church, onComplete }: StepProps) {
-  const [youtube, setYoutube] = useState("");
-  const [facebook, setFacebook] = useState("");
-  const [instagram, setInstagram] = useState("");
-  const [twitter, setTwitter] = useState("");
-  const [spotify, setSpotify] = useState("");
-  const [applePodcasts, setApplePodcasts] = useState("");
+export default function SocialStep({ church, onComplete, initialSocial }: StepProps) {
+  const [youtube, setYoutube] = useState(initialSocial?.youtube ?? "");
+  const [facebook, setFacebook] = useState(initialSocial?.facebook ?? "");
+  const [instagram, setInstagram] = useState(initialSocial?.instagram ?? "");
+  const [twitter, setTwitter] = useState(initialSocial?.twitter ?? "");
+  const [spotify, setSpotify] = useState(initialSocial?.spotify ?? "");
+  const [applePodcasts, setApplePodcasts] = useState(initialSocial?.applePodcasts ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

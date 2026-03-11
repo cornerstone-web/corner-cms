@@ -1,6 +1,6 @@
 export type StepKey =
   | "welcome" | "identity" | "logo" | "favicon" | "theme"
-  | "contact" | "location" | "services"
+  | "contact" | "contact-form" | "location" | "services"
   | "social" | "giving" | "streaming"
   | "sermons" | "series" | "ministries" | "events" | "articles"
   | "staff" | "bulletins" | "leadership" | "members"
@@ -34,6 +34,7 @@ export const STEP_GROUPS: StepGroup[] = [
       { key: "favicon", label: "Favicon", group: "congregation" },
       { key: "theme", label: "Theme & Colors", group: "congregation" },
       { key: "contact", label: "Contact Info", group: "congregation" },
+      { key: "contact-form", label: "Contact Form", group: "congregation" },
       { key: "location", label: "Location", group: "congregation" },
       { key: "services", label: "Service Times", group: "congregation" },
     ],

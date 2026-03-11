@@ -11,11 +11,12 @@ import { cn } from "@/lib/utils";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialYoutubeApiKey?: string;
 }
 
-export default function StreamingStep({ church, onComplete }: StepProps) {
-  const [streamsLive, setStreamsLive] = useState<boolean | null>(null);
-  const [youtubeApiKey, setYoutubeApiKey] = useState("");
+export default function StreamingStep({ church, onComplete, initialYoutubeApiKey }: StepProps) {
+  const [streamsLive, setStreamsLive] = useState<boolean | null>(initialYoutubeApiKey ? true : null);
+  const [youtubeApiKey, setYoutubeApiKey] = useState(initialYoutubeApiKey ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

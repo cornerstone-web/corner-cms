@@ -125,14 +125,17 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
 
     // 1. Commit auto-generated navigation.
     // Read current site.config.yaml to pick up the giving URL committed by GivingStep,
-    // since LaunchStep doesn't track it in WizardFeatures.
+    // and the contact email for corner-apostle registration.
     let givingUrl: string | undefined;
+    let contactEmail: string | undefined;
+    let currentConfig: Record<string, unknown> | undefined;
     try {
       const { content: configYaml } = await getFileWithSha(repoName, "src/config/site.config.yaml");
-      const currentConfig = YAML.parse(configYaml) as Record<string, unknown>;
+      currentConfig = YAML.parse(configYaml) as Record<string, unknown>;
       givingUrl = (currentConfig?.giving as { url?: string } | undefined)?.url;
+      contactEmail = (currentConfig?.contact as { email?: string } | undefined)?.email;
     } catch {
-      // Config not yet written — giving URL not set, proceed without it
+      // Config not yet written — proceed without it
     }
     const nav = generateNav({ ...opts.features, givingUrl });
     await updateSiteConfig(repoName, { navigation: nav }, "chore: set navigation from wizard");
@@ -195,6 +198,87 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
           .update(churchesTable)
           .set({ cfPagesProjectName, cfPagesUrl, updatedAt: new Date() })
           .where(eq(churchesTable.id, opts.churchId));
+
+        // 3b. Set CF Pages env vars for the church site
+        const workerUrl = process.env.CORNER_APOSTLE_URL ?? "";
+        const cornerstoneApiKey = process.env.CORNERSTONE_API_KEY ?? "";
+        if (cfPagesProjectName) {
+          await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/pages/projects/${cfPagesProjectName}`,
+            {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${cfApiToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                deployment_configs: {
+                  production: {
+                    env_vars: {
+                      PUBLIC_SITE_KEY: { type: "plain_text", value: repoName },
+                      PUBLIC_FORM_WORKER_URL: { type: "plain_text", value: workerUrl },
+                      PUBLIC_CORNERSTONE_API_KEY: { type: "plain_text", value: cornerstoneApiKey },
+                    },
+                  },
+                },
+              }),
+            },
+          ).catch((err) => console.error("CF Pages env vars PATCH failed (non-fatal):", err));
+        }
+
+        // 3c. Register church with corner-apostle via GitHub commit
+        const apostleRepo = process.env.CORNER_APOSTLE_REPO;
+        if (apostleRepo && contactEmail && cfPagesUrl) {
+          try {
+            // Update registry.json
+            const { content: registryRaw, sha: registrySha } =
+              await getFileWithSha(apostleRepo, "src/registry.json");
+            const registry = JSON.parse(registryRaw) as Record<string, {
+              email: string; name: string; allowedOrigins: string[];
+            }>;
+            registry[repoName] = {
+              email: contactEmail,
+              name: church.displayName,
+              allowedOrigins: [cfPagesUrl],
+            };
+            await commitFile(
+              apostleRepo,
+              "src/registry.json",
+              JSON.stringify(registry, null, 2) + "\n",
+              registrySha,
+              `chore: register ${repoName} contact form`,
+            );
+
+            // Update wrangler.jsonc — add email to allowed_destination_addresses
+            const { content: wranglerRaw, sha: wranglerSha } =
+              await getFileWithSha(apostleRepo, "wrangler.jsonc");
+            // Strip JSONC comments before parsing
+            const wranglerJson = wranglerRaw
+              .replace(/\/\/[^\n]*/g, "")
+              .replace(/\/\*[\s\S]*?\*\//g, "");
+            const wrangler = JSON.parse(wranglerJson) as {
+              send_email?: { name: string; allowed_destination_addresses?: string[] }[];
+            };
+            const sendEmail = wrangler.send_email?.[0];
+            if (sendEmail) {
+              if (!sendEmail.allowed_destination_addresses) {
+                sendEmail.allowed_destination_addresses = [];
+              }
+              if (!sendEmail.allowed_destination_addresses.includes(contactEmail)) {
+                sendEmail.allowed_destination_addresses.push(contactEmail);
+                await commitFile(
+                  apostleRepo,
+                  "wrangler.jsonc",
+                  JSON.stringify(wrangler, null, 2) + "\n",
+                  wranglerSha,
+                  `chore: add ${repoName} email to corner-apostle`,
+                );
+              }
+            }
+          } catch (err) {
+            console.error("corner-apostle registration failed (non-fatal):", err);
+          }
+        }
       } else {
         const errBody = await cfRes.json().catch(() => ({}));
         console.error("CF Pages project creation failed:", errBody);

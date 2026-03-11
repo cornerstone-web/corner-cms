@@ -9,11 +9,13 @@ import { saveContact } from "@/lib/actions/setup-steps";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialEmail?: string;
+  initialPhone?: string;
 }
 
-export default function ContactStep({ church, onComplete }: StepProps) {
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+export default function ContactStep({ church, onComplete, initialEmail, initialPhone }: StepProps) {
+  const [email, setEmail] = useState(initialEmail ?? "");
+  const [phone, setPhone] = useState(initialPhone ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
