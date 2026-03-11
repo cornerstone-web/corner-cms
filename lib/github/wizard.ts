@@ -135,6 +135,25 @@ export async function updateSiteConfig(
   await commitFile(repoName, configPath, updatedYaml, sha, commitMessage);
 }
 
+export async function getFileDownloadUrl(
+  repoName: string,
+  path: string,
+): Promise<string | null> {
+  try {
+    const token = await getInstallationToken(GITHUB_ORG, repoName);
+    const octokit = createOctokitInstance(token);
+    const res = await octokit.rest.repos.getContent({
+      owner: GITHUB_ORG,
+      repo: repoName,
+      path,
+    });
+    const file = res.data as { download_url?: string };
+    return file.download_url ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function tryGetSha(
   repoName: string,
   path: string,

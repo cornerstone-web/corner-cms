@@ -44,7 +44,8 @@ interface WizardShellProps {
   };
   completedStepsArray: string[];
   initialConfig: Record<string, unknown>;
-  rawFileBaseUrl: string;
+  initialLogoUrl?: string;
+  initialFaviconUrl?: string;
 }
 
 function extractSocialLinks(raw: unknown): Record<string, string> {
@@ -60,7 +61,7 @@ function extractSocialLinks(raw: unknown): Record<string, string> {
   return {};
 }
 
-export default function WizardShell({ church, completedStepsArray, initialConfig, rawFileBaseUrl }: WizardShellProps) {
+export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl }: WizardShellProps) {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(
     () => new Set(completedStepsArray)
   );
@@ -96,10 +97,10 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
         initialTagline={(cfg.tagline as string) || ""}
       />;
       case "logo": return <LogoStep {...base}
-        initialLogoUrl={cfg.logoPath ? `${rawFileBaseUrl}/public/logo.png?t=${Date.now()}` : undefined}
+        initialLogoUrl={initialLogoUrl}
       />;
       case "favicon": return <FaviconStep {...base}
-        initialFaviconUrl={completedSteps.has("favicon") ? `${rawFileBaseUrl}/public/favicon.png?t=${Date.now()}` : undefined}
+        initialFaviconUrl={initialFaviconUrl}
       />;
       case "theme": return <ThemeStep {...base}
         initialTheme={(cfg.theme as string) || "default"}

@@ -35,8 +35,8 @@ export async function saveLogo(
   base64Content: string,
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  await commitBinaryFile(slug, "public/logo.png", base64Content, undefined, "wizard: add church logo");
-  await updateSiteConfig(slug, { logoPath: "/logo.png" }, "wizard: set logoPath");
+  const sha = await tryGetSha(slug, "public/images/logo.png");
+  await commitBinaryFile(slug, "public/images/logo.png", base64Content, sha, "wizard: add church logo");
   const result = await completeStep(churchId, "logo");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
@@ -45,16 +45,10 @@ export async function saveFavicon(
   churchId: string,
   slug: string,
   base64Content: string,
-  ext: string,
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  await commitBinaryFile(
-    slug,
-    `public/favicon.${ext}`,
-    base64Content,
-    undefined,
-    "wizard: add favicon",
-  );
+  const sha = await tryGetSha(slug, "public/favicon.svg");
+  await commitBinaryFile(slug, "public/favicon.svg", base64Content, sha, "wizard: add favicon");
   const result = await completeStep(churchId, "favicon");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }

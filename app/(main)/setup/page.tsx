@@ -5,7 +5,7 @@ import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
 import { initWizard } from "@/lib/actions/setup";
-import { getFileWithSha } from "@/lib/github/wizard";
+import { getFileWithSha, getFileDownloadUrl } from "@/lib/github/wizard";
 import WizardShell from "@/components/setup/WizardShell";
 
 export default async function SetupPage() {
@@ -50,15 +50,19 @@ export default async function SetupPage() {
     // Config not yet written (first visit) — steps will use empty defaults
   }
 
-  const githubOrg = process.env.GITHUB_ORG ?? "cornerstone-web";
-  const rawFileBaseUrl = `https://raw.githubusercontent.com/${githubOrg}/${church.slug}/main`;
+  // Fetch authenticated download URLs for already-uploaded branding assets
+  const [logoUrl, faviconUrl] = await Promise.all([
+    completedSteps.has("logo") ? getFileDownloadUrl(church.slug, "public/images/logo.png") : Promise.resolve(null),
+    completedSteps.has("favicon") ? getFileDownloadUrl(church.slug, "public/favicon.svg") : Promise.resolve(null),
+  ]);
 
   return (
     <WizardShell
       church={{ id: church.id, displayName: church.displayName, slug: church.slug }}
       completedStepsArray={[...completedSteps]}
       initialConfig={initialConfig}
-      rawFileBaseUrl={rawFileBaseUrl}
+      initialLogoUrl={logoUrl ?? undefined}
+      initialFaviconUrl={faviconUrl ?? undefined}
     />
   );
 }

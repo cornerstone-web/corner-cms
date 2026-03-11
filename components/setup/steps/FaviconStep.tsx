@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { saveFavicon } from "@/lib/actions/setup-steps";
-import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -37,10 +36,14 @@ export default function FaviconStep({ church, onComplete, initialFaviconUrl }: S
     setIsLoading(true);
     setError(null);
     try {
-      const compressed = await compressImage(file!, "logo");
-      const ext = "png";
-      const base64 = await fileToBase64(compressed);
-      await saveFavicon(church.id, church.slug, base64, ext);
+      const isSvg = file!.type === "image/svg+xml" || file!.name.toLowerCase().endsWith(".svg");
+      if (!isSvg) {
+        setError("Favicon must be an SVG file.");
+        setIsLoading(false);
+        return;
+      }
+      const base64 = await fileToBase64(file!);
+      await saveFavicon(church.id, church.slug, base64);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -53,7 +56,7 @@ export default function FaviconStep({ church, onComplete, initialFaviconUrl }: S
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Favicon</h2>
         <p className="text-muted-foreground text-sm">
-          Upload a favicon for your site. Accepts .ico, .png, or .svg.{" "}
+          Upload a favicon for your site. Must be an SVG file.{" "}
           Need one? Generate it free at{" "}
           <a
             href="https://favicon.io"
@@ -72,7 +75,7 @@ export default function FaviconStep({ church, onComplete, initialFaviconUrl }: S
           ref={inputRef}
           id="favicon-upload"
           type="file"
-          accept=".ico,.png,.svg"
+          accept=".svg,image/svg+xml"
           onChange={handleFileChange}
           className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
         />
