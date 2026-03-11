@@ -133,7 +133,7 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
       const { content: configYaml } = await getFileWithSha(repoName, "src/config/site.config.yaml");
       currentConfig = YAML.parse(configYaml) as Record<string, unknown>;
       givingUrl = (currentConfig?.giving as { url?: string } | undefined)?.url;
-      contactEmail = (currentConfig?.contact as { email?: string } | undefined)?.email;
+      contactEmail = (currentConfig?.contact as { formEmail?: string } | undefined)?.formEmail;
     } catch {
       // Config not yet written — proceed without it
     }

@@ -121,7 +121,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
         initialPhone={(contact.phone as string) || ""}
       />;
       case "contact-form": return <ContactFormStep {...base}
-        initialEmail={userEmail || ""}
+        initialEmail={(contact.formEmail as string) || userEmail || ""}
       />;
       case "location": return <LocationStep {...base}
         initialStreet={address.street || ""}

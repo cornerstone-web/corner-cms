@@ -452,6 +452,9 @@ export async function initiateContactFormVerification(
 
   if (!email) return { ok: false, error: "Please enter an email address." };
 
+  // Persist the chosen form email so launchChurch can register it with corner-apostle
+  await updateSiteConfig(slug, { contact: { formEmail: email } }, "wizard: set form email");
+
   const accountId = process.env.CF_ACCOUNT_ID;
   const apiToken = process.env.CF_API_TOKEN;
   if (!accountId || !apiToken) return { ok: false, error: "Cloudflare not configured." };
