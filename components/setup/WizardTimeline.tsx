@@ -9,13 +9,14 @@ interface WizardTimelineProps {
   completedSteps: Set<string>;
   currentStep: StepKey;
   onNavigate: (step: StepKey) => void;
+  className?: string;
 }
 
-export default function WizardTimeline({ visibleSteps, completedSteps, currentStep, onNavigate }: WizardTimelineProps) {
+export default function WizardTimeline({ visibleSteps, completedSteps, currentStep, onNavigate, className }: WizardTimelineProps) {
   const visibleKeys = new Set(visibleSteps.map(s => s.key));
 
   return (
-    <aside className="w-56 border-r bg-muted/30 p-4 flex flex-col gap-4 shrink-0">
+    <aside className={cn("w-56 border-r bg-muted/30 p-4 flex flex-col gap-4 shrink-0 overflow-y-auto", className)}>
       {STEP_GROUPS.map(group => {
         const groupSteps = group.steps.filter(s => visibleKeys.has(s.key));
         if (groupSteps.length === 0) return null;

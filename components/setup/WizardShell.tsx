@@ -164,12 +164,22 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
     }
   }
 
-  const timeline = (
+  const desktopTimeline = (
+    <WizardTimeline
+      visibleSteps={visibleSteps}
+      completedSteps={completedSteps}
+      currentStep={currentStep}
+      onNavigate={setCurrentStep}
+    />
+  );
+
+  const mobileTimeline = (
     <WizardTimeline
       visibleSteps={visibleSteps}
       completedSteps={completedSteps}
       currentStep={currentStep}
       onNavigate={(step) => { setCurrentStep(step); setSheetOpen(false); }}
+      className="border-r-0 w-full"
     />
   );
 
@@ -195,7 +205,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-64">
-            {timeline}
+            {mobileTimeline}
           </SheetContent>
         </Sheet>
       </header>
@@ -204,7 +214,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
         <div className="hidden md:block shrink-0">
-          {timeline}
+          {desktopTimeline}
         </div>
 
         {/* Main content */}
