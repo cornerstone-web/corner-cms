@@ -3,7 +3,7 @@ export type StepKey =
   | "contact" | "contact-form" | "location" | "services"
   | "social" | "giving" | "streaming"
   | "sermons" | "series" | "ministries" | "events" | "articles"
-  | "staff" | "bulletins" | "leadership" | "members"
+  | "staff" | "bulletins" | "leadership"
   | "first-sermon" | "first-series" | "first-ministry" | "first-event"
   | "first-article" | "first-staff" | "first-leaders"
   | "hero" | "photos"
@@ -60,7 +60,6 @@ export const STEP_GROUPS: StepGroup[] = [
       { key: "staff", label: "Staff Directory", group: "features" },
       { key: "bulletins", label: "Bulletins", group: "features" },
       { key: "leadership", label: "Leadership", group: "features" },
-      { key: "members", label: "Members Area", group: "features" },
     ],
   },
   {

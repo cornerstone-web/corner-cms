@@ -30,7 +30,6 @@ import ArticlesFeatureStep from "./steps/ArticlesFeatureStep";
 import StaffFeatureStep from "./steps/StaffFeatureStep";
 import BulletinsFeatureStep from "./steps/BulletinsFeatureStep";
 import LeadershipFeatureStep from "./steps/LeadershipFeatureStep";
-import MembersFeatureStep from "./steps/MembersFeatureStep";
 import FirstSermonStep from "./steps/FirstSermonStep";
 import FirstSeriesStep from "./steps/FirstSeriesStep";
 import FirstMinistryStep from "./steps/FirstMinistryStep";
@@ -138,7 +137,6 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
       case "staff": return <StaffFeatureStep {...base} initialEnabled={completedSteps.has("staff") ? features.staff : undefined} />;
       case "bulletins": return <BulletinsFeatureStep {...base} initialEnabled={completedSteps.has("bulletins") ? features.bulletins : undefined} />;
       case "leadership": return <LeadershipFeatureStep {...base} initialEnabled={completedSteps.has("leadership") ? features.leadership : undefined} />;
-      case "members": return <MembersFeatureStep {...base} initialEnabled={completedSteps.has("members") ? features.members : undefined} />;
       case "first-sermon": return <FirstSermonStep {...base} />;
       case "first-series": return <FirstSeriesStep {...base} />;
       case "first-ministry": return <FirstMinistryStep {...base} />;
