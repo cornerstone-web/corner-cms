@@ -29,7 +29,7 @@ export const STEP_GROUPS: StepGroup[] = [
     label: "Your Congregation",
     steps: [
       { key: "welcome", label: "Welcome", group: "congregation" },
-      { key: "identity", label: "Church Identity", group: "congregation" },
+      { key: "identity", label: "Identity", group: "congregation" },
       { key: "logo", label: "Logo", group: "congregation" },
       { key: "favicon", label: "Favicon", group: "congregation" },
       { key: "theme", label: "Theme & Colors", group: "congregation" },

@@ -13,7 +13,12 @@ interface StepProps {
   initialPhone?: string;
 }
 
-export default function ContactStep({ church, onComplete, initialEmail, initialPhone }: StepProps) {
+export default function ContactStep({
+  church,
+  onComplete,
+  initialEmail,
+  initialPhone,
+}: StepProps) {
   const [email, setEmail] = useState(initialEmail ?? "");
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +41,7 @@ export default function ContactStep({ church, onComplete, initialEmail, initialP
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Contact Info</h2>
         <p className="text-muted-foreground text-sm">
-          How can people reach your church?
+          How can people reach your congregation?
         </p>
       </div>
       <div className="space-y-4">

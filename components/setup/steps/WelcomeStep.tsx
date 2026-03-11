@@ -10,7 +10,11 @@ interface StepProps {
   onNavigateToIdentity?: () => void;
 }
 
-export default function WelcomeStep({ church, onComplete, onNavigateToIdentity }: StepProps) {
+export default function WelcomeStep({
+  church,
+  onComplete,
+  onNavigateToIdentity,
+}: StepProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +36,8 @@ export default function WelcomeStep({ church, onComplete, onNavigateToIdentity }
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Welcome to your site setup</h2>
           <p className="text-muted-foreground">
-            We&apos;ll walk you through setting up your church website step by step. It should take
-            about 15–20 minutes.
+            We&apos;ll walk you through setting up your new website step by
+            step. It should take about 15–20 minutes.
           </p>
         </div>
         <Button onClick={onNavigateToIdentity}>Continue →</Button>
@@ -46,8 +50,8 @@ export default function WelcomeStep({ church, onComplete, onNavigateToIdentity }
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">Welcome to your site setup</h2>
         <p className="text-muted-foreground">
-          We&apos;ll walk you through setting up your church website step by step. It should take
-          about 15–20 minutes.
+          We&apos;ll walk you through setting up your church website step by
+          step. It should take about 15–20 minutes.
         </p>
       </div>
       <Button onClick={handleStart} disabled={isLoading}>

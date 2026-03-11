@@ -16,12 +16,36 @@ interface SocialLink {
 }
 
 const PRESET_PLATFORMS = [
-  { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/@yourchurch" },
-  { key: "facebook", label: "Facebook", placeholder: "https://facebook.com/yourchurch" },
-  { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/yourchurch" },
-  { key: "twitter", label: "X (Twitter)", placeholder: "https://x.com/yourchurch" },
-  { key: "spotify", label: "Spotify", placeholder: "https://open.spotify.com/show/..." },
-  { key: "applePodcasts", label: "Apple Podcasts", placeholder: "https://podcasts.apple.com/podcast/..." },
+  {
+    key: "youtube",
+    label: "YouTube",
+    placeholder: "https://youtube.com/@yourchurch",
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    placeholder: "https://facebook.com/yourchurch",
+  },
+  {
+    key: "instagram",
+    label: "Instagram",
+    placeholder: "https://instagram.com/yourchurch",
+  },
+  {
+    key: "twitter",
+    label: "X (Twitter)",
+    placeholder: "https://x.com/yourchurch",
+  },
+  {
+    key: "spotify",
+    label: "Spotify",
+    placeholder: "https://open.spotify.com/show/...",
+  },
+  {
+    key: "applePodcasts",
+    label: "Apple Podcasts",
+    placeholder: "https://podcasts.apple.com/podcast/...",
+  },
 ];
 
 const PRESET_KEYS = new Set(PRESET_PLATFORMS.map((p) => p.key));
@@ -32,18 +56,26 @@ interface StepProps {
   initialLinks?: SocialLink[];
 }
 
-export default function SocialStep({ church, onComplete, initialLinks = [] }: StepProps) {
+export default function SocialStep({
+  church,
+  onComplete,
+  initialLinks = [],
+}: StepProps) {
   const getInitialUrl = (platform: string) =>
     initialLinks.find((l) => l.platform === platform)?.url ?? "";
 
   const [presets, setPresets] = useState<Record<string, string>>(() =>
-    Object.fromEntries(PRESET_PLATFORMS.map((p) => [p.key, getInitialUrl(p.key)]))
+    Object.fromEntries(
+      PRESET_PLATFORMS.map((p) => [p.key, getInitialUrl(p.key)]),
+    ),
   );
 
-  const [customLinks, setCustomLinks] = useState<{ url: string; label: string; icon: string }[]>(() =>
+  const [customLinks, setCustomLinks] = useState<
+    { url: string; label: string; icon: string }[]
+  >(() =>
     initialLinks
       .filter((l) => !PRESET_KEYS.has(l.platform))
-      .map((l) => ({ url: l.url, label: l.label ?? "", icon: l.icon ?? "" }))
+      .map((l) => ({ url: l.url, label: l.label ?? "", icon: l.icon ?? "" })),
   );
 
   const [isLoading, setIsLoading] = useState(false);
@@ -57,9 +89,13 @@ export default function SocialStep({ church, onComplete, initialLinks = [] }: St
     setCustomLinks((prev) => [...prev, { url: "", label: "", icon: "" }]);
   }
 
-  function updateCustomLink(index: number, field: "url" | "label" | "icon", value: string) {
+  function updateCustomLink(
+    index: number,
+    field: "url" | "label" | "icon",
+    value: string,
+  ) {
     setCustomLinks((prev) =>
-      prev.map((link, i) => (i === index ? { ...link, [field]: value } : link))
+      prev.map((link, i) => (i === index ? { ...link, [field]: value } : link)),
     );
   }
 
@@ -72,9 +108,10 @@ export default function SocialStep({ church, onComplete, initialLinks = [] }: St
     setError(null);
     try {
       const links: SocialLink[] = [
-        ...PRESET_PLATFORMS
-          .filter((p) => presets[p.key]?.trim())
-          .map((p) => ({ platform: p.key, url: presets[p.key].trim() })),
+        ...PRESET_PLATFORMS.filter((p) => presets[p.key]?.trim()).map((p) => ({
+          platform: p.key,
+          url: presets[p.key].trim(),
+        })),
         ...customLinks
           .filter((l) => l.url.trim())
           .map((l, i) => ({
@@ -97,7 +134,8 @@ export default function SocialStep({ church, onComplete, initialLinks = [] }: St
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Social Media</h2>
         <p className="text-muted-foreground text-sm">
-          Add links to your church&apos;s social profiles. All fields are optional.
+          Add links to your congregation&apos;s social profiles. All fields are
+          optional.
         </p>
       </div>
 
@@ -149,7 +187,9 @@ export default function SocialStep({ church, onComplete, initialLinks = [] }: St
                   <Label>Label</Label>
                   <Input
                     value={link.label}
-                    onChange={(e) => updateCustomLink(i, "label", e.target.value)}
+                    onChange={(e) =>
+                      updateCustomLink(i, "label", e.target.value)
+                    }
                     placeholder="e.g. Our Podcast"
                   />
                 </div>
@@ -158,7 +198,9 @@ export default function SocialStep({ church, onComplete, initialLinks = [] }: St
                   <IconPicker
                     value={link.icon}
                     field={{ required: false }}
-                    onChange={(icon: string) => updateCustomLink(i, "icon", icon)}
+                    onChange={(icon: string) =>
+                      updateCustomLink(i, "icon", icon)
+                    }
                     disabled={false}
                   />
                 </div>

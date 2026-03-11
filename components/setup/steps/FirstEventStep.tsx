@@ -22,9 +22,18 @@ export default function FirstEventStep({ church, onComplete }: StepProps) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
-    if (!title.trim()) { setError("Please enter an event name."); return; }
-    if (!date) { setError("Please select a date."); return; }
-    if (!time.trim()) { setError("Please enter the event time."); return; }
+    if (!title.trim()) {
+      setError("Please enter an event name.");
+      return;
+    }
+    if (!date) {
+      setError("Please select a date.");
+      return;
+    }
+    if (!time.trim()) {
+      setError("Please enter the event time.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -47,12 +56,14 @@ export default function FirstEventStep({ church, onComplete }: StepProps) {
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">First Event</h2>
         <p className="text-muted-foreground text-sm">
-          Add an upcoming event to your church&apos;s calendar.
+          Add an upcoming event to your congregation&apos;s calendar.
         </p>
       </div>
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="event-title">Event name <span className="text-destructive">*</span></Label>
+          <Label htmlFor="event-title">
+            Event name <span className="text-destructive">*</span>
+          </Label>
           <Input
             id="event-title"
             value={title}
@@ -62,7 +73,9 @@ export default function FirstEventStep({ church, onComplete }: StepProps) {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="event-date">Date <span className="text-destructive">*</span></Label>
+            <Label htmlFor="event-date">
+              Date <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="event-date"
               type="date"
@@ -71,7 +84,9 @@ export default function FirstEventStep({ church, onComplete }: StepProps) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="event-time">Time <span className="text-destructive">*</span></Label>
+            <Label htmlFor="event-time">
+              Time <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="event-time"
               value={time}
@@ -81,7 +96,10 @@ export default function FirstEventStep({ church, onComplete }: StepProps) {
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="event-location">Location <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Label htmlFor="event-location">
+            Location{" "}
+            <span className="text-muted-foreground text-xs">(optional)</span>
+          </Label>
           <Input
             id="event-location"
             value={location}
@@ -90,7 +108,10 @@ export default function FirstEventStep({ church, onComplete }: StepProps) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="event-description">Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Label htmlFor="event-description">
+            Description{" "}
+            <span className="text-muted-foreground text-xs">(optional)</span>
+          </Label>
           <Textarea
             id="event-description"
             value={description}

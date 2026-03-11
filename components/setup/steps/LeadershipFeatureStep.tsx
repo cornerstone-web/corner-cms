@@ -12,8 +12,14 @@ interface StepProps {
   initialEnabled?: boolean;
 }
 
-export default function LeadershipFeatureStep({ church, onComplete, initialEnabled }: StepProps) {
-  const [selection, setSelection] = useState<boolean | null>(initialEnabled ?? null);
+export default function LeadershipFeatureStep({
+  church,
+  onComplete,
+  initialEnabled,
+}: StepProps) {
+  const [selection, setSelection] = useState<boolean | null>(
+    initialEnabled ?? null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +35,8 @@ export default function LeadershipFeatureStep({ church, onComplete, initialEnabl
         await saveFeature(church.id, church.slug, "leadership", true);
       } else {
         const result = await completeStep(church.id, "leadership");
-        if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+        if (!result.ok)
+          throw new Error(result.error ?? "Failed to complete step.");
       }
       onComplete();
     } catch (err) {
@@ -41,12 +48,14 @@ export default function LeadershipFeatureStep({ church, onComplete, initialEnabl
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold">Elders &amp; Deacons</h2>
+        <h2 className="text-xl font-semibold">Shepherds &amp; Deacons</h2>
         <p className="text-muted-foreground text-sm">
-          Do you want a page listing your church&apos;s elders and deacons?
+          Do you want a page listing your congregation&apos;s elders and
+          deacons?
         </p>
         <p className="text-muted-foreground text-sm">
-          A leadership page introduces your board of elders, deacons, or trustees — the volunteers who govern and guide your church.
+          A leadership page introduces your elders and deacons with photos and
+          names so visitors can quickly get to know them.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -76,7 +85,10 @@ export default function LeadershipFeatureStep({ church, onComplete, initialEnabl
         </button>
       </div>
       <div className="flex items-center gap-4">
-        <Button onClick={handleSubmit} disabled={isLoading || selection === null}>
+        <Button
+          onClick={handleSubmit}
+          disabled={isLoading || selection === null}
+        >
           {isLoading ? "Saving..." : "Continue →"}
         </Button>
       </div>

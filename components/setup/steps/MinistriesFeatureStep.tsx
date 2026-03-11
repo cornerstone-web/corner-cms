@@ -12,8 +12,14 @@ interface StepProps {
   initialEnabled?: boolean;
 }
 
-export default function MinistriesFeatureStep({ church, onComplete, initialEnabled }: StepProps) {
-  const [selection, setSelection] = useState<boolean | null>(initialEnabled ?? null);
+export default function MinistriesFeatureStep({
+  church,
+  onComplete,
+  initialEnabled,
+}: StepProps) {
+  const [selection, setSelection] = useState<boolean | null>(
+    initialEnabled ?? null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +35,8 @@ export default function MinistriesFeatureStep({ church, onComplete, initialEnabl
         await saveFeature(church.id, church.slug, "ministries", true);
       } else {
         const result = await completeStep(church.id, "ministries");
-        if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+        if (!result.ok)
+          throw new Error(result.error ?? "Failed to complete step.");
       }
       onComplete();
     } catch (err) {
@@ -46,7 +53,8 @@ export default function MinistriesFeatureStep({ church, onComplete, initialEnabl
           Do you want pages for your church&apos;s ministries?
         </p>
         <p className="text-muted-foreground text-sm">
-          Ministry pages showcase the different groups and programs your church offers — children&apos;s ministry, worship team, small groups, and more.
+          Ministry pages showcase the different groups and programs your church
+          offers — youth ministry, small groups, and more.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -76,7 +84,10 @@ export default function MinistriesFeatureStep({ church, onComplete, initialEnabl
         </button>
       </div>
       <div className="flex items-center gap-4">
-        <Button onClick={handleSubmit} disabled={isLoading || selection === null}>
+        <Button
+          onClick={handleSubmit}
+          disabled={isLoading || selection === null}
+        >
           {isLoading ? "Saving..." : "Continue →"}
         </Button>
       </div>

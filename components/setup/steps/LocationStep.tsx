@@ -15,7 +15,14 @@ interface StepProps {
   initialZip?: string;
 }
 
-export default function LocationStep({ church, onComplete, initialStreet, initialCity, initialState, initialZip }: StepProps) {
+export default function LocationStep({
+  church,
+  onComplete,
+  initialStreet,
+  initialCity,
+  initialState,
+  initialZip,
+}: StepProps) {
   const [street, setStreet] = useState(initialStreet ?? "");
   const [city, setCity] = useState(initialCity ?? "");
   const [state, setState] = useState(initialState ?? "");
@@ -44,7 +51,9 @@ export default function LocationStep({ church, onComplete, initialStreet, initia
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Location</h2>
-        <p className="text-muted-foreground text-sm">Where is your church located?</p>
+        <p className="text-muted-foreground text-sm">
+          Where is your congregation located?
+        </p>
       </div>
       <div className="space-y-4">
         <div className="space-y-1.5">

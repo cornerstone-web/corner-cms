@@ -9,7 +9,12 @@ import { saveServices } from "@/lib/actions/setup-steps";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
-  initialServiceTimes?: { day: string; time: string; name?: string; label?: string }[];
+  initialServiceTimes?: {
+    day: string;
+    time: string;
+    name?: string;
+    label?: string;
+  }[];
 }
 
 interface ServiceRow {
@@ -19,13 +24,25 @@ interface ServiceRow {
   label: string;
 }
 
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 function makeRow(): ServiceRow {
   return { id: Date.now() + Math.random(), day: "Sunday", time: "", label: "" };
 }
 
-export default function ServicesStep({ church, onComplete, initialServiceTimes }: StepProps) {
+export default function ServicesStep({
+  church,
+  onComplete,
+  initialServiceTimes,
+}: StepProps) {
   const [rows, setRows] = useState<ServiceRow[]>(() => {
     if (initialServiceTimes && initialServiceTimes.length > 0) {
       return initialServiceTimes.map((s, i) => ({
@@ -48,8 +65,14 @@ export default function ServicesStep({ church, onComplete, initialServiceTimes }
     setRows((prev) => prev.filter((r) => r.id !== id));
   }
 
-  function updateRow(id: number, field: keyof Omit<ServiceRow, "id">, value: string) {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+  function updateRow(
+    id: number,
+    field: keyof Omit<ServiceRow, "id">,
+    value: string,
+  ) {
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
+    );
   }
 
   async function handleSubmit() {
@@ -77,19 +100,26 @@ export default function ServicesStep({ church, onComplete, initialServiceTimes }
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Service Times</h2>
-        <p className="text-muted-foreground text-sm">When does your church meet?</p>
+        <p className="text-muted-foreground text-sm">
+          When does your congregation meet?
+        </p>
       </div>
       <div className="space-y-3">
         {rows.length > 0 && (
           <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
             <Label className="text-xs text-muted-foreground">Day</Label>
             <Label className="text-xs text-muted-foreground">Time</Label>
-            <Label className="text-xs text-muted-foreground">Label (optional)</Label>
+            <Label className="text-xs text-muted-foreground">
+              Label (optional)
+            </Label>
             <span />
           </div>
         )}
         {rows.map((row) => (
-          <div key={row.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+          <div
+            key={row.id}
+            className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center"
+          >
             <select
               value={row.day}
               onChange={(e) => updateRow(row.id, "day", e.target.value)}

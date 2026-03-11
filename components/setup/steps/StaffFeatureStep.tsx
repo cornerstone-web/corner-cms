@@ -12,8 +12,14 @@ interface StepProps {
   initialEnabled?: boolean;
 }
 
-export default function StaffFeatureStep({ church, onComplete, initialEnabled }: StepProps) {
-  const [selection, setSelection] = useState<boolean | null>(initialEnabled ?? null);
+export default function StaffFeatureStep({
+  church,
+  onComplete,
+  initialEnabled,
+}: StepProps) {
+  const [selection, setSelection] = useState<boolean | null>(
+    initialEnabled ?? null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +35,8 @@ export default function StaffFeatureStep({ church, onComplete, initialEnabled }:
         await saveFeature(church.id, church.slug, "staff", true);
       } else {
         const result = await completeStep(church.id, "staff");
-        if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+        if (!result.ok)
+          throw new Error(result.error ?? "Failed to complete step.");
       }
       onComplete();
     } catch (err) {
@@ -46,7 +53,8 @@ export default function StaffFeatureStep({ church, onComplete, initialEnabled }:
           Do you want a staff directory on your site?
         </p>
         <p className="text-muted-foreground text-sm">
-          A staff page helps visitors put names to faces — showing photos and bios for your pastoral team and key staff members.
+          A staff page helps visitors put names to faces — showing photos and
+          bios for ministry leaders.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -76,7 +84,10 @@ export default function StaffFeatureStep({ church, onComplete, initialEnabled }:
         </button>
       </div>
       <div className="flex items-center gap-4">
-        <Button onClick={handleSubmit} disabled={isLoading || selection === null}>
+        <Button
+          onClick={handleSubmit}
+          disabled={isLoading || selection === null}
+        >
           {isLoading ? "Saving..." : "Continue →"}
         </Button>
       </div>

@@ -60,10 +60,8 @@ export default function LogoStep({
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold">Church Logo</h2>
-        <p className="text-muted-foreground text-sm">
-          Upload your church logo.
-        </p>
+        <h2 className="text-xl font-semibold">Logo</h2>
+        <p className="text-muted-foreground text-sm">Upload your logo.</p>
       </div>
       <div className="space-y-4">
         <div className="space-y-1.5">

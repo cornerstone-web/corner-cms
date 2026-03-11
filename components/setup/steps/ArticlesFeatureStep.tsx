@@ -12,8 +12,14 @@ interface StepProps {
   initialEnabled?: boolean;
 }
 
-export default function ArticlesFeatureStep({ church, onComplete, initialEnabled }: StepProps) {
-  const [selection, setSelection] = useState<boolean | null>(initialEnabled ?? null);
+export default function ArticlesFeatureStep({
+  church,
+  onComplete,
+  initialEnabled,
+}: StepProps) {
+  const [selection, setSelection] = useState<boolean | null>(
+    initialEnabled ?? null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +35,8 @@ export default function ArticlesFeatureStep({ church, onComplete, initialEnabled
         await saveFeature(church.id, church.slug, "articles", true);
       } else {
         const result = await completeStep(church.id, "articles");
-        if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+        if (!result.ok)
+          throw new Error(result.error ?? "Failed to complete step.");
       }
       onComplete();
     } catch (err) {
@@ -44,9 +51,6 @@ export default function ArticlesFeatureStep({ church, onComplete, initialEnabled
         <h2 className="text-xl font-semibold">Articles &amp; Blog Posts</h2>
         <p className="text-muted-foreground text-sm">
           Do you want to publish blog posts or devotional articles?
-        </p>
-        <p className="text-muted-foreground text-sm">
-          Articles let your pastors and team share written reflections, announcements, and devotionals with your community.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -76,7 +80,10 @@ export default function ArticlesFeatureStep({ church, onComplete, initialEnabled
         </button>
       </div>
       <div className="flex items-center gap-4">
-        <Button onClick={handleSubmit} disabled={isLoading || selection === null}>
+        <Button
+          onClick={handleSubmit}
+          disabled={isLoading || selection === null}
+        >
           {isLoading ? "Saving..." : "Continue →"}
         </Button>
       </div>

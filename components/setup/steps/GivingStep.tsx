@@ -13,9 +13,13 @@ interface StepProps {
   initialGivingUrl?: string;
 }
 
-export default function GivingStep({ church, onComplete, initialGivingUrl }: StepProps) {
+export default function GivingStep({
+  church,
+  onComplete,
+  initialGivingUrl,
+}: StepProps) {
   const [hasGiving, setHasGiving] = useState<boolean | null>(
-    initialGivingUrl === undefined ? null : initialGivingUrl ? true : false
+    initialGivingUrl === undefined ? null : initialGivingUrl ? true : false,
   );
   const [givingUrl, setGivingUrl] = useState(initialGivingUrl ?? "");
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +37,11 @@ export default function GivingStep({ church, onComplete, initialGivingUrl }: Ste
     setIsLoading(true);
     setError(null);
     try {
-      await saveGiving(church.id, church.slug, hasGiving ? givingUrl.trim() : "");
+      await saveGiving(
+        church.id,
+        church.slug,
+        hasGiving ? givingUrl.trim() : "",
+      );
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -46,7 +54,7 @@ export default function GivingStep({ church, onComplete, initialGivingUrl }: Ste
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Online Giving</h2>
         <p className="text-muted-foreground text-sm">
-          Does your church accept online donations?
+          Does your congregation accept online donations?
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -60,7 +68,9 @@ export default function GivingStep({ church, onComplete, initialGivingUrl }: Ste
               : "border-border bg-background",
           )}
         >
-          <p className="font-medium text-sm">Yes, we have an online giving platform</p>
+          <p className="font-medium text-sm">
+            Yes, we have an online giving platform
+          </p>
         </button>
         <button
           type="button"
@@ -86,7 +96,8 @@ export default function GivingStep({ church, onComplete, initialGivingUrl }: Ste
             placeholder="https://..."
           />
           <p className="text-xs text-muted-foreground">
-            This can be a link to Tithe.ly, Pushpay, PayPal, or any other giving platform.
+            This can be a link to Tithe.ly, Pushpay, PayPal, or any other giving
+            platform.
           </p>
         </div>
       )}
