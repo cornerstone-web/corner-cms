@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveGiving } from "@/lib/actions/setup-steps";
-import { completeStep } from "@/lib/actions/setup";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
@@ -15,7 +14,9 @@ interface StepProps {
 }
 
 export default function GivingStep({ church, onComplete, initialGivingUrl }: StepProps) {
-  const [hasGiving, setHasGiving] = useState<boolean | null>(initialGivingUrl ? true : null);
+  const [hasGiving, setHasGiving] = useState<boolean | null>(
+    initialGivingUrl === undefined ? null : initialGivingUrl ? true : false
+  );
   const [givingUrl, setGivingUrl] = useState(initialGivingUrl ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,25 +33,7 @@ export default function GivingStep({ church, onComplete, initialGivingUrl }: Ste
     setIsLoading(true);
     setError(null);
     try {
-      if (hasGiving && givingUrl.trim()) {
-        await saveGiving(church.id, church.slug, givingUrl.trim());
-      } else {
-        const result = await completeStep(church.id, "giving");
-        if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
-      }
-      onComplete();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-      setIsLoading(false);
-    }
-  }
-
-  async function handleSkip() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await completeStep(church.id, "giving");
-      if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+      await saveGiving(church.id, church.slug, hasGiving ? givingUrl.trim() : "");
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -107,19 +90,9 @@ export default function GivingStep({ church, onComplete, initialGivingUrl }: Ste
           </p>
         </div>
       )}
-      <div className="flex items-center gap-4">
-        <Button onClick={handleSubmit} disabled={isLoading || hasGiving === null}>
-          {isLoading ? "Saving..." : "Continue →"}
-        </Button>
-        <button
-          type="button"
-          onClick={handleSkip}
-          disabled={isLoading}
-          className="text-sm text-muted-foreground underline hover:text-foreground disabled:opacity-50"
-        >
-          Skip this step →
-        </button>
-      </div>
+      <Button onClick={handleSubmit} disabled={isLoading || hasGiving === null}>
+        {isLoading ? "Saving..." : "Continue →"}
+      </Button>
       {error && <p className="text-destructive text-sm">{error}</p>}
     </div>
   );

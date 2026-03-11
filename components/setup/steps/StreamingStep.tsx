@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveStreaming } from "@/lib/actions/setup-steps";
-import { completeStep } from "@/lib/actions/setup";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
@@ -15,7 +14,9 @@ interface StepProps {
 }
 
 export default function StreamingStep({ church, onComplete, initialYoutubeApiKey }: StepProps) {
-  const [streamsLive, setStreamsLive] = useState<boolean | null>(initialYoutubeApiKey ? true : null);
+  const [streamsLive, setStreamsLive] = useState<boolean | null>(
+    initialYoutubeApiKey === undefined ? null : initialYoutubeApiKey ? true : false
+  );
   const [youtubeApiKey, setYoutubeApiKey] = useState(initialYoutubeApiKey ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,25 +33,7 @@ export default function StreamingStep({ church, onComplete, initialYoutubeApiKey
     setIsLoading(true);
     setError(null);
     try {
-      if (streamsLive && youtubeApiKey.trim()) {
-        await saveStreaming(church.id, church.slug, youtubeApiKey.trim());
-      } else {
-        const result = await completeStep(church.id, "streaming");
-        if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
-      }
-      onComplete();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-      setIsLoading(false);
-    }
-  }
-
-  async function handleSkip() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await completeStep(church.id, "streaming");
-      if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+      await saveStreaming(church.id, church.slug, streamsLive ? youtubeApiKey.trim() : "");
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -118,19 +101,9 @@ export default function StreamingStep({ church, onComplete, initialYoutubeApiKey
           </p>
         </div>
       )}
-      <div className="flex items-center gap-4">
-        <Button onClick={handleSubmit} disabled={isLoading || streamsLive === null}>
-          {isLoading ? "Saving..." : "Continue →"}
-        </Button>
-        <button
-          type="button"
-          onClick={handleSkip}
-          disabled={isLoading}
-          className="text-sm text-muted-foreground underline hover:text-foreground disabled:opacity-50"
-        >
-          Skip this step →
-        </button>
-      </div>
+      <Button onClick={handleSubmit} disabled={isLoading || streamsLive === null}>
+        {isLoading ? "Saving..." : "Continue →"}
+      </Button>
       {error && <p className="text-destructive text-sm">{error}</p>}
     </div>
   );

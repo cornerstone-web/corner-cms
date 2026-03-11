@@ -125,20 +125,20 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
           : []}
       />;
       case "giving": return <GivingStep {...base}
-        initialGivingUrl={((cfg.giving as Record<string, string> | undefined)?.url) || ""}
+        initialGivingUrl={(cfg.giving as Record<string, string> | undefined)?.url}
       />;
       case "streaming": return <StreamingStep {...base}
-        initialYoutubeApiKey={((cfg.integrations as Record<string, string> | undefined)?.youtubeApiKey) || ""}
+        initialYoutubeApiKey={(cfg.integrations as Record<string, string> | undefined)?.youtubeApiKey}
       />;
-      case "sermons": return <SermonFeatureStep {...base} initialEnabled={features.sermons} />;
-      case "series": return <SeriesFeatureStep {...base} initialEnabled={features.series} />;
-      case "ministries": return <MinistriesFeatureStep {...base} initialEnabled={features.ministries} />;
-      case "events": return <EventsFeatureStep {...base} initialEnabled={features.events} />;
-      case "articles": return <ArticlesFeatureStep {...base} initialEnabled={features.articles} />;
-      case "staff": return <StaffFeatureStep {...base} initialEnabled={features.staff} />;
-      case "bulletins": return <BulletinsFeatureStep {...base} initialEnabled={features.bulletins} />;
-      case "leadership": return <LeadershipFeatureStep {...base} initialEnabled={features.leadership} />;
-      case "members": return <MembersFeatureStep {...base} initialEnabled={features.members} />;
+      case "sermons": return <SermonFeatureStep {...base} initialEnabled={completedSteps.has("sermons") ? features.sermons : undefined} />;
+      case "series": return <SeriesFeatureStep {...base} initialEnabled={completedSteps.has("series") ? features.series : undefined} />;
+      case "ministries": return <MinistriesFeatureStep {...base} initialEnabled={completedSteps.has("ministries") ? features.ministries : undefined} />;
+      case "events": return <EventsFeatureStep {...base} initialEnabled={completedSteps.has("events") ? features.events : undefined} />;
+      case "articles": return <ArticlesFeatureStep {...base} initialEnabled={completedSteps.has("articles") ? features.articles : undefined} />;
+      case "staff": return <StaffFeatureStep {...base} initialEnabled={completedSteps.has("staff") ? features.staff : undefined} />;
+      case "bulletins": return <BulletinsFeatureStep {...base} initialEnabled={completedSteps.has("bulletins") ? features.bulletins : undefined} />;
+      case "leadership": return <LeadershipFeatureStep {...base} initialEnabled={completedSteps.has("leadership") ? features.leadership : undefined} />;
+      case "members": return <MembersFeatureStep {...base} initialEnabled={completedSteps.has("members") ? features.members : undefined} />;
       case "first-sermon": return <FirstSermonStep {...base} />;
       case "first-series": return <FirstSeriesStep {...base} />;
       case "first-ministry": return <FirstMinistryStep {...base} />;
