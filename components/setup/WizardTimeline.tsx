@@ -42,7 +42,8 @@ export default function WizardTimeline({ visibleSteps, completedSteps, currentSt
                         "flex items-center gap-2 w-full rounded px-2 py-1.5 text-sm text-left transition-colors",
                         isCurrent && "bg-primary/10 text-primary font-medium",
                         isCompleted && !isCurrent && "text-foreground hover:bg-accent cursor-pointer",
-                        !isCompleted && !isCurrent && "text-muted-foreground cursor-default"
+                        !isCompleted && !isCurrent && step.key === progressStep && "text-muted-foreground hover:bg-accent cursor-pointer",
+                        !isCompleted && !isCurrent && step.key !== progressStep && "text-muted-foreground cursor-default"
                       )}
                     >
                       <span className={cn(
