@@ -110,7 +110,7 @@ export async function saveServices(
 export async function saveSocialLinks(
   churchId: string,
   slug: string,
-  links: Record<string, string>,
+  links: { platform: string; url: string; label?: string; icon?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
   await updateSiteConfig(slug, { footer: { socialLinks: links } }, "wizard: add social links");

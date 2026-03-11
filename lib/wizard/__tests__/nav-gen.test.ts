@@ -14,13 +14,13 @@ describe("generateNav", () => {
 
   it("includes Give CTA when givingUrl is set", () => {
     const nav = generateNav({ givingUrl: "https://tithe.ly/example" });
-    const cta = nav.items.find((i: any) => i.type === "cta");
+    const cta = nav.items.find((i: any) => i.type === "cta") as any;
     expect(cta?.enabled).toBe(true);
   });
 
   it("CTA is disabled when givingUrl is absent", () => {
     const nav = generateNav({});
-    const cta = nav.items.find((i: any) => i.type === "cta");
+    const cta = nav.items.find((i: any) => i.type === "cta") as any;
     expect(cta?.enabled).toBe(false);
   });
 

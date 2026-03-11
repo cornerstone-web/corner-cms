@@ -54,18 +54,6 @@ interface WizardShellProps {
   userEmail?: string;
 }
 
-function extractSocialLinks(raw: unknown): Record<string, string> {
-  if (!raw) return {};
-  if (Array.isArray(raw)) {
-    const out: Record<string, string> = {};
-    for (const item of raw) {
-      if (item?.platform && item?.url) out[item.platform as string] = item.url as string;
-    }
-    return out;
-  }
-  if (typeof raw === "object") return raw as Record<string, string>;
-  return {};
-}
 
 export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl, userEmail }: WizardShellProps) {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(
@@ -96,7 +84,6 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
     const contact = (cfg.contact as Record<string, unknown> | undefined) ?? {};
     const address = (contact.address as Record<string, string> | undefined) ?? {};
     const features = (cfg.features as Record<string, boolean> | undefined) ?? {};
-    const social = extractSocialLinks((cfg.footer as Record<string, unknown> | undefined)?.socialLinks);
 
     switch (currentStep) {
       case "welcome": return <WelcomeStep {...base}
@@ -133,7 +120,9 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
         initialServiceTimes={(cfg.serviceTimes as { day: string; time: string; name?: string; label?: string }[]) || []}
       />;
       case "social": return <SocialStep {...base}
-        initialSocial={social}
+        initialLinks={Array.isArray((cfg.footer as Record<string, unknown> | undefined)?.socialLinks)
+          ? (cfg.footer as Record<string, unknown>).socialLinks as { platform: string; url: string; label?: string; icon?: string }[]
+          : []}
       />;
       case "giving": return <GivingStep {...base}
         initialGivingUrl={((cfg.giving as Record<string, string> | undefined)?.url) || ""}
