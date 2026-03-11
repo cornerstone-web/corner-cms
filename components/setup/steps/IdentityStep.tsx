@@ -10,12 +10,12 @@ interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialName?: string;
-  initialTagline?: string;
+  initialDescription?: string;
 }
 
-export default function IdentityStep({ church, onComplete, initialName, initialTagline }: StepProps) {
+export default function IdentityStep({ church, onComplete, initialName, initialDescription }: StepProps) {
   const [name, setName] = useState(initialName ?? church.displayName);
-  const [tagline, setTagline] = useState(initialTagline ?? "");
+  const [description, setDescription] = useState(initialDescription ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +29,7 @@ export default function IdentityStep({ church, onComplete, initialName, initialT
     try {
       await saveIdentity(church.id, church.slug, {
         name: name.trim(),
-        ...(tagline.trim() ? { tagline: tagline.trim() } : {}),
+        ...(description.trim() ? { description: description.trim() } : {}),
       });
       onComplete();
     } catch (err) {
@@ -55,11 +55,11 @@ export default function IdentityStep({ church, onComplete, initialName, initialT
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="tagline">Tagline / short description</Label>
+          <Label htmlFor="description">Short description</Label>
           <Input
-            id="tagline"
-            value={tagline}
-            onChange={(e) => setTagline(e.target.value)}
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             placeholder="A place to belong"
           />
         </div>

@@ -21,7 +21,7 @@ export async function markWelcomeComplete(churchId: string): Promise<void> {
 export async function saveIdentity(
   churchId: string,
   slug: string,
-  updates: { name: string; tagline?: string },
+  updates: { name: string; description?: string },
 ): Promise<void> {
   await assertChurchAccess(churchId);
   await updateSiteConfig(slug, updates, "wizard: update church identity");

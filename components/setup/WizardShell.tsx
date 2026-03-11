@@ -94,7 +94,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
       case "welcome": return <WelcomeStep {...base} />;
       case "identity": return <IdentityStep {...base}
         initialName={(cfg.name as string) || church.displayName}
-        initialTagline={(cfg.tagline as string) || ""}
+        initialDescription={(cfg.description as string) || ""}
       />;
       case "logo": return <LogoStep {...base}
         initialLogoUrl={initialLogoUrl}
