@@ -12,7 +12,11 @@ interface StepProps {
   initialLogoUrl?: string;
 }
 
-export default function LogoStep({ church, onComplete, initialLogoUrl }: StepProps) {
+export default function LogoStep({
+  church,
+  onComplete,
+  initialLogoUrl,
+}: StepProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(initialLogoUrl ?? null);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +61,9 @@ export default function LogoStep({ church, onComplete, initialLogoUrl }: StepPro
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Church Logo</h2>
-        <p className="text-muted-foreground text-sm">Upload your church logo. It will be saved as <code>public/logo.png</code>.</p>
+        <p className="text-muted-foreground text-sm">
+          Upload your church logo.
+        </p>
       </div>
       <div className="space-y-4">
         <div className="space-y-1.5">

@@ -13,15 +13,33 @@ interface ContactFormStepProps {
   initialEmail?: string;
 }
 
-type Status = "idle" | "sending" | "waiting" | "verified" | "error";
+type Status = "idle" | "checking" | "sending" | "waiting" | "verified" | "error";
 
 export default function ContactFormStep({ church, onComplete, initialEmail }: ContactFormStepProps) {
   const [formEmail, setFormEmail] = useState(initialEmail ?? "");
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>(initialEmail ? "checking" : "idle");
   const [verifiedEmail, setVerifiedEmail] = useState<string | undefined>();
   const [errorMsg, setErrorMsg] = useState<string | undefined>();
   const [completing, setCompleting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // On mount, if an email is pre-populated, check if it's already verified.
+  // Uses a fetch route (not a server action) to avoid Next.js router refresh.
+  useEffect(() => {
+    if (!initialEmail) return;
+    fetch(`/api/setup/check-email-verification?email=${encodeURIComponent(initialEmail)}`)
+      .then((r) => r.json())
+      .then((data: { verified: boolean }) => {
+        if (data.verified) {
+          setVerifiedEmail(initialEmail);
+          setStatus("verified");
+        } else {
+          setStatus("idle");
+        }
+      })
+      .catch(() => setStatus("idle"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stop polling on unmount
   useEffect(() => {
@@ -69,7 +87,7 @@ export default function ContactFormStep({ church, onComplete, initialEmail }: Co
     onComplete("contact-form");
   }
 
-  const locked = status === "sending" || status === "waiting" || status === "verified";
+  const locked = status === "checking" || status === "sending" || status === "waiting" || status === "verified";
 
   return (
     <div className="space-y-6">
@@ -92,6 +110,10 @@ export default function ContactFormStep({ church, onComplete, initialEmail }: Co
           disabled={locked}
         />
       </div>
+
+      {status === "checking" && (
+        <Button disabled>Checking…</Button>
+      )}
 
       {status === "idle" && (
         <Button onClick={handleSendVerification}>

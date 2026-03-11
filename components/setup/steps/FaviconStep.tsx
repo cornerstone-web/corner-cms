@@ -56,17 +56,20 @@ export default function FaviconStep({ church, onComplete, initialFaviconUrl }: S
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Favicon</h2>
         <p className="text-muted-foreground text-sm">
+          A favicon is the small icon that appears in browser tabs and bookmarks next to your site&apos;s name.
+        </p>
+        <p className="text-muted-foreground text-sm">
           Upload a favicon for your site. Must be an SVG file.{" "}
-          Need one? Generate it free at{" "}
+          Need to convert your logo to SVG?{" "}
           <a
-            href="https://favicon.io"
+            href="https://convertio.co/png-svg/"
             target="_blank"
             rel="noopener noreferrer"
             className="underline text-foreground hover:text-primary"
           >
-            favicon.io
-          </a>
-          .
+            Convertio
+          </a>{" "}
+          is free and works in your browser.
         </p>
       </div>
       <div className="space-y-1.5">

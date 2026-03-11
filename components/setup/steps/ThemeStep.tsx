@@ -17,11 +17,23 @@ interface StepProps {
 // ─── Theme presets ────────────────────────────────────────────────────────────
 
 const THEMES = [
-  { value: "default", label: "Classic", description: "Clean and professional" },
-  { value: "forest", label: "Forest", description: "Earthy greens and warm tones" },
-  { value: "ocean", label: "Ocean", description: "Cool blues and ocean hues" },
-  { value: "warm", label: "Warm", description: "Welcoming warm tones" },
-  { value: "custom", label: "Custom", description: "Choose your own colors" },
+  {
+    value: "default", label: "Classic", description: "Clean and professional",
+    swatches: ["hsl(0 0% 0%)", "hsl(0 0% 20%)", "hsl(0 0% 40%)", "hsl(0 0% 98%)"],
+  },
+  {
+    value: "forest", label: "Forest", description: "Earthy greens and warm tones",
+    swatches: ["hsl(150 60% 25%)", "hsl(150 45% 35%)", "hsl(80 70% 45%)", "hsl(150 20% 99%)"],
+  },
+  {
+    value: "ocean", label: "Ocean", description: "Cool blues and ocean hues",
+    swatches: ["hsl(210 80% 30%)", "hsl(210 60% 40%)", "hsl(190 90% 45%)", "hsl(210 30% 99%)"],
+  },
+  {
+    value: "warm", label: "Warm", description: "Welcoming warm tones",
+    swatches: ["hsl(25 80% 25%)", "hsl(25 60% 35%)", "hsl(35 90% 50%)", "hsl(40 30% 98%)"],
+  },
+  { value: "custom", label: "Custom", description: "Choose your own colors", swatches: [] },
 ];
 
 // ─── Custom color fields (mirrors ThemeSection in site settings) ──────────────
@@ -159,6 +171,17 @@ export default function ThemeStep({ church, onComplete, initialTheme, initialCus
           >
             <p className="font-medium text-sm">{theme.label}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{theme.description}</p>
+            {theme.swatches.length > 0 && (
+              <div className="flex gap-1 mt-2">
+                {theme.swatches.map((color, i) => (
+                  <span
+                    key={i}
+                    className="h-4 w-4 rounded-full border border-black/10"
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            )}
           </button>
         ))}
       </div>
