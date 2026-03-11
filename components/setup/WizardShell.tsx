@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, Menu } from "lucide-react";
 import { getCurrentStep, getVisibleSteps, StepKey } from "./steps";
 import WizardTimeline from "./WizardTimeline";
+import { User } from "@/components/user";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import BuildProgressStep from "./steps/BuildProgressStep";
 import LaunchStep from "./steps/LaunchStep";
 import WelcomeStep from "./steps/WelcomeStep";
@@ -67,6 +72,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
   );
   const [currentStep, setCurrentStep] = useState<StepKey>(() => getCurrentStep(new Set(completedStepsArray)));
   const [launched, setLaunched] = useState<{ cfPagesUrl: string } | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   function handleComplete(stepKey: StepKey) {
     const next = new Set(completedSteps);
@@ -158,20 +164,61 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
     }
   }
 
+  const timeline = (
+    <WizardTimeline
+      visibleSteps={visibleSteps}
+      completedSteps={completedSteps}
+      currentStep={currentStep}
+      onNavigate={(step) => { setCurrentStep(step); setSheetOpen(false); }}
+    />
+  );
+
   return (
-    <div className="flex min-h-screen bg-background">
-      <WizardTimeline
-        visibleSteps={visibleSteps}
-        completedSteps={completedSteps}
-        currentStep={currentStep}
-        onNavigate={setCurrentStep}
-      />
-      <main className="flex-1 p-8 max-w-2xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Setting Up {church.displayName}</h1>
+    <div className="flex flex-col h-screen bg-background">
+      {/* Top header */}
+      <header className="flex items-center gap-3 border-b px-4 py-3 shrink-0">
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">Back</span>
+        </Link>
+        <h1 className="text-sm font-semibold truncate flex-1 text-center sm:text-left">
+          Setting Up {church.displayName}
+        </h1>
+        {/* Mobile steps toggle */}
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="md:hidden shrink-0">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-64">
+            {timeline}
+          </SheetContent>
+        </Sheet>
+      </header>
+
+      {/* Body */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop sidebar */}
+        <div className="hidden md:block shrink-0">
+          {timeline}
         </div>
-        {renderCurrentStep()}
-      </main>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          <div className="max-w-2xl">
+            {renderCurrentStep()}
+          </div>
+        </main>
+      </div>
+
+      {/* Footer */}
+      <footer className="flex items-center gap-2 border-t px-2 py-2 lg:px-4 lg:py-3 shrink-0">
+        <User className="mr-auto" />
+      </footer>
     </div>
   );
 }

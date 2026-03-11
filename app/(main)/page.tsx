@@ -40,13 +40,9 @@ export default async function Page() {
       columns: { status: true },
     });
 
-    if (church?.status === "provisioning") {
-      return redirect("/setup");
-    }
-
     return (
       <MainRootLayout>
-        <ChurchPortalCard assignment={user.churchAssignment} />
+        <ChurchPortalCard assignment={user.churchAssignment} status={church?.status} />
       </MainRootLayout>
     );
   }

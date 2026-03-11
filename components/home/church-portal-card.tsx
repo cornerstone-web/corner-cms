@@ -9,9 +9,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Building2, ExternalLink, Pencil } from "lucide-react";
+import { Building2, ExternalLink, Pencil, Settings2 } from "lucide-react";
 
-export function ChurchPortalCard({ assignment }: { assignment: ChurchAssignment }) {
+export function ChurchPortalCard({
+  assignment,
+  status,
+}: {
+  assignment: ChurchAssignment;
+  status?: string;
+}) {
+  const isProvisioning = status === "provisioning";
   const [owner, repo] = assignment.githubRepoName.split("/");
   const editorHref = `/${owner}/${repo}`;
 
@@ -31,8 +38,8 @@ export function ChurchPortalCard({ assignment }: { assignment: ChurchAssignment 
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {assignment.cfPagesUrl && (
+        {!isProvisioning && assignment.cfPagesUrl && (
+          <CardContent className="space-y-3">
             <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
               <span className="text-muted-foreground">Live site</span>
               <a
@@ -45,15 +52,31 @@ export function ChurchPortalCard({ assignment }: { assignment: ChurchAssignment 
                 <ExternalLink className="h-3 w-3 shrink-0" />
               </a>
             </div>
-          )}
-        </CardContent>
+          </CardContent>
+        )}
+        {isProvisioning && (
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Your site is being set up. Complete the setup wizard to configure and launch it.
+            </p>
+          </CardContent>
+        )}
         <CardFooter>
-          <Button asChild className="w-full">
-            <Link href={editorHref}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Open Editor
-            </Link>
-          </Button>
+          {isProvisioning ? (
+            <Button asChild className="w-full">
+              <Link href="/setup">
+                <Settings2 className="h-4 w-4 mr-2" />
+                Continue Setup
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild className="w-full">
+              <Link href={editorHref}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Open Editor
+              </Link>
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>
