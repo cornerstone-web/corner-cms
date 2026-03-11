@@ -9,27 +9,35 @@ import { compressImage } from "@/lib/utils/image-compression";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialFaviconUrl?: string;
 }
 
-export default function FaviconStep({ church, onComplete }: StepProps) {
+export default function FaviconStep({ church, onComplete, initialFaviconUrl }: StepProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(initialFaviconUrl ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFile(e.target.files?.[0] ?? null);
+    const selected = e.target.files?.[0] ?? null;
+    setFile(selected);
+    if (selected) setPreview(URL.createObjectURL(selected));
   }
 
   async function handleSubmit() {
-    if (!file) {
+    if (!file && !preview) {
       setError("Please select a favicon file.");
+      return;
+    }
+    if (!file && preview) {
+      onComplete();
       return;
     }
     setIsLoading(true);
     setError(null);
     try {
-      const compressed = await compressImage(file, "logo");
+      const compressed = await compressImage(file!, "logo");
       const ext = "png";
       const base64 = await fileToBase64(compressed);
       await saveFavicon(church.id, church.slug, base64, ext);
@@ -68,8 +76,12 @@ export default function FaviconStep({ church, onComplete }: StepProps) {
           onChange={handleFileChange}
           className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
         />
-        {file && (
-          <p className="text-xs text-muted-foreground">Selected: {file.name}</p>
+        {preview && (
+          <div className="mt-2 flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt="Favicon preview" className="h-10 w-10 object-contain rounded border border-input" />
+            {file && <p className="text-xs text-muted-foreground">Selected: {file.name}</p>}
+          </div>
         )}
       </div>
       <Button onClick={handleSubmit} disabled={isLoading}>

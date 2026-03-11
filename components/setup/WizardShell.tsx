@@ -96,9 +96,11 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
         initialTagline={(cfg.tagline as string) || ""}
       />;
       case "logo": return <LogoStep {...base}
-        initialLogoUrl={cfg.logoPath ? `${rawFileBaseUrl}/public/logo.png` : undefined}
+        initialLogoUrl={cfg.logoPath ? `${rawFileBaseUrl}/public/logo.png?t=${Date.now()}` : undefined}
       />;
-      case "favicon": return <FaviconStep {...base} />;
+      case "favicon": return <FaviconStep {...base}
+        initialFaviconUrl={completedSteps.has("favicon") ? `${rawFileBaseUrl}/public/favicon.png?t=${Date.now()}` : undefined}
+      />;
       case "theme": return <ThemeStep {...base}
         initialTheme={(cfg.theme as string) || "default"}
         initialCustomColors={(cfg.customTheme as Record<string, string>) || {}}
