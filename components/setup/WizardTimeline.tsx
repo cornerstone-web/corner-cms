@@ -17,7 +17,7 @@ export default function WizardTimeline({ visibleSteps, completedSteps, currentSt
   const visibleKeys = new Set(visibleSteps.map(s => s.key));
 
   return (
-    <aside className={cn("w-56 border-r bg-muted/30 p-4 flex flex-col gap-4 shrink-0 overflow-y-auto", className)}>
+    <aside className={cn("w-56 border-r bg-muted/30 p-4 flex flex-col gap-4 shrink-0 overflow-y-auto h-full", className)}>
       {STEP_GROUPS.map(group => {
         const groupSteps = group.steps.filter(s => visibleKeys.has(s.key));
         if (groupSteps.length === 0) return null;

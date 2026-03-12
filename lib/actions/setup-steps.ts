@@ -200,15 +200,10 @@ export async function savePhotos(
 // ─── Content file helpers ──────────────────────────────────────────────────────
 
 function fm(fields: Record<string, unknown>): string {
-  const lines = ["---"];
-  for (const [k, v] of Object.entries(fields)) {
-    if (v === undefined || v === null) continue;
-    if (typeof v === "string") lines.push(`${k}: "${v.replace(/"/g, '\\"')}"`);
-    else lines.push(`${k}: ${JSON.stringify(v)}`);
-  }
-  lines.push("---");
-  lines.push("");
-  return lines.join("\n");
+  const filtered = Object.fromEntries(
+    Object.entries(fields).filter(([, v]) => v !== undefined && v !== null),
+  );
+  return `---\n${YAML.stringify(filtered, { lineWidth: 0 })}---\n`;
 }
 
 export async function commitContentFile(
@@ -249,19 +244,47 @@ export async function saveFirstSermon(
     speaker: string;
     series?: string;
     description?: string;
+    proseContent?: string;
+    videoUrl?: string;
   },
 ): Promise<void> {
   await assertChurchAccess(churchId);
   const fileSlug = slugify(fields.title) || "first-sermon";
   const path = `src/content/sermons/${fileSlug}.md`;
+  const blocks = [
+    ...(fields.videoUrl
+      ? [
+          {
+            type: "video-embed",
+            useYoutubeLive: false,
+            url: fields.videoUrl,
+            aspectRatio: "16:9",
+            showTitle: true,
+            title: fields.title,
+          },
+        ]
+      : []),
+    { type: "prose", maxWidth: "normal", content: fields.proseContent ?? "" },
+    {
+      type: "cta",
+      variant: "primary",
+      headline: "",
+      showDescription: false,
+      showPrimaryCta: true,
+      primaryCta: { label: "View All Sermons", href: "/sermons" },
+      showSecondaryCta: false,
+    },
+  ];
   const content = fm({
     title: fields.title,
+    template: "sermon",
     date: fields.date,
     speaker: fields.speaker,
     ...(fields.series ? { series: fields.series } : {}),
     ...(fields.description ? { description: fields.description } : {}),
     draft: false,
-    blocks: [{ type: "video-embed", youtubeUrl: "" }],
+    passwordProtected: false,
+    blocks,
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: add first sermon");
@@ -281,8 +304,32 @@ export async function saveFirstSeries(
   const path = `src/content/series/${fileSlug}.md`;
   const content = fm({
     title: fields.title,
+    template: "series",
     ...(fields.description ? { description: fields.description } : {}),
+    showDetailPage: true,
     draft: false,
+    passwordProtected: false,
+    blocks: [
+      {
+        type: "hero",
+        variant: "centered",
+        showBackgroundImage: false,
+        overlay: true,
+        showHeadline: true,
+        headline: fields.title,
+        showSubheadline: fields.description ? true : false,
+        ...(fields.description ? { subheadline: fields.description } : {}),
+        showPrimaryCta: false,
+        showSecondaryCta: false,
+      },
+      {
+        type: "sermon-grid",
+        showTitle: false,
+        showDescription: false,
+        showAll: true,
+        showViewAll: false,
+      },
+    ],
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: add first series");
@@ -295,7 +342,7 @@ export async function saveFirstSeries(
 export async function saveFirstMinistries(
   churchId: string,
   slug: string,
-  ministries: { name: string; description?: string; icon?: string }[],
+  ministries: { name: string; description?: string; icon?: string; proseContent?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
   await Promise.all(ministries.map(async (ministry) => {
@@ -304,9 +351,40 @@ export async function saveFirstMinistries(
     const path = `src/content/ministries/${fileSlug}.md`;
     const content = fm({
       title: ministry.name,
+      template: "ministry",
       ...(ministry.description ? { description: ministry.description } : {}),
       ...(ministry.icon ? { icon: ministry.icon } : {}),
       draft: false,
+      passwordProtected: false,
+      showDetailPage: true,
+      blocks: [
+        {
+          type: "hero",
+          variant: "centered",
+          blockHeight: "md",
+          backgroundType: "color",
+          backgroundColor: "primary",
+          overlayOpacity: 50,
+          overlayGradient: "none",
+          showHeadline: true,
+          headline: ministry.name,
+          showSubheadline: !!ministry.description,
+          subheadline: ministry.description ?? "",
+          showPrimaryCta: false,
+          showSecondaryCta: false,
+          showScrollIndicator: false,
+        },
+        { type: "prose", maxWidth: "normal", content: ministry.proseContent ?? "" },
+        {
+          type: "cta",
+          variant: "primary",
+          headline: "",
+          showDescription: false,
+          showPrimaryCta: true,
+          primaryCta: { label: "Contact Us", href: "/contact" },
+          showSecondaryCta: false,
+        },
+      ],
     });
     const sha = await tryGetSha(slug, path);
     await commitFile(slug, path, content, sha, "wizard: add ministry");

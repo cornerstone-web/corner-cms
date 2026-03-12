@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
-  onComplete: () => void;
+  onComplete: (enabled: boolean) => void;
   initialEnabled?: boolean;
 }
 
@@ -38,7 +38,7 @@ export default function LeadershipFeatureStep({
         if (!result.ok)
           throw new Error(result.error ?? "Failed to complete step.");
       }
-      onComplete();
+      onComplete(!!selection);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setIsLoading(false);

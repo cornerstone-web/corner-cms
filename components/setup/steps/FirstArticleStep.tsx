@@ -10,12 +10,15 @@ import { saveFirstArticle } from "@/lib/actions/setup-steps";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialTitle?: string;
+  initialAuthor?: string;
+  initialDescription?: string;
 }
 
-export default function FirstArticleStep({ church, onComplete }: StepProps) {
-  const [title, setTitle] = useState("");
-  const [author, setAuthor] = useState("");
-  const [description, setDescription] = useState("");
+export default function FirstArticleStep({ church, onComplete, initialTitle, initialAuthor, initialDescription }: StepProps) {
+  const [title, setTitle] = useState(initialTitle ?? "");
+  const [author, setAuthor] = useState(initialAuthor ?? "");
+  const [description, setDescription] = useState(initialDescription ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

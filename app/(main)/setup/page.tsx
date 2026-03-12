@@ -5,7 +5,7 @@ import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
 import { initWizard } from "@/lib/actions/setup";
-import { getFileWithSha, getFileDownloadUrl } from "@/lib/github/wizard";
+import { getFileWithSha, getFileDownloadUrl, getFirstFileFrontmatter, getAllFilesFrontmatter } from "@/lib/github/wizard";
 import WizardShell from "@/components/setup/WizardShell";
 
 export default async function SetupPage() {
@@ -51,9 +51,15 @@ export default async function SetupPage() {
   }
 
   // Fetch authenticated download URLs for already-uploaded branding assets
-  const [logoUrl, faviconUrl] = await Promise.all([
+  // and first-content frontmatter for completed content steps
+  const [logoUrl, faviconUrl, firstSeries, firstSermon, firstEvent, firstArticle, firstMinistries] = await Promise.all([
     completedSteps.has("logo") ? getFileDownloadUrl(church.slug, "public/images/logo.png") : Promise.resolve(null),
     completedSteps.has("favicon") ? getFileDownloadUrl(church.slug, "public/favicon.svg") : Promise.resolve(null),
+    completedSteps.has("first-series") ? getFirstFileFrontmatter(church.slug, "src/content/series") : Promise.resolve(null),
+    completedSteps.has("first-sermon") ? getFirstFileFrontmatter(church.slug, "src/content/sermons") : Promise.resolve(null),
+    completedSteps.has("first-event") ? getFirstFileFrontmatter(church.slug, "src/content/events") : Promise.resolve(null),
+    completedSteps.has("first-article") ? getFirstFileFrontmatter(church.slug, "src/content/articles") : Promise.resolve(null),
+    completedSteps.has("first-ministry") ? getAllFilesFrontmatter(church.slug, "src/content/ministries") : Promise.resolve([]),
   ]);
 
   return (
@@ -64,6 +70,11 @@ export default async function SetupPage() {
       initialLogoUrl={logoUrl ?? undefined}
       initialFaviconUrl={faviconUrl ?? undefined}
       userEmail={user.email ?? undefined}
+      initialFirstSeries={firstSeries ?? undefined}
+      initialFirstSermon={firstSermon ?? undefined}
+      initialFirstEvent={firstEvent ?? undefined}
+      initialFirstArticle={firstArticle ?? undefined}
+      initialFirstMinistries={firstMinistries.length > 0 ? firstMinistries : undefined}
     />
   );
 }

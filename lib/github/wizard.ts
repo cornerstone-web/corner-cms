@@ -154,6 +154,58 @@ export async function getFileDownloadUrl(
   }
 }
 
+/**
+ * Lists a directory and returns parsed YAML frontmatter from the first .md file found.
+ * Returns null if the directory is empty or an error occurs.
+ */
+export async function getFirstFileFrontmatter(
+  repoName: string,
+  dirPath: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const token = await getInstallationToken(GITHUB_ORG, repoName);
+    const octokit = createOctokitInstance(token);
+    const res = await octokit.rest.repos.getContent({ owner: GITHUB_ORG, repo: repoName, path: dirPath });
+    const items = res.data as { name: string; type: string }[];
+    const mdFile = items.find((item) => item.type === "file" && item.name.endsWith(".md"));
+    if (!mdFile) return null;
+    const { content } = await getFileWithSha(repoName, `${dirPath}/${mdFile.name}`);
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return null;
+    return YAML.parse(match[1]) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Lists a directory and returns parsed YAML frontmatter from ALL .md files found.
+ * Returns an empty array if the directory is empty or an error occurs.
+ */
+export async function getAllFilesFrontmatter(
+  repoName: string,
+  dirPath: string,
+): Promise<Record<string, unknown>[]> {
+  try {
+    const token = await getInstallationToken(GITHUB_ORG, repoName);
+    const octokit = createOctokitInstance(token);
+    const res = await octokit.rest.repos.getContent({ owner: GITHUB_ORG, repo: repoName, path: dirPath });
+    const items = res.data as { name: string; type: string }[];
+    const mdFiles = items.filter((item) => item.type === "file" && item.name.endsWith(".md"));
+    const results = await Promise.all(
+      mdFiles.map(async (file) => {
+        const { content } = await getFileWithSha(repoName, `${dirPath}/${file.name}`);
+        const match = content.match(/^---\n([\s\S]*?)\n---/);
+        if (!match) return null;
+        return YAML.parse(match[1]) as Record<string, unknown>;
+      }),
+    );
+    return results.filter((r): r is Record<string, unknown> => r !== null);
+  } catch {
+    return [];
+  }
+}
+
 export async function tryGetSha(
   repoName: string,
   path: string,

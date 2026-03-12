@@ -51,23 +51,41 @@ interface WizardShellProps {
   initialLogoUrl?: string;
   initialFaviconUrl?: string;
   userEmail?: string;
+  initialFirstSeries?: Record<string, unknown>;
+  initialFirstSermon?: Record<string, unknown>;
+  initialFirstMinistries?: Record<string, unknown>[];
+  initialFirstEvent?: Record<string, unknown>;
+  initialFirstArticle?: Record<string, unknown>;
 }
 
-
-export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl, userEmail }: WizardShellProps) {
+export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl, userEmail, initialFirstSeries, initialFirstSermon, initialFirstMinistries, initialFirstEvent, initialFirstArticle }: WizardShellProps) {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(
     () => new Set(completedStepsArray)
   );
-  const [currentStep, setCurrentStep] = useState<StepKey>(() => getCurrentStep(new Set(completedStepsArray)));
-  const progressStep = getCurrentStep(completedSteps);
+  const [enabledFeatures, setEnabledFeatures] = useState<Set<string>>(() => {
+    const features = (initialConfig?.features as Record<string, boolean>) ?? {};
+    return new Set(Object.entries(features).filter(([, v]) => v).map(([k]) => k));
+  });
+  const [currentStep, setCurrentStep] = useState<StepKey>(() => getCurrentStep(new Set(completedStepsArray), new Set(Object.entries((initialConfig?.features as Record<string, boolean>) ?? {}).filter(([, v]) => v).map(([k]) => k))));
+  const progressStep = getCurrentStep(completedSteps, enabledFeatures);
   const [launched, setLaunched] = useState<{ cfPagesUrl: string } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  function handleComplete(stepKey: StepKey) {
-    const next = new Set(completedSteps);
-    next.add(stepKey);
-    setCompletedSteps(next);
-    setCurrentStep(getCurrentStep(next));
+  function handleComplete(stepKey: StepKey, featureEnabled?: boolean) {
+    const nextCompleted = new Set(completedSteps);
+    nextCompleted.add(stepKey);
+    let nextFeatures = enabledFeatures;
+    if (featureEnabled !== undefined) {
+      nextFeatures = new Set(enabledFeatures);
+      if (featureEnabled) {
+        nextFeatures.add(stepKey);
+      } else {
+        nextFeatures.delete(stepKey);
+      }
+      setEnabledFeatures(nextFeatures);
+    }
+    setCompletedSteps(nextCompleted);
+    setCurrentStep(getCurrentStep(nextCompleted, nextFeatures));
   }
 
   // Post-launch: full-screen build progress replaces the entire wizard layout
@@ -75,10 +93,11 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
     return <BuildProgressStep church={church} cfPagesUrl={launched.cfPagesUrl} />;
   }
 
-  const visibleSteps = getVisibleSteps(completedSteps);
+  const visibleSteps = getVisibleSteps(completedSteps, enabledFeatures);
 
   function renderCurrentStep() {
     const base = { church, onComplete: () => handleComplete(currentStep) };
+    const featureOnComplete = (enabled: boolean) => handleComplete(currentStep, enabled);
     const cfg = initialConfig;
     const contact = (cfg.contact as Record<string, unknown> | undefined) ?? {};
     const address = (contact.address as Record<string, string> | undefined) ?? {};
@@ -129,19 +148,58 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
       case "streaming": return <StreamingStep {...base}
         initialYoutubeApiKey={(cfg.integrations as Record<string, string> | undefined)?.youtubeApiKey}
       />;
-      case "sermons": return <SermonFeatureStep {...base} initialEnabled={completedSteps.has("sermons") ? features.sermons : undefined} />;
-      case "series": return <SeriesFeatureStep {...base} initialEnabled={completedSteps.has("series") ? features.series : undefined} />;
-      case "ministries": return <MinistriesFeatureStep {...base} initialEnabled={completedSteps.has("ministries") ? features.ministries : undefined} />;
-      case "events": return <EventsFeatureStep {...base} initialEnabled={completedSteps.has("events") ? features.events : undefined} />;
-      case "articles": return <ArticlesFeatureStep {...base} initialEnabled={completedSteps.has("articles") ? features.articles : undefined} />;
-      case "staff": return <StaffFeatureStep {...base} initialEnabled={completedSteps.has("staff") ? features.staff : undefined} />;
-      case "bulletins": return <BulletinsFeatureStep {...base} initialEnabled={completedSteps.has("bulletins") ? features.bulletins : undefined} />;
-      case "leadership": return <LeadershipFeatureStep {...base} initialEnabled={completedSteps.has("leadership") ? features.leadership : undefined} />;
-      case "first-sermon": return <FirstSermonStep {...base} />;
-      case "first-series": return <FirstSeriesStep {...base} />;
-      case "first-ministry": return <FirstMinistryStep {...base} />;
-      case "first-event": return <FirstEventStep {...base} />;
-      case "first-article": return <FirstArticleStep {...base} />;
+      case "sermons": return <SermonFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("sermons") ? features.sermons : undefined} />;
+      case "series": return <SeriesFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("series") ? features.series : undefined} />;
+      case "ministries": return <MinistriesFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("ministries") ? features.ministries : undefined} />;
+      case "events": return <EventsFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("events") ? features.events : undefined} />;
+      case "articles": return <ArticlesFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("articles") ? features.articles : undefined} />;
+      case "staff": return <StaffFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("staff") ? features.staff : undefined} />;
+      case "bulletins": return <BulletinsFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("bulletins") ? features.bulletins : undefined} />;
+      case "leadership": return <LeadershipFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("leadership") ? features.leadership : undefined} />;
+      case "first-series": return <FirstSeriesStep {...base}
+        initialTitle={initialFirstSeries?.title as string | undefined}
+        initialDescription={initialFirstSeries?.description as string | undefined}
+      />;
+      case "first-sermon": {
+        const sermonBlocks = initialFirstSermon?.blocks as { type: string; url?: string; content?: string }[] | undefined;
+        const existingVideoUrl = sermonBlocks?.find(b => b.type === "video-embed")?.url;
+        const existingProseContent = sermonBlocks?.find(b => b.type === "prose")?.content;
+        return <FirstSermonStep {...base}
+          initialTitle={initialFirstSermon?.title as string | undefined}
+          initialDate={initialFirstSermon?.date as string | undefined}
+          initialSpeaker={initialFirstSermon?.speaker as string | undefined}
+          initialSeries={
+            (initialFirstSermon?.series as string | undefined) ||
+            (completedSteps.has("first-series") ? initialFirstSeries?.title as string | undefined : undefined)
+          }
+          initialDescription={initialFirstSermon?.description as string | undefined}
+          initialProseContent={existingProseContent}
+          initialVideoUrl={existingVideoUrl}
+        />;
+      }
+      case "first-ministry": return <FirstMinistryStep {...base}
+        initialMinistries={initialFirstMinistries?.map(m => {
+          const blocks = m.blocks as { type: string; content?: string }[] | undefined;
+          return {
+            name: m.title as string ?? "",
+            description: m.description as string | undefined,
+            icon: m.icon as string | undefined,
+            proseContent: blocks?.find(b => b.type === "prose")?.content,
+          };
+        })}
+      />;
+      case "first-event": return <FirstEventStep {...base}
+        initialTitle={initialFirstEvent?.title as string | undefined}
+        initialDate={initialFirstEvent?.date as string | undefined}
+        initialTime={initialFirstEvent?.time as string | undefined}
+        initialLocation={initialFirstEvent?.location as string | undefined}
+        initialDescription={initialFirstEvent?.description as string | undefined}
+      />;
+      case "first-article": return <FirstArticleStep {...base}
+        initialTitle={initialFirstArticle?.title as string | undefined}
+        initialAuthor={initialFirstArticle?.author as string | undefined}
+        initialDescription={initialFirstArticle?.description as string | undefined}
+      />;
       case "first-staff": return <StaffStep {...base} />;
       case "first-leaders": return <LeadersStep {...base} />;
       case "hero": return <HeroStep {...base} />;
@@ -208,7 +266,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
-        <div className="hidden md:block shrink-0">
+        <div className="hidden md:flex shrink-0 overflow-hidden">
           {desktopTimeline}
         </div>
 

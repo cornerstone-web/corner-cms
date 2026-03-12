@@ -6,10 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveFirstMinistries } from "@/lib/actions/setup-steps";
+import { EditComponent as IconPicker } from "@/fields/custom/icon/edit-component";
+import WizardProseEditor from "@/components/setup/WizardProseEditor";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialMinistries?: { name: string; description?: string; icon?: string; proseContent?: string }[];
 }
 
 interface MinistryRow {
@@ -17,16 +20,27 @@ interface MinistryRow {
   name: string;
   description: string;
   icon: string;
+  proseContent: string;
 }
 
 const MAX_ROWS = 4;
 
 function makeRow(): MinistryRow {
-  return { id: Date.now() + Math.random(), name: "", description: "", icon: "" };
+  return { id: Date.now() + Math.random(), name: "", description: "", icon: "", proseContent: "" };
 }
 
-export default function FirstMinistryStep({ church, onComplete }: StepProps) {
-  const [rows, setRows] = useState<MinistryRow[]>(() => [makeRow()]);
+export default function FirstMinistryStep({ church, onComplete, initialMinistries }: StepProps) {
+  const [rows, setRows] = useState<MinistryRow[]>(() =>
+    initialMinistries && initialMinistries.length > 0
+      ? initialMinistries.map(m => ({
+          id: Date.now() + Math.random(),
+          name: m.name,
+          description: m.description ?? "",
+          icon: m.icon ?? "",
+          proseContent: m.proseContent ?? "",
+        }))
+      : [makeRow()]
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +70,7 @@ export default function FirstMinistryStep({ church, onComplete }: StepProps) {
           name: r.name.trim(),
           ...(r.description.trim() ? { description: r.description.trim() } : {}),
           ...(r.icon.trim() ? { icon: r.icon.trim() } : {}),
+          ...(r.proseContent.trim() ? { proseContent: r.proseContent.trim() } : {}),
         })),
       );
       onComplete();
@@ -99,23 +114,34 @@ export default function FirstMinistryStep({ church, onComplete }: StepProps) {
                 placeholder="e.g. Youth Group"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Icon <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Input
-                  value={row.icon}
-                  onChange={(e) => updateRow(row.id, "icon", e.target.value)}
-                  placeholder="e.g. heart, users, music"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Icon <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <IconPicker
+                value={row.icon}
+                field={{ required: false }}
+                onChange={(v: string) => updateRow(row.id, "icon", v)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
               <Textarea
                 value={row.description}
                 onChange={(e) => updateRow(row.id, "description", e.target.value)}
-                placeholder="What does this ministry do?"
+                placeholder="A short summary shown in ministry listings..."
                 rows={2}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>
+                Content{" "}
+                <span className="text-muted-foreground text-xs">(optional)</span>
+              </Label>
+              <p className="text-xs text-muted-foreground -mt-0.5">
+                The body of the ministry page — who it&apos;s for, when it meets, how to get involved.
+              </p>
+              <WizardProseEditor
+                value={row.proseContent}
+                onChange={(v) => updateRow(row.id, "proseContent", v)}
               />
             </div>
           </div>

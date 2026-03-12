@@ -10,14 +10,19 @@ import { saveFirstEvent } from "@/lib/actions/setup-steps";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialTitle?: string;
+  initialDate?: string;
+  initialTime?: string;
+  initialLocation?: string;
+  initialDescription?: string;
 }
 
-export default function FirstEventStep({ church, onComplete }: StepProps) {
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [location, setLocation] = useState("");
-  const [description, setDescription] = useState("");
+export default function FirstEventStep({ church, onComplete, initialTitle, initialDate, initialTime, initialLocation, initialDescription }: StepProps) {
+  const [title, setTitle] = useState(initialTitle ?? "");
+  const [date, setDate] = useState(initialDate ?? "");
+  const [time, setTime] = useState(initialTime ?? "");
+  const [location, setLocation] = useState(initialLocation ?? "");
+  const [description, setDescription] = useState(initialDescription ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
