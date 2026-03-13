@@ -52,7 +52,7 @@ export default async function SetupPage() {
 
   // Fetch authenticated download URLs for already-uploaded branding assets
   // and first-content frontmatter for completed content steps
-  const [logoUrl, faviconUrl, firstSeries, firstSermon, firstEvent, firstArticle, firstMinistries] = await Promise.all([
+  const [logoUrl, faviconUrl, firstSeries, firstSermon, firstEvent, firstArticle, firstMinistries, firstStaff, firstLeaders] = await Promise.all([
     completedSteps.has("logo") ? getFileDownloadUrl(church.slug, "public/images/logo.png") : Promise.resolve(null),
     completedSteps.has("favicon") ? getFileDownloadUrl(church.slug, "public/favicon.svg") : Promise.resolve(null),
     completedSteps.has("first-series") ? getFirstFileFrontmatter(church.slug, "src/content/series") : Promise.resolve(null),
@@ -60,6 +60,38 @@ export default async function SetupPage() {
     completedSteps.has("first-event") ? getFirstFileFrontmatter(church.slug, "src/content/events") : Promise.resolve(null),
     completedSteps.has("first-article") ? getFirstFileFrontmatter(church.slug, "src/content/articles") : Promise.resolve(null),
     completedSteps.has("first-ministry") ? getAllFilesFrontmatter(church.slug, "src/content/ministries") : Promise.resolve([]),
+    completedSteps.has("first-staff") ? getAllFilesFrontmatter(church.slug, "src/content/staff").then(async (members) => {
+      return Promise.all(members.map(async (m) => {
+        const photoPath = m.photo as string | undefined;
+        if (!photoPath) return m;
+        const url = await getFileDownloadUrl(church.slug, `public${photoPath}`);
+        return { ...m, photoUrl: url ?? undefined };
+      }));
+    }) : Promise.resolve([]),
+    completedSteps.has("first-leaders") ? (async () => {
+      try {
+        const { content } = await getFileWithSha(church.slug, "src/content/pages/leadership.md");
+        const match = content.match(/^---\n([\s\S]*?)\n---/);
+        if (!match) return [];
+        const pageFm = YAML.parse(match[1]) as Record<string, unknown>;
+        const blocks = (pageFm.blocks as Record<string, unknown>[] | undefined) ?? [];
+        const people = blocks
+          .filter(b => b.type === "team-grid")
+          .flatMap(grid => (grid.people as Record<string, unknown>[] | undefined) ?? [])
+          .map(p => ({
+            name: p.name as string ?? "",
+            role: p.subtitle as string ?? "",
+            photo: p.image as string | undefined,
+          }));
+        return Promise.all(people.map(async (p) => {
+          if (!p.photo) return p;
+          const url = await getFileDownloadUrl(church.slug, `public${p.photo}`);
+          return { ...p, photoUrl: url ?? undefined, existingPhotoPath: p.photo };
+        }));
+      } catch {
+        return [];
+      }
+    })() : Promise.resolve([]),
   ]);
 
   return (
@@ -75,6 +107,8 @@ export default async function SetupPage() {
       initialFirstEvent={firstEvent ?? undefined}
       initialFirstArticle={firstArticle ?? undefined}
       initialFirstMinistries={firstMinistries.length > 0 ? firstMinistries : undefined}
+      initialFirstStaff={firstStaff.length > 0 ? firstStaff : undefined}
+      initialFirstLeaders={firstLeaders.length > 0 ? firstLeaders : undefined}
     />
   );
 }

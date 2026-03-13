@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
@@ -88,6 +88,30 @@ export async function completeStep(
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Failed to record step.",
+    };
+  }
+}
+
+export async function uncompleteStep(
+  churchId: string,
+  stepKey: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertChurchAdmin(churchId);
+    await db
+      .delete(churchWizardStepsTable)
+      .where(
+        and(
+          eq(churchWizardStepsTable.churchId, churchId),
+          eq(churchWizardStepsTable.stepKey, stepKey),
+        ),
+      );
+    return { ok: true };
+  } catch (err) {
+    console.error("uncompleteStep failed:", err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Failed to uncomplete step.",
     };
   }
 }

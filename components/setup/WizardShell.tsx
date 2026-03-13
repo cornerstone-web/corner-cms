@@ -56,9 +56,11 @@ interface WizardShellProps {
   initialFirstMinistries?: Record<string, unknown>[];
   initialFirstEvent?: Record<string, unknown>;
   initialFirstArticle?: Record<string, unknown>;
+  initialFirstStaff?: Record<string, unknown>[];
+  initialFirstLeaders?: Record<string, unknown>[];
 }
 
-export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl, userEmail, initialFirstSeries, initialFirstSermon, initialFirstMinistries, initialFirstEvent, initialFirstArticle }: WizardShellProps) {
+export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl, userEmail, initialFirstSeries, initialFirstSermon, initialFirstMinistries, initialFirstEvent, initialFirstArticle, initialFirstStaff, initialFirstLeaders }: WizardShellProps) {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(
     () => new Set(completedStepsArray)
   );
@@ -188,20 +190,47 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
           };
         })}
       />;
-      case "first-event": return <FirstEventStep {...base}
-        initialTitle={initialFirstEvent?.title as string | undefined}
-        initialDate={initialFirstEvent?.date as string | undefined}
-        initialTime={initialFirstEvent?.time as string | undefined}
-        initialLocation={initialFirstEvent?.location as string | undefined}
-        initialDescription={initialFirstEvent?.description as string | undefined}
+      case "first-event": {
+        const eventBlocks = initialFirstEvent?.blocks as { type: string; content?: string }[] | undefined;
+        const existingEventProse = eventBlocks?.find(b => b.type === "prose")?.content;
+        return <FirstEventStep {...base}
+          initialTitle={initialFirstEvent?.title as string | undefined}
+          initialDate={initialFirstEvent?.date as string | undefined}
+          initialTime={initialFirstEvent?.time as string | undefined}
+          initialLocation={initialFirstEvent?.location as string | undefined}
+          initialDescription={initialFirstEvent?.description as string | undefined}
+          initialProseContent={existingEventProse}
+        />;
+      }
+      case "first-article": {
+        const articleBlocks = initialFirstArticle?.blocks as { type: string; content?: string }[] | undefined;
+        const existingArticleProse = articleBlocks?.find(b => b.type === "prose")?.content;
+        return <FirstArticleStep {...base}
+          initialTitle={initialFirstArticle?.title as string | undefined}
+          initialAuthor={initialFirstArticle?.author as string | undefined}
+          initialDescription={initialFirstArticle?.description as string | undefined}
+          initialProseContent={existingArticleProse}
+        />;
+      }
+      case "first-staff": return <StaffStep {...base}
+        initialMembers={initialFirstStaff?.map(m => {
+          const blocks = m.blocks as { type: string; content?: string }[] | undefined;
+          return {
+            name: m.name as string ?? "",
+            title: m.title as string | undefined,
+            proseContent: blocks?.find(b => b.type === "prose")?.content,
+            photoUrl: m.photoUrl as string | undefined,
+          };
+        })}
       />;
-      case "first-article": return <FirstArticleStep {...base}
-        initialTitle={initialFirstArticle?.title as string | undefined}
-        initialAuthor={initialFirstArticle?.author as string | undefined}
-        initialDescription={initialFirstArticle?.description as string | undefined}
+      case "first-leaders": return <LeadersStep {...base}
+        initialLeaders={initialFirstLeaders?.map(l => ({
+          name: l.name as string ?? "",
+          role: l.role as string ?? "",
+          photoUrl: l.photoUrl as string | undefined,
+          existingPhotoPath: (l.existingPhotoPath ?? l.photo) as string | undefined,
+        }))}
       />;
-      case "first-staff": return <StaffStep {...base} />;
-      case "first-leaders": return <LeadersStep {...base} />;
       case "hero": return <HeroStep {...base} />;
       case "photos": return <PhotosStep {...base} />;
       case "launched": return (

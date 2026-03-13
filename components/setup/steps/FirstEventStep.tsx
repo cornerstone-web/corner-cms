@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveFirstEvent } from "@/lib/actions/setup-steps";
+import WizardProseEditor from "@/components/setup/WizardProseEditor";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -15,14 +16,16 @@ interface StepProps {
   initialTime?: string;
   initialLocation?: string;
   initialDescription?: string;
+  initialProseContent?: string;
 }
 
-export default function FirstEventStep({ church, onComplete, initialTitle, initialDate, initialTime, initialLocation, initialDescription }: StepProps) {
+export default function FirstEventStep({ church, onComplete, initialTitle, initialDate, initialTime, initialLocation, initialDescription, initialProseContent }: StepProps) {
   const [title, setTitle] = useState(initialTitle ?? "");
   const [date, setDate] = useState(initialDate ?? "");
   const [time, setTime] = useState(initialTime ?? "");
   const [location, setLocation] = useState(initialLocation ?? "");
   const [description, setDescription] = useState(initialDescription ?? "");
+  const [proseContent, setProseContent] = useState(initialProseContent ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +51,7 @@ export default function FirstEventStep({ church, onComplete, initialTitle, initi
         time: time.trim(),
         ...(location.trim() ? { location: location.trim() } : {}),
         ...(description.trim() ? { description: description.trim() } : {}),
+        ...(proseContent.trim() ? { proseContent: proseContent.trim() } : {}),
       });
       onComplete();
     } catch (err) {
@@ -114,15 +118,28 @@ export default function FirstEventStep({ church, onComplete, initialTitle, initi
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="event-description">
-            Description{" "}
+            Excerpt{" "}
             <span className="text-muted-foreground text-xs">(optional)</span>
           </Label>
           <Textarea
             id="event-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="A brief description of the event..."
-            rows={3}
+            placeholder="A brief description shown in event listings..."
+            rows={2}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>
+            Content{" "}
+            <span className="text-muted-foreground text-xs">(optional)</span>
+          </Label>
+          <p className="text-xs text-muted-foreground -mt-0.5">
+            The body of the event page — details, schedule, how to sign up.
+          </p>
+          <WizardProseEditor
+            value={proseContent}
+            onChange={setProseContent}
           />
         </div>
       </div>

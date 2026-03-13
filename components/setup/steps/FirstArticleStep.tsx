@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveFirstArticle } from "@/lib/actions/setup-steps";
+import WizardProseEditor from "@/components/setup/WizardProseEditor";
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -13,12 +14,14 @@ interface StepProps {
   initialTitle?: string;
   initialAuthor?: string;
   initialDescription?: string;
+  initialProseContent?: string;
 }
 
-export default function FirstArticleStep({ church, onComplete, initialTitle, initialAuthor, initialDescription }: StepProps) {
+export default function FirstArticleStep({ church, onComplete, initialTitle, initialAuthor, initialDescription, initialProseContent }: StepProps) {
   const [title, setTitle] = useState(initialTitle ?? "");
   const [author, setAuthor] = useState(initialAuthor ?? "");
   const [description, setDescription] = useState(initialDescription ?? "");
+  const [proseContent, setProseContent] = useState(initialProseContent ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +41,7 @@ export default function FirstArticleStep({ church, onComplete, initialTitle, ini
         title: title.trim(),
         author: author.trim(),
         ...(description.trim() ? { description: description.trim() } : {}),
+        ...(proseContent.trim() ? { proseContent: proseContent.trim() } : {}),
       });
       onComplete();
     } catch (err) {
@@ -51,8 +55,7 @@ export default function FirstArticleStep({ church, onComplete, initialTitle, ini
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">First Article</h2>
         <p className="text-muted-foreground text-sm">
-          Publish your first article or blog post. You can write the full
-          content in the CMS editor afterward.
+          Publish your first article or blog post.
         </p>
       </div>
       <div className="space-y-4">
@@ -88,7 +91,20 @@ export default function FirstArticleStep({ church, onComplete, initialTitle, ini
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="A short summary shown in article listings..."
-            rows={3}
+            rows={2}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>
+            Content{" "}
+            <span className="text-muted-foreground text-xs">(optional)</span>
+          </Label>
+          <p className="text-xs text-muted-foreground -mt-0.5">
+            The body of the article page.
+          </p>
+          <WizardProseEditor
+            value={proseContent}
+            onChange={setProseContent}
           />
         </div>
       </div>

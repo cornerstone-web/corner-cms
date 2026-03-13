@@ -2,7 +2,7 @@
 
 import { updateSiteConfig, commitBinaryFile, commitFile, tryGetSha, slugify, getFileWithSha } from "@/lib/github/wizard";
 import YAML from "yaml";
-import { completeStep } from "@/lib/actions/setup";
+import { completeStep, uncompleteStep } from "@/lib/actions/setup";
 import { getAuth } from "@/lib/auth";
 
 async function assertChurchAccess(churchId: string) {
@@ -165,10 +165,10 @@ export async function saveHero(
 
   if (opts.imageBase64) {
     const ext = opts.imageExt ?? "jpg";
-    const heroPath = `public/hero.${ext}`;
+    const heroPath = `public/uploads/hero.${ext}`;
     const sha = await tryGetSha(slug, heroPath);
     await commitBinaryFile(slug, heroPath, opts.imageBase64, sha, "wizard: add hero image");
-    await updateSiteConfig(slug, { heroImage: `/hero.${ext}` }, "wizard: set hero image");
+    await updateSiteConfig(slug, { heroImage: `/uploads/hero.${ext}` }, "wizard: set hero image");
   } else if (opts.videoUrl) {
     await updateSiteConfig(slug, { heroVideo: opts.videoUrl }, "wizard: set hero video");
   }
@@ -187,7 +187,7 @@ export async function savePhotos(
   await Promise.all(
     photos.map(async (photo) => {
       const filename = slugify(photo.name.replace(/\.[^.]+$/, "")) + "." + photo.ext;
-      const photoPath = `public/marquee/${filename}`;
+      const photoPath = `public/uploads/marquee/${filename}`;
       const sha = await tryGetSha(slug, photoPath);
       await commitBinaryFile(slug, photoPath, photo.base64, sha, "wizard: add marquee photo");
     }),
@@ -404,6 +404,7 @@ export async function saveFirstEvent(
     time: string;
     location?: string;
     description?: string;
+    proseContent?: string;
   },
 ): Promise<void> {
   await assertChurchAccess(churchId);
@@ -411,11 +412,32 @@ export async function saveFirstEvent(
   const path = `src/content/events/${fileSlug}.md`;
   const content = fm({
     title: fields.title,
+    template: "event",
     date: fields.date,
     time: fields.time,
     ...(fields.location ? { location: fields.location } : {}),
     ...(fields.description ? { description: fields.description } : {}),
     draft: false,
+    passwordProtected: false,
+    blocks: [
+      {
+        type: "hero",
+        variant: "centered",
+        blockHeight: "md",
+        backgroundType: "color",
+        backgroundColor: "primary",
+        overlayOpacity: 50,
+        overlayGradient: "none",
+        showHeadline: true,
+        headline: fields.title,
+        showSubheadline: !!fields.description,
+        subheadline: fields.description ?? "",
+        showPrimaryCta: false,
+        showSecondaryCta: false,
+        showScrollIndicator: false,
+      },
+      { type: "prose", maxWidth: "normal", content: fields.proseContent ?? "" },
+    ],
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: add first event");
@@ -428,7 +450,7 @@ export async function saveFirstEvent(
 export async function saveFirstArticle(
   churchId: string,
   slug: string,
-  fields: { title: string; author: string; description?: string },
+  fields: { title: string; author: string; description?: string; proseContent?: string },
 ): Promise<void> {
   await assertChurchAccess(churchId);
   const fileSlug = slugify(fields.title) || "first-article";
@@ -436,10 +458,31 @@ export async function saveFirstArticle(
   const today = new Date().toISOString().split("T")[0];
   const content = fm({
     title: fields.title,
+    template: "article",
     author: fields.author,
     date: today,
     ...(fields.description ? { description: fields.description } : {}),
     draft: false,
+    passwordProtected: false,
+    blocks: [
+      {
+        type: "hero",
+        variant: "centered",
+        blockHeight: "md",
+        backgroundType: "color",
+        backgroundColor: "primary",
+        overlayOpacity: 50,
+        overlayGradient: "none",
+        showHeadline: true,
+        headline: fields.title,
+        showSubheadline: !!fields.description,
+        subheadline: fields.description ?? "",
+        showPrimaryCta: false,
+        showSecondaryCta: false,
+        showScrollIndicator: false,
+      },
+      { type: "prose", maxWidth: "normal", content: fields.proseContent ?? "" },
+    ],
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: add first article");
@@ -452,7 +495,7 @@ export async function saveFirstArticle(
 export async function saveStaffMembers(
   churchId: string,
   slug: string,
-  members: { name: string; title?: string; bio?: string; photoBase64?: string; photoExt?: string }[],
+  members: { name: string; title?: string; proseContent?: string; photoBase64?: string; photoExt?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
   await Promise.all(members.map(async (member) => {
@@ -460,7 +503,7 @@ export async function saveStaffMembers(
     const fileSlug = slugify(member.name) || "staff";
     if (member.photoBase64) {
       const ext = member.photoExt ?? "jpg";
-      const photoPath = `public/staff/${fileSlug}.${ext}`;
+      const photoPath = `public/uploads/leadership_staff/${fileSlug}.${ext}`;
       const photoSha = await tryGetSha(slug, photoPath);
       await commitBinaryFile(slug, photoPath, member.photoBase64, photoSha, "wizard: add staff photo");
     }
@@ -469,10 +512,31 @@ export async function saveStaffMembers(
     const mdPath = `src/content/staff/${fileSlug}.md`;
     const content = fm({
       name: member.name,
+      template: "staff",
       ...(member.title ? { title: member.title } : {}),
-      ...(member.bio ? { bio: member.bio } : {}),
-      ...(hasPhoto ? { photo: `/staff/${fileSlug}.${ext}` } : {}),
+      ...(hasPhoto ? { photo: `/uploads/leadership_staff/${fileSlug}.${ext}` } : {}),
       draft: false,
+      passwordProtected: false,
+      showDetailPage: true,
+      blocks: [
+        {
+          type: "hero",
+          variant: "centered",
+          blockHeight: "md",
+          backgroundType: "color",
+          backgroundColor: "primary",
+          overlayOpacity: 50,
+          overlayGradient: "none",
+          showHeadline: true,
+          headline: member.name,
+          showSubheadline: !!member.title,
+          subheadline: member.title ?? "",
+          showPrimaryCta: false,
+          showSecondaryCta: false,
+          showScrollIndicator: false,
+        },
+        { type: "prose", maxWidth: "normal", content: member.proseContent ?? "" },
+      ],
     });
     const sha = await tryGetSha(slug, mdPath);
     await commitFile(slug, mdPath, content, sha, "wizard: add staff member");
@@ -486,30 +550,88 @@ export async function saveStaffMembers(
 export async function saveLeaders(
   churchId: string,
   slug: string,
-  leaders: { name: string; role: string; photoBase64?: string; photoExt?: string }[],
+  leaders: { name: string; role: string; photoBase64?: string; photoExt?: string; existingPhotoPath?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  await Promise.all(leaders.map(async (leader) => {
-    if (!leader.name.trim()) return;
+
+  // Resolve the final photo path for each leader (new upload takes priority over existing)
+  const resolved = await Promise.all(leaders.filter(l => l.name.trim()).map(async (leader) => {
     const fileSlug = slugify(leader.name) || "leader";
+    let photoPath: string | undefined;
     if (leader.photoBase64) {
       const ext = leader.photoExt ?? "jpg";
-      const photoPath = `public/leadership/${fileSlug}.${ext}`;
-      const photoSha = await tryGetSha(slug, photoPath);
-      await commitBinaryFile(slug, photoPath, leader.photoBase64, photoSha, "wizard: add leader photo");
+      const repoPath = `public/uploads/leadership_staff/${fileSlug}.${ext}`;
+      const photoSha = await tryGetSha(slug, repoPath);
+      await commitBinaryFile(slug, repoPath, leader.photoBase64, photoSha, "wizard: add leader photo");
+      photoPath = `/uploads/leadership_staff/${fileSlug}.${ext}`;
+    } else if (leader.existingPhotoPath) {
+      photoPath = leader.existingPhotoPath;
     }
-    const hasPhoto = Boolean(leader.photoBase64);
-    const ext = leader.photoExt ?? "jpg";
-    const mdPath = `src/content/leadership/${fileSlug}.md`;
-    const content = fm({
-      name: leader.name,
-      role: leader.role,
-      ...(hasPhoto ? { photo: `/leadership/${fileSlug}.${ext}` } : {}),
-      draft: false,
-    });
-    const sha = await tryGetSha(slug, mdPath);
-    await commitFile(slug, mdPath, content, sha, "wizard: add leader");
+    return { ...leader, fileSlug, photoPath };
   }));
+
+  // Build leadership page: one team-grid per unique role
+  const byRole = new Map<string, typeof resolved>();
+  for (const leader of resolved) {
+    const role = leader.role.trim();
+    if (!byRole.has(role)) byRole.set(role, []);
+    byRole.get(role)!.push(leader);
+  }
+  const teamGrids = [...byRole.entries()].map(([role, people]) => ({
+    type: "team-grid",
+    imageStyle: "circle",
+    gridAlignment: "left",
+    gridSpacing: "normal",
+    gridItemSize: "medium",
+    showTitle: true,
+    title: `${role}s`,
+    showDescription: false,
+    showBio: false,
+    useCollectionSource: false,
+    source: "staff",
+    people: people.map(p => ({
+      name: p.name.trim(),
+      ...(p.photoPath ? { image: p.photoPath, imageAlt: p.name.trim() } : {}),
+      subtitle: role,
+    })),
+  }));
+  const leadershipPagePath = "src/content/pages/leadership.md";
+  const leadershipPageContent = fm({
+    title: "Our Leadership",
+    description: "Meet our church leadership",
+    template: "leadership",
+    draft: false,
+    passwordProtected: false,
+    blocks: [
+      {
+        type: "hero",
+        variant: "centered",
+        blockHeight: "lg",
+        backgroundType: "default",
+        overlayOpacity: 50,
+        overlayGradient: "none",
+        showHeadline: true,
+        headline: "Our Leadership",
+        showSubheadline: false,
+        showPrimaryCta: false,
+        showSecondaryCta: false,
+        showScrollIndicator: false,
+      },
+      ...teamGrids,
+      {
+        type: "cta",
+        variant: "primary",
+        headline: "Want to connect with our leadership?",
+        showDescription: false,
+        showPrimaryCta: true,
+        primaryCta: { label: "Contact Us", href: "/contact" },
+        showSecondaryCta: false,
+      },
+    ],
+  });
+  const leadershipPageSha = await tryGetSha(slug, leadershipPagePath);
+  await commitFile(slug, leadershipPagePath, leadershipPageContent, leadershipPageSha, "wizard: update leadership page");
+
   const result = await completeStep(churchId, "first-leaders");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
@@ -589,4 +711,53 @@ export async function checkContactFormVerification(
   const address = data.result?.find((a) => a.email === email);
 
   return { verified: !!address?.verified, email };
+}
+
+/**
+ * Removes the contact form email: deletes it from CF Email Routing,
+ * clears formEmail from site.config.yaml, and marks the step incomplete.
+ */
+export async function removeContactFormEmail(
+  churchId: string,
+  slug: string,
+  email: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await assertChurchAccess(churchId);
+
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const apiToken = process.env.CF_API_TOKEN;
+
+  if (accountId && apiToken) {
+    // Look up the destination address identifier
+    const listRes = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/routing/addresses?per_page=50`,
+      { headers: { Authorization: `Bearer ${apiToken}` } },
+    );
+    if (listRes.ok) {
+      const listData = await listRes.json() as { result?: { tag: string; email: string }[] };
+      const address = listData.result?.find((a) => a.email === email);
+      if (address) {
+        await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/routing/addresses/${address.tag}`,
+          { method: "DELETE", headers: { Authorization: `Bearer ${apiToken}` } },
+        );
+      }
+    }
+  }
+
+  // Clear formEmail from site config
+  try {
+    const { content, sha } = await getFileWithSha(slug, "src/config/site.config.yaml");
+    const parsed = YAML.parse(content) as Record<string, unknown>;
+    const contact = (parsed.contact ?? {}) as Record<string, unknown>;
+    delete contact.formEmail;
+    parsed.contact = contact;
+    await commitFile(slug, "src/config/site.config.yaml", YAML.stringify(parsed, { lineWidth: 0 }), sha, "wizard: remove form email");
+  } catch {
+    // Config may not exist yet — fine
+  }
+
+  await uncompleteStep(churchId, "contact-form");
+
+  return { ok: true };
 }

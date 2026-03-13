@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { initiateContactFormVerification, checkContactFormVerification } from "@/lib/actions/setup-steps";
+import { initiateContactFormVerification, checkContactFormVerification, removeContactFormEmail } from "@/lib/actions/setup-steps";
 import { completeStep } from "@/lib/actions/setup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ interface ContactFormStepProps {
   initialEmail?: string;
 }
 
-type Status = "idle" | "checking" | "sending" | "waiting" | "verified" | "error";
+type Status = "idle" | "checking" | "sending" | "waiting" | "verified" | "removing" | "error";
 
 export default function ContactFormStep({ church, onComplete, initialEmail }: ContactFormStepProps) {
   const [formEmail, setFormEmail] = useState(initialEmail ?? "");
@@ -87,7 +87,22 @@ export default function ContactFormStep({ church, onComplete, initialEmail }: Co
     onComplete("contact-form");
   }
 
-  const locked = status === "checking" || status === "sending" || status === "waiting" || status === "verified";
+  async function handleRemove() {
+    if (!verifiedEmail) return;
+    setStatus("removing");
+    const res = await removeContactFormEmail(church.id, church.slug, verifiedEmail);
+    if (!res.ok) {
+      setStatus("verified");
+      setErrorMsg(res.error ?? "Failed to remove email.");
+      return;
+    }
+    setVerifiedEmail(undefined);
+    setFormEmail("");
+    setErrorMsg(undefined);
+    setStatus("idle");
+  }
+
+  const locked = status === "checking" || status === "sending" || status === "waiting" || status === "verified" || status === "removing";
 
   return (
     <div className="space-y-6">
@@ -143,10 +158,23 @@ export default function ContactFormStep({ church, onComplete, initialEmail }: Co
           <p className="text-sm font-medium text-green-600">
             ✓ {verifiedEmail} is verified. Form submissions will be delivered to this address.
           </p>
-          <Button onClick={handleComplete} disabled={completing}>
-            {completing ? "Saving…" : "Continue →"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleComplete} disabled={completing}>
+              {completing ? "Saving…" : "Continue →"}
+            </Button>
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-destructive transition-colors"
+            >
+              Use a different email
+            </button>
+          </div>
         </div>
+      )}
+
+      {status === "removing" && (
+        <Button disabled>Removing…</Button>
       )}
 
       {status === "error" && (

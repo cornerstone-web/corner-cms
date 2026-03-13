@@ -34,7 +34,10 @@ export default function HeroStep({ church, onComplete }: StepProps) {
       const compressed = await compressImage(file, "content");
       const base64 = await fileToBase64(compressed);
       const ext = compressed.type.split("/")[1] ?? "jpg";
-      await saveHero(church.id, church.slug, { imageBase64: base64, imageExt: ext });
+      await saveHero(church.id, church.slug, {
+        imageBase64: base64,
+        imageExt: ext,
+      });
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -47,7 +50,10 @@ export default function HeroStep({ church, onComplete }: StepProps) {
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Home Page Hero</h2>
         <p className="text-muted-foreground text-sm">
-          Choose a hero image to display prominently on your home page.
+          Choose a hero image to display prominently on your home page. This
+          will be the first thing visitors see, so make it engaging and
+          representative of your church. We recommend using a high-quality image
+          that is at least 1200px wide for the best results.
         </p>
       </div>
 
