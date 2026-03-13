@@ -1,12 +1,18 @@
 import imageCompression from "browser-image-compression";
 
-export type CompressionProfile = "logo" | "content";
+export type CompressionProfile = "logo" | "hero" | "content";
 
 const PROFILES = {
   logo: {
     maxWidthOrHeight: 800,
     maxSizeMB: 0.3,
     fileType: "image/png", // keep as PNG to preserve transparency
+    useWebWorker: true,
+  },
+  hero: {
+    maxWidthOrHeight: 1920,
+    maxSizeMB: 0.5,
+    fileType: "image/jpeg", // always JPEG for predictable path
     useWebWorker: true,
   },
   content: {

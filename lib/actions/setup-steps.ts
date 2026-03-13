@@ -164,13 +164,9 @@ export async function saveHero(
   await assertChurchAccess(churchId);
 
   if (opts.imageBase64) {
-    const ext = opts.imageExt ?? "jpg";
-    const heroPath = `public/uploads/hero.${ext}`;
+    const heroPath = `public/uploads/hero.jpg`;
     const sha = await tryGetSha(slug, heroPath);
     await commitBinaryFile(slug, heroPath, opts.imageBase64, sha, "wizard: add hero image");
-    await updateSiteConfig(slug, { heroImage: `/uploads/hero.${ext}` }, "wizard: set hero image");
-  } else if (opts.videoUrl) {
-    await updateSiteConfig(slug, { heroVideo: opts.videoUrl }, "wizard: set hero video");
   }
 
   const result = await completeStep(churchId, "hero");

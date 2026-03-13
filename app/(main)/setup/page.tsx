@@ -5,7 +5,7 @@ import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
 import { initWizard } from "@/lib/actions/setup";
-import { getFileWithSha, getFileDownloadUrl, getFirstFileFrontmatter, getAllFilesFrontmatter } from "@/lib/github/wizard";
+import { getFileWithSha, getFileDownloadUrl, getFirstFileFrontmatter, getAllFilesFrontmatter, getDirectoryImageUrls } from "@/lib/github/wizard";
 import WizardShell from "@/components/setup/WizardShell";
 
 export default async function SetupPage() {
@@ -52,8 +52,9 @@ export default async function SetupPage() {
 
   // Fetch authenticated download URLs for already-uploaded branding assets
   // and first-content frontmatter for completed content steps
-  const [logoUrl, faviconUrl, firstSeries, firstSermon, firstEvent, firstArticle, firstMinistries, firstStaff, firstLeaders] = await Promise.all([
+  const [logoUrl, heroUrl, faviconUrl, firstSeries, firstSermon, firstEvent, firstArticle, firstMinistries, firstStaff, marqueePhotos, firstLeaders] = await Promise.all([
     completedSteps.has("logo") ? getFileDownloadUrl(church.slug, "public/images/logo.png") : Promise.resolve(null),
+    completedSteps.has("hero") ? getFileDownloadUrl(church.slug, "public/uploads/hero.jpg") : Promise.resolve(null),
     completedSteps.has("favicon") ? getFileDownloadUrl(church.slug, "public/favicon.svg") : Promise.resolve(null),
     completedSteps.has("first-series") ? getFirstFileFrontmatter(church.slug, "src/content/series") : Promise.resolve(null),
     completedSteps.has("first-sermon") ? getFirstFileFrontmatter(church.slug, "src/content/sermons") : Promise.resolve(null),
@@ -68,6 +69,7 @@ export default async function SetupPage() {
         return { ...m, photoUrl: url ?? undefined };
       }));
     }) : Promise.resolve([]),
+    completedSteps.has("photos") ? getDirectoryImageUrls(church.slug, "public/uploads/marquee") : Promise.resolve([]),
     completedSteps.has("first-leaders") ? (async () => {
       try {
         const { content } = await getFileWithSha(church.slug, "src/content/pages/leadership.md");
@@ -100,6 +102,7 @@ export default async function SetupPage() {
       completedStepsArray={[...completedSteps]}
       initialConfig={initialConfig}
       initialLogoUrl={logoUrl ?? undefined}
+      initialHeroUrl={heroUrl ?? undefined}
       initialFaviconUrl={faviconUrl ?? undefined}
       userEmail={user.email ?? undefined}
       initialFirstSeries={firstSeries ?? undefined}
@@ -109,6 +112,7 @@ export default async function SetupPage() {
       initialFirstMinistries={firstMinistries.length > 0 ? firstMinistries : undefined}
       initialFirstStaff={firstStaff.length > 0 ? firstStaff : undefined}
       initialFirstLeaders={firstLeaders.length > 0 ? firstLeaders : undefined}
+      initialMarqueePhotos={marqueePhotos.length > 0 ? marqueePhotos : undefined}
     />
   );
 }

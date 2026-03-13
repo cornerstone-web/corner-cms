@@ -10,6 +10,7 @@ import { compressImage } from "@/lib/utils/image-compression";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialPhotos?: { name: string; url: string }[];
 }
 
 interface PhotoEntry {
@@ -19,8 +20,9 @@ interface PhotoEntry {
   previewUrl: string;
 }
 
-export default function PhotosStep({ church, onComplete }: StepProps) {
-  const [wantsPhotos, setWantsPhotos] = useState<boolean | null>(null);
+export default function PhotosStep({ church, onComplete, initialPhotos }: StepProps) {
+  const hasExisting = (initialPhotos?.length ?? 0) > 0;
+  const [wantsPhotos, setWantsPhotos] = useState<boolean | null>(hasExisting ? true : null);
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export default function PhotosStep({ church, onComplete }: StepProps) {
       return;
     }
 
-    if (wantsPhotos && photos.length === 0) {
+    if (wantsPhotos && photos.length === 0 && !hasExisting) {
       setError("Please select at least one photo.");
       return;
     }
@@ -63,7 +65,7 @@ export default function PhotosStep({ church, onComplete }: StepProps) {
     setError(null);
 
     try {
-      if (wantsPhotos) {
+      if (wantsPhotos && photos.length > 0) {
         await savePhotos(
           church.id,
           church.slug,
@@ -131,7 +133,31 @@ export default function PhotosStep({ church, onComplete }: StepProps) {
       {/* Multi-file upload when "Yes" selected */}
       {wantsPhotos === true && (
         <div className="space-y-4">
+          {/* Previously uploaded photos */}
+          {hasExisting && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                {initialPhotos!.length} photo{initialPhotos!.length !== 1 ? "s" : ""} already uploaded
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {initialPhotos!.map((photo) => (
+                  <div key={photo.name} className="rounded overflow-hidden border bg-muted/30">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.url}
+                      alt={photo.name}
+                      className="w-full h-20 object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
+            <p className="text-sm font-medium">
+              {hasExisting ? "Upload additional photos (optional)" : "Upload photos"}
+            </p>
             <input
               id="photos-upload"
               type="file"
@@ -148,7 +174,7 @@ export default function PhotosStep({ church, onComplete }: StepProps) {
           {photos.length > 0 && (
             <div>
               <p className="text-sm text-muted-foreground mb-2">
-                {photos.length} photo{photos.length !== 1 ? "s" : ""} selected
+                {photos.length} new photo{photos.length !== 1 ? "s" : ""} selected
               </p>
               <div className="grid grid-cols-4 gap-2">
                 {photos.map((photo, i) => (

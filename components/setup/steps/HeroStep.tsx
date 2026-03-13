@@ -9,35 +9,37 @@ import { compressImage } from "@/lib/utils/image-compression";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  initialHeroUrl?: string;
 }
 
-export default function HeroStep({ church, onComplete }: StepProps) {
+export default function HeroStep({ church, onComplete, initialHeroUrl }: StepProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(initialHeroUrl ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null;
     setFile(selected);
-    setPreview(selected ? URL.createObjectURL(selected) : null);
+    setPreview(selected ? URL.createObjectURL(selected) : (initialHeroUrl ?? null));
   }
 
   async function handleSubmit() {
     setError(null);
-    if (!file) {
+    if (!file && !initialHeroUrl) {
       setError("Please select a hero image.");
       return;
     }
     setIsLoading(true);
     try {
-      const compressed = await compressImage(file, "content");
-      const base64 = await fileToBase64(compressed);
-      const ext = compressed.type.split("/")[1] ?? "jpg";
-      await saveHero(church.id, church.slug, {
-        imageBase64: base64,
-        imageExt: ext,
-      });
+      if (file) {
+        const compressed = await compressImage(file, "hero");
+        const base64 = await fileToBase64(compressed);
+        await saveHero(church.id, church.slug, { imageBase64: base64 });
+      } else {
+        // Re-completing with existing image — just mark step complete
+        await saveHero(church.id, church.slug, {});
+      }
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -59,7 +61,9 @@ export default function HeroStep({ church, onComplete }: StepProps) {
 
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="hero-upload">Hero image</Label>
+          <Label htmlFor="hero-upload">
+            Hero image{initialHeroUrl && <span className="text-muted-foreground text-xs ml-1">(upload a new one to replace)</span>}
+          </Label>
           <input
             id="hero-upload"
             type="file"
@@ -91,10 +95,7 @@ export default function HeroStep({ church, onComplete }: StepProps) {
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve((result as string).split(",")[1]);
-    };
+    reader.onload = () => resolve((reader.result as string).split(",")[1]);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });

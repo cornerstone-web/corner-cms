@@ -49,6 +49,7 @@ interface WizardShellProps {
   completedStepsArray: string[];
   initialConfig: Record<string, unknown>;
   initialLogoUrl?: string;
+  initialHeroUrl?: string;
   initialFaviconUrl?: string;
   userEmail?: string;
   initialFirstSeries?: Record<string, unknown>;
@@ -58,9 +59,10 @@ interface WizardShellProps {
   initialFirstArticle?: Record<string, unknown>;
   initialFirstStaff?: Record<string, unknown>[];
   initialFirstLeaders?: Record<string, unknown>[];
+  initialMarqueePhotos?: { name: string; url: string }[];
 }
 
-export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialFaviconUrl, userEmail, initialFirstSeries, initialFirstSermon, initialFirstMinistries, initialFirstEvent, initialFirstArticle, initialFirstStaff, initialFirstLeaders }: WizardShellProps) {
+export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialHeroUrl, initialFaviconUrl, userEmail, initialFirstSeries, initialFirstSermon, initialFirstMinistries, initialFirstEvent, initialFirstArticle, initialFirstStaff, initialFirstLeaders, initialMarqueePhotos }: WizardShellProps) {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(
     () => new Set(completedStepsArray)
   );
@@ -231,8 +233,8 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
           existingPhotoPath: (l.existingPhotoPath ?? l.photo) as string | undefined,
         }))}
       />;
-      case "hero": return <HeroStep {...base} />;
-      case "photos": return <PhotosStep {...base} />;
+      case "hero": return <HeroStep {...base} initialHeroUrl={initialHeroUrl} />;
+      case "photos": return <PhotosStep {...base} initialPhotos={initialMarqueePhotos} />;
       case "launched": return (
         <LaunchStep
           church={church}

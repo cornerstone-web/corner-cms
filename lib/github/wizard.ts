@@ -206,6 +206,28 @@ export async function getAllFilesFrontmatter(
   }
 }
 
+/**
+ * Lists a directory and returns { name, url } for all image files found.
+ * Returns an empty array if the directory is empty or an error occurs.
+ */
+export async function getDirectoryImageUrls(
+  repoName: string,
+  dirPath: string,
+): Promise<{ name: string; url: string }[]> {
+  try {
+    const token = await getInstallationToken(GITHUB_ORG, repoName);
+    const octokit = createOctokitInstance(token);
+    const res = await octokit.rest.repos.getContent({ owner: GITHUB_ORG, repo: repoName, path: dirPath });
+    const items = res.data as { name: string; type: string; download_url?: string }[];
+    const imageExts = /\.(jpe?g|png|gif|webp|svg|avif)$/i;
+    return items
+      .filter((item) => item.type === "file" && imageExts.test(item.name) && item.download_url)
+      .map((item) => ({ name: item.name, url: item.download_url! }));
+  } catch {
+    return [];
+  }
+}
+
 export async function tryGetSha(
   repoName: string,
   path: string,

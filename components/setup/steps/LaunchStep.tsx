@@ -34,6 +34,7 @@ export default function LaunchStep({ church, completedSteps, onLaunched }: Launc
     };
 
     const homeOpts: HomeGenOptions = {
+      heroImage: completedSteps.has("hero") ? "/uploads/hero.jpg" : undefined,
       photos: completedSteps.has("photos"),
       sermons: features.sermons,
       ministries: features.ministries,
