@@ -113,7 +113,11 @@ export async function saveSocialLinks(
   links: { platform: string; url: string; label?: string; icon?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  await updateSiteConfig(slug, { footer: { socialLinks: links } }, "wizard: add social links");
+  // Write full footer structure so footer.sections and footer.variant always exist
+  // (corner-template starts without a footer key; deepMerge can't fill in missing fields)
+  await updateSiteConfig(slug, {
+    footer: { variant: "comprehensive", style: "centered", socialLinks: links, sections: [] },
+  }, "wizard: add social links");
   const result = await completeStep(churchId, "social");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }

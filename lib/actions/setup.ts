@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
 import { createRepoFromTemplate, updateSiteConfig, commitFile, tryGetSha, getFileWithSha, getDirectoryFileNames } from "@/lib/github/wizard";
 import { generateNav, WizardFeatures } from "@/lib/wizard/nav-gen";
+import { generateFooterSections } from "@/lib/wizard/footer-gen";
 import { generateHomeBlocks, HomeGenOptions } from "@/lib/wizard/home-gen";
 import YAML from "yaml";
 
@@ -258,9 +259,14 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
       }
     }
 
-    // 4. Commit auto-generated navigation → triggers first CF Pages build
+    // 4. Commit auto-generated navigation + footer sections → triggers first CF Pages build
     const nav = generateNav({ ...opts.features, givingUrl });
-    await updateSiteConfig(repoName, { navigation: nav }, "chore: set navigation from wizard");
+    const footerSections = generateFooterSections({ ...opts.features, givingUrl });
+    await updateSiteConfig(
+      repoName,
+      { navigation: nav, footer: { sections: footerSections } },
+      "chore: set navigation and footer sections from wizard",
+    );
 
     // 5. Commit home page blocks → triggers second CF Pages build (final state)
     const blocks = generateHomeBlocks({ ...opts.homeOpts, marqueeImages, serviceTimes, channelId });

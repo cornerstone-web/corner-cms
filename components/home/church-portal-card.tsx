@@ -147,26 +147,25 @@ export function ChurchPortalCard({
           </CardContent>
         )}
 
-        {buildStatus === "building" ||
-          (buildStatus === "checking" && (
-            <CardFooter>
-              {isProvisioning ? (
-                <Button asChild className="w-full">
-                  <Link href="/setup">
-                    <Settings2 className="h-4 w-4 mr-2" />
-                    Continue Setup
-                  </Link>
-                </Button>
-              ) : (
-                <Button asChild className="w-full">
-                  <Link href={editorHref}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Open Editor
-                  </Link>
-                </Button>
-              )}
-            </CardFooter>
-          ))}
+        {buildStatus !== "building" && buildStatus !== "checking" && (
+          <CardFooter>
+            {isProvisioning ? (
+              <Button asChild className="w-full">
+                <Link href="/setup">
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  Continue Setup
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild className="w-full">
+                <Link href={editorHref}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Open Editor
+                </Link>
+              </Button>
+            )}
+          </CardFooter>
+        )}
       </Card>
     </div>
   );
