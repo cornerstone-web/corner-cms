@@ -133,9 +133,10 @@ export async function saveStreaming(
   churchId: string,
   slug: string,
   youtubeApiKey: string,
+  youtubeChannelId: string,
 ): Promise<void> {
   await assertChurchAccess(churchId);
-  await updateSiteConfig(slug, { integrations: { youtubeApiKey } }, "wizard: add YouTube API key");
+  await updateSiteConfig(slug, { integrations: { youtubeApiKey, youtubeChannelId } }, "wizard: add YouTube streaming config");
   const result = await completeStep(churchId, "streaming");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
@@ -264,7 +265,7 @@ export async function saveFirstSermon(
     {
       type: "cta",
       variant: "primary",
-      headline: "",
+      headline: "Want to learn more?",
       showDescription: false,
       showPrimaryCta: true,
       primaryCta: { label: "View All Sermons", href: "/sermons" },
@@ -277,7 +278,7 @@ export async function saveFirstSermon(
     date: fields.date,
     speaker: fields.speaker,
     ...(fields.series ? { series: fields.series } : {}),
-    ...(fields.description ? { description: fields.description } : {}),
+    description: fields.description ?? "",
     draft: false,
     passwordProtected: false,
     blocks,
@@ -301,7 +302,7 @@ export async function saveFirstSeries(
   const content = fm({
     title: fields.title,
     template: "series",
-    ...(fields.description ? { description: fields.description } : {}),
+    description: fields.description ?? "",
     showDetailPage: true,
     draft: false,
     passwordProtected: false,
@@ -309,14 +310,14 @@ export async function saveFirstSeries(
       {
         type: "hero",
         variant: "centered",
-        showBackgroundImage: false,
-        overlay: true,
+        backgroundType: "default",
         showHeadline: true,
         headline: fields.title,
         showSubheadline: fields.description ? true : false,
         ...(fields.description ? { subheadline: fields.description } : {}),
         showPrimaryCta: false,
         showSecondaryCta: false,
+        showScrollIndicator: false,
       },
       {
         type: "sermon-grid",
@@ -348,7 +349,7 @@ export async function saveFirstMinistries(
     const content = fm({
       title: ministry.name,
       template: "ministry",
-      ...(ministry.description ? { description: ministry.description } : {}),
+      description: ministry.description ?? "",
       ...(ministry.icon ? { icon: ministry.icon } : {}),
       draft: false,
       passwordProtected: false,
@@ -358,8 +359,7 @@ export async function saveFirstMinistries(
           type: "hero",
           variant: "centered",
           blockHeight: "md",
-          backgroundType: "color",
-          backgroundColor: "primary",
+          backgroundType: "default",
           overlayOpacity: 50,
           overlayGradient: "none",
           showHeadline: true,
@@ -374,7 +374,7 @@ export async function saveFirstMinistries(
         {
           type: "cta",
           variant: "primary",
-          headline: "",
+          headline: "Want to get connected?",
           showDescription: false,
           showPrimaryCta: true,
           primaryCta: { label: "Contact Us", href: "/contact" },
@@ -411,8 +411,8 @@ export async function saveFirstEvent(
     template: "event",
     date: fields.date,
     time: fields.time,
-    ...(fields.location ? { location: fields.location } : {}),
-    ...(fields.description ? { description: fields.description } : {}),
+    location: fields.location ?? "",
+    description: fields.description ?? "",
     draft: false,
     passwordProtected: false,
     blocks: [
@@ -420,8 +420,7 @@ export async function saveFirstEvent(
         type: "hero",
         variant: "centered",
         blockHeight: "md",
-        backgroundType: "color",
-        backgroundColor: "primary",
+        backgroundType: "default",
         overlayOpacity: 50,
         overlayGradient: "none",
         showHeadline: true,
@@ -446,7 +445,7 @@ export async function saveFirstEvent(
 export async function saveFirstArticle(
   churchId: string,
   slug: string,
-  fields: { title: string; author: string; description?: string; proseContent?: string },
+  fields: { title: string; author: string; category?: string; description?: string; proseContent?: string },
 ): Promise<void> {
   await assertChurchAccess(churchId);
   const fileSlug = slugify(fields.title) || "first-article";
@@ -457,7 +456,8 @@ export async function saveFirstArticle(
     template: "article",
     author: fields.author,
     date: today,
-    ...(fields.description ? { description: fields.description } : {}),
+    category: fields.category ?? "",
+    description: fields.description ?? "",
     draft: false,
     passwordProtected: false,
     blocks: [
@@ -465,8 +465,7 @@ export async function saveFirstArticle(
         type: "hero",
         variant: "centered",
         blockHeight: "md",
-        backgroundType: "color",
-        backgroundColor: "primary",
+        backgroundType: "default",
         overlayOpacity: 50,
         overlayGradient: "none",
         showHeadline: true,
@@ -509,8 +508,9 @@ export async function saveStaffMembers(
     const content = fm({
       name: member.name,
       template: "staff",
-      ...(member.title ? { title: member.title } : {}),
-      ...(hasPhoto ? { photo: `/uploads/leadership_staff/${fileSlug}.${ext}` } : {}),
+      role: member.title ?? "",
+      bio: "",
+      ...(hasPhoto ? { image: `/uploads/leadership_staff/${fileSlug}.${ext}` } : {}),
       draft: false,
       passwordProtected: false,
       showDetailPage: true,
@@ -519,8 +519,7 @@ export async function saveStaffMembers(
           type: "hero",
           variant: "centered",
           blockHeight: "md",
-          backgroundType: "color",
-          backgroundColor: "primary",
+          backgroundType: "default",
           overlayOpacity: 50,
           overlayGradient: "none",
           showHeadline: true,

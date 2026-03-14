@@ -13,13 +13,23 @@ interface StepProps {
   onComplete: () => void;
   initialTitle?: string;
   initialAuthor?: string;
+  initialCategory?: string;
   initialDescription?: string;
   initialProseContent?: string;
 }
 
-export default function FirstArticleStep({ church, onComplete, initialTitle, initialAuthor, initialDescription, initialProseContent }: StepProps) {
+export default function FirstArticleStep({
+  church,
+  onComplete,
+  initialTitle,
+  initialAuthor,
+  initialCategory,
+  initialDescription,
+  initialProseContent,
+}: StepProps) {
   const [title, setTitle] = useState(initialTitle ?? "");
   const [author, setAuthor] = useState(initialAuthor ?? "");
+  const [category, setCategory] = useState(initialCategory ?? "");
   const [description, setDescription] = useState(initialDescription ?? "");
   const [proseContent, setProseContent] = useState(initialProseContent ?? "");
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +50,7 @@ export default function FirstArticleStep({ church, onComplete, initialTitle, ini
       await saveFirstArticle(church.id, church.slug, {
         title: title.trim(),
         author: author.trim(),
+        category: category.trim(),
         ...(description.trim() ? { description: description.trim() } : {}),
         ...(proseContent.trim() ? { proseContent: proseContent.trim() } : {}),
       });
@@ -82,6 +93,22 @@ export default function FirstArticleStep({ church, onComplete, initialTitle, ini
           />
         </div>
         <div className="space-y-1.5">
+          <Label htmlFor="article-category">
+            Category{" "}
+            <span className="text-muted-foreground text-xs">(optional)</span>
+          </Label>
+          <Input
+            id="article-category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="e.g. Announcements"
+          />
+          <p className="text-xs text-muted-foreground">
+            Categories let visitors filter articles by topic — for example,
+            Announcements, Devotionals, or a custom series term.
+          </p>
+        </div>
+        <div className="space-y-1.5">
           <Label htmlFor="article-description">
             Excerpt{" "}
             <span className="text-muted-foreground text-xs">(optional)</span>
@@ -102,10 +129,7 @@ export default function FirstArticleStep({ church, onComplete, initialTitle, ini
           <p className="text-xs text-muted-foreground -mt-0.5">
             The body of the article page.
           </p>
-          <WizardProseEditor
-            value={proseContent}
-            onChange={setProseContent}
-          />
+          <WizardProseEditor value={proseContent} onChange={setProseContent} />
         </div>
       </div>
       <Button onClick={handleSubmit} disabled={isLoading}>

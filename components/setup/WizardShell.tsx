@@ -151,6 +151,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
       />;
       case "streaming": return <StreamingStep {...base}
         initialYoutubeApiKey={(cfg.integrations as Record<string, string> | undefined)?.youtubeApiKey}
+        initialYoutubeChannelId={(cfg.integrations as Record<string, string> | undefined)?.youtubeChannelId}
       />;
       case "sermons": return <SermonFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("sermons") ? features.sermons : undefined} />;
       case "series": return <SeriesFeatureStep church={church} onComplete={featureOnComplete} initialEnabled={completedSteps.has("series") ? features.series : undefined} />;
@@ -210,6 +211,7 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
         return <FirstArticleStep {...base}
           initialTitle={initialFirstArticle?.title as string | undefined}
           initialAuthor={initialFirstArticle?.author as string | undefined}
+          initialCategory={initialFirstArticle?.category as string | undefined}
           initialDescription={initialFirstArticle?.description as string | undefined}
           initialProseContent={existingArticleProse}
         />;

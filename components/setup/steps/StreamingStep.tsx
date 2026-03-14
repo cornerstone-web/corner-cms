@@ -11,13 +11,15 @@ interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialYoutubeApiKey?: string;
+  initialYoutubeChannelId?: string;
 }
 
-export default function StreamingStep({ church, onComplete, initialYoutubeApiKey }: StepProps) {
+export default function StreamingStep({ church, onComplete, initialYoutubeApiKey, initialYoutubeChannelId }: StepProps) {
   const [streamsLive, setStreamsLive] = useState<boolean | null>(
     initialYoutubeApiKey === undefined ? null : initialYoutubeApiKey ? true : false
   );
   const [youtubeApiKey, setYoutubeApiKey] = useState(initialYoutubeApiKey ?? "");
+  const [youtubeChannelId, setYoutubeChannelId] = useState(initialYoutubeChannelId ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,10 +32,19 @@ export default function StreamingStep({ church, onComplete, initialYoutubeApiKey
       setError("Please enter your YouTube API key.");
       return;
     }
+    if (streamsLive === true && youtubeChannelId.trim() === "") {
+      setError("Please enter your YouTube Channel ID.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      await saveStreaming(church.id, church.slug, streamsLive ? youtubeApiKey.trim() : "");
+      await saveStreaming(
+        church.id,
+        church.slug,
+        streamsLive ? youtubeApiKey.trim() : "",
+        streamsLive ? youtubeChannelId.trim() : "",
+      );
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -76,29 +87,44 @@ export default function StreamingStep({ church, onComplete, initialYoutubeApiKey
         </button>
       </div>
       {streamsLive === true && (
-        <div className="space-y-1.5">
-          <Label htmlFor="youtube-api-key">YouTube API Key</Label>
-          <Input
-            id="youtube-api-key"
-            type="text"
-            value={youtubeApiKey}
-            onChange={(e) => setYoutubeApiKey(e.target.value)}
-            placeholder="AIza..."
-          />
-          <p className="text-xs text-muted-foreground">
-            Need a YouTube API Key?{" "}
-            <a
-              href="https://developers.google.com/youtube/v3/getting-started"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              Here&apos;s how to create one →
-            </a>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            The API key enables your site to automatically detect and display your live stream.
-          </p>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="youtube-api-key">YouTube API Key</Label>
+            <Input
+              id="youtube-api-key"
+              type="text"
+              value={youtubeApiKey}
+              onChange={(e) => setYoutubeApiKey(e.target.value)}
+              placeholder="AIza..."
+            />
+            <p className="text-xs text-muted-foreground">
+              Need a YouTube API Key?{" "}
+              <a
+                href="https://developers.google.com/youtube/v3/getting-started"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                Here&apos;s how to create one →
+              </a>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              The API key enables your site to automatically detect and display your live stream.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="youtube-channel-id">YouTube Channel ID</Label>
+            <Input
+              id="youtube-channel-id"
+              type="text"
+              value={youtubeChannelId}
+              onChange={(e) => setYoutubeChannelId(e.target.value)}
+              placeholder="UCxxxxxxxx or @channelname"
+            />
+            <p className="text-xs text-muted-foreground">
+              Your channel ID can be found in YouTube Studio → Settings → Channel → Advanced settings.
+            </p>
+          </div>
         </div>
       )}
       <Button onClick={handleSubmit} disabled={isLoading || streamsLive === null}>

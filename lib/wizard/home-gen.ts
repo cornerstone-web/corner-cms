@@ -8,6 +8,8 @@ export interface HomeGenOptions {
   channelId?: string;
   heroImage?: string;
   heroVideo?: string;
+  marqueeImages?: string[];
+  serviceTimes?: { time: string; label: string }[];
 }
 
 export function generateHomeBlocks(opts: HomeGenOptions): unknown[] {
@@ -15,24 +17,24 @@ export function generateHomeBlocks(opts: HomeGenOptions): unknown[] {
 
   blocks.push({
     type: "hero",
-    variant: "center",
-    backgroundType: opts.heroVideo ? "video" : opts.heroImage ? "image" : "color",
+    variant: "centered",
+    backgroundType: opts.heroVideo ? "video" : opts.heroImage ? "image" : "default",
     ...(opts.heroImage ? { backgroundImage: opts.heroImage } : {}),
     ...(opts.heroVideo ? { backgroundVideo: opts.heroVideo } : {}),
     blockHeight: "full",
     headline: "Welcome",
     subheadline: "We're glad you're here.",
     overlayOpacity: 40,
-    scrollIndicator: false,
+    showScrollIndicator: false,
   });
 
-  if (opts.photos) {
+  if (opts.photos || (opts.marqueeImages?.length ?? 0) > 0) {
     blocks.push({
       type: "image-marquee",
-      images: [],
+      images: (opts.marqueeImages ?? []).map(src => ({ src, alt: "" })),
       speed: 30,
       direction: "left",
-      imageStyle: "square",
+      imageStyle: "freeform",
       enableDragScroll: true,
     });
   }
@@ -45,6 +47,16 @@ export function generateHomeBlocks(opts: HomeGenOptions): unknown[] {
       showDescription: false,
     });
   }
+
+  const times = opts.serviceTimes ?? [];
+  blocks.push({
+    type: "service-times",
+    mobileAlignment: "center",
+    showTitle: true,
+    title: "Come Be Our Guest",
+    showDescription: false,
+    times: times.map(t => ({ time: t.time, label: t.label })),
+  });
 
   if (opts.streaming && opts.channelId) {
     blocks.push({

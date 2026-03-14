@@ -239,3 +239,23 @@ export async function tryGetSha(
     return undefined;
   }
 }
+
+/**
+ * Lists a directory and returns the filenames of all image files found.
+ * Returns an empty array if the directory is empty or an error occurs.
+ */
+export async function getDirectoryFileNames(
+  repoName: string,
+  dirPath: string,
+): Promise<string[]> {
+  try {
+    const token = await getInstallationToken(GITHUB_ORG, repoName);
+    const octokit = createOctokitInstance(token);
+    const res = await octokit.rest.repos.getContent({ owner: GITHUB_ORG, repo: repoName, path: dirPath });
+    const items = res.data as { name: string; type: string }[];
+    const imageExts = /\.(jpe?g|png|gif|webp|avif)$/i;
+    return items.filter(item => item.type === "file" && imageExts.test(item.name)).map(item => item.name);
+  } catch {
+    return [];
+  }
+}
