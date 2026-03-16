@@ -4,6 +4,48 @@ A content management system purpose-built for the [Cornerstone](https://github.c
 
 ## How this differs from Pages CMS
 
+### Closed multi-tenant platform
+
+Upstream Pages CMS is a self-hosted, single-tenant tool — anyone can sign up and connect their own repo. Cornerstone CMS is a closed, invitation-only platform that manages multiple church sites from one deployment.
+
+**Roles:**
+
+| Role | Access |
+|---|---|
+| `super_admin` | Platform operator — provisions churches, manages all users across the platform |
+| `church_admin` | Manages their church's editors and content |
+| `editor` | Edits content only |
+
+A user can belong to at most one church at a time. Auth is handled by Auth0 (email/password) rather than GitHub OAuth. GitHub tokens (per-installation) are encrypted at rest with AES-256.
+
+### Church provisioning
+
+Super admins provision new churches from a dashboard — no self-signup. Provisioning:
+
+1. Creates the church record in the database
+2. Creates an Auth0 account for the church admin
+3. Sends an invite email via [corner-apostle](https://github.com/cornerstone-web/corner-apostle) with a password-setup link
+
+The church admin then completes the onboarding wizard to launch their site.
+
+### Onboarding wizard
+
+A 20-step wizard that walks a new church admin from zero to a live Cloudflare Pages site. It collects:
+
+- **Identity** — church name, logo, favicon, theme color
+- **Contact & location** — address, phone, email, service times
+- **Social & giving** — social links, giving URL, streaming integration
+- **Hero** — hero image or video, headline, CTA
+- **Content** — optionally seeds the first sermon, article, event, ministry, staff, bulletin, and supporting pages (About, Beliefs, Visit, FAQ)
+- **Features** — toggles which content types (sermons, events, articles, ministries, etc.) are enabled
+
+On "Launch", the wizard:
+1. Creates a GitHub repo from [corner-template](https://github.com/cornerstone-web/corner-template)
+2. Commits all generated content and config
+3. Creates a Cloudflare Pages project and triggers the first build
+
+Step state is persisted in the database — the wizard is resumable and each step is idempotent.
+
 ### Platform-baked schema
 
 Standard Pages CMS reads a `.pages.yml` file from each repository to define the CMS structure. Cornerstone church repos don't have a `.pages.yml` — the schema is defined in [`@cornerstone-web/core`](https://github.com/cornerstone-web/cornerstone-core) alongside the block components it describes.
@@ -12,9 +54,15 @@ On load, the CMS reads the church repo's `package-lock.json` to find the exact i
 
 This means the CMS schema and the site code are always version-matched — adding a block to `cornerstone-core` automatically makes it available in the CMS once the church repo updates its dependency.
 
+### `@cornerstone-web/core` update banner
+
+The CMS checks the latest published version of `@cornerstone-web/core` on GitHub Package Registry and displays an in-app banner when a church's repo is behind. Church admins can trigger a one-click dependency update that opens a PR on their GitHub repo.
+
 ### Site config editor
 
 A dedicated editor for `src/config/site.config.yaml` — the church-specific settings file (navigation, footer, contact info, theme, service times). Changes are committed directly to GitHub.
+
+Navigation supports three desktop header variants (`dropdown-columns`, `dropdown`, `simple`) and a discriminated union of element types (`link`, `search`, `cta`). The footer has separate `variant` (comprehensive/minimal) and `style` (centered/left-aligned) fields with conditional section visibility.
 
 ### Block picker
 
@@ -25,6 +73,7 @@ A modal block picker with category filtering, search, and live iframe previews p
 | Field | Purpose |
 |---|---|
 | `icon` | Lucide icon picker |
+| `color` | Color picker with hex input |
 | `inline-rich-text` | Single-line rich text (bold, italic, links) without block-level formatting |
 | `template` | Selects a named content template and populates fields from it |
 
@@ -38,7 +87,7 @@ Fields can declare `controlledBy: toggleFieldName` to group themselves under a b
 
 Nested chains are supported — a controlled field can itself be a select that controls further fields via `controlledByValue`. The entry form handles recursive `ToggleFieldGroup` rendering automatically.
 
-### R2 Media Integration
+### R2 media integration
 
 Video and audio fields are backed by [corner-media](https://github.com/cornerstone-web/corner-media) — a Cloudflare Worker that proxies uploads/deletes/listings to Cloudflare R2. The CMS generates short-lived HMAC tokens server-side; the browser uploads directly to corner-media without ever receiving R2 credentials.
 
@@ -53,6 +102,10 @@ Video and audio fields are backed by [corner-media](https://github.com/cornersto
 | `CORNER_MEDIA_URL` | corner-media Worker URL |
 | `CORNER_MEDIA_SECRET` | Shared HMAC secret — must match the `CORNER_MEDIA_SECRET` Worker secret |
 | `R2_PUBLIC_URL` | Public R2 base URL (e.g. `https://media.cornerstoneweb.dev`) |
+
+### Broken links checker
+
+A background-friendly API route (`/api/[owner]/[repo]/[branch]/broken-links`) crawls all content entries and checks for dead links. Results surface in the CMS UI so editors can find and fix broken references without leaving the editor.
 
 ## Local Development
 
