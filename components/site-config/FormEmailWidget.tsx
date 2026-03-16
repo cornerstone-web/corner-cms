@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { initiateFormEmail, checkFormEmail, removeFormEmail } from "@/lib/actions/form-email";
+import { initiateFormEmail, checkFormEmail, removeFormEmail, confirmFormEmail } from "@/lib/actions/form-email";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,11 +61,13 @@ export function FormEmailWidget({ initialFormEmail, onMutated }: FormEmailWidget
       return;
     }
     setVerifiedEmail(res.email);
-    onMutated();
     if (res.alreadyVerified) {
+      await confirmFormEmail(email.trim());
+      onMutated();
       setStatus("verified");
       return;
     }
+    onMutated();
     setStatus("waiting");
     startPolling(email.trim());
   }
@@ -77,6 +79,7 @@ export function FormEmailWidget({ initialFormEmail, onMutated }: FormEmailWidget
       if (check.verified) {
         clearInterval(pollRef.current!);
         pollRef.current = null;
+        await confirmFormEmail(target);
         setStatus("verified");
       }
     }, 5000);

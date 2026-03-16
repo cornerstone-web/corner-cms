@@ -13,6 +13,130 @@ import YAML from "yaml";
 
 const GITHUB_ORG = process.env.GITHUB_ORG ?? "cornerstone-web";
 
+// ─── Apostle helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Registers (or updates) a church's contact form email with corner-apostle:
+ * - Updates src/registry.json with the church's email, name, and allowedOrigins
+ * - Adds the email to wrangler.jsonc's allowed_destination_addresses
+ *
+ * Safe to call multiple times (idempotent). Non-throwing — logs on failure.
+ */
+export async function updateApostleForChurch(
+  repoName: string,
+  displayName: string,
+  cfPagesUrl: string,
+  email: string,
+): Promise<void> {
+  const apostleRepo = process.env.CORNER_APOSTLE_REPO;
+  if (!apostleRepo) return;
+
+  // Update registry.json
+  const { content: registryRaw, sha: registrySha } =
+    await getFileWithSha(apostleRepo, "src/registry.json");
+  const registry = JSON.parse(registryRaw) as Record<string, {
+    email: string; name: string; allowedOrigins: string[];
+  }>;
+  registry[repoName] = { email, name: displayName, allowedOrigins: [cfPagesUrl] };
+  await commitFile(
+    apostleRepo,
+    "src/registry.json",
+    JSON.stringify(registry, null, 2) + "\n",
+    registrySha,
+    `chore: update ${repoName} contact form email`,
+  );
+
+  // Update wrangler.jsonc — add email to allowed_destination_addresses
+  const { content: wranglerRaw, sha: wranglerSha } =
+    await getFileWithSha(apostleRepo, "wrangler.jsonc");
+  const wranglerJson = wranglerRaw
+    .replace(/\/\/[^\n]*/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/,(\s*[}\]])/g, "$1");
+  const wrangler = JSON.parse(wranglerJson) as {
+    send_email?: { name: string; allowed_destination_addresses?: string[] }[];
+  };
+  const sendEmail = wrangler.send_email?.[0];
+  if (sendEmail) {
+    if (!sendEmail.allowed_destination_addresses) {
+      sendEmail.allowed_destination_addresses = [];
+    }
+    if (!sendEmail.allowed_destination_addresses.includes(email)) {
+      sendEmail.allowed_destination_addresses.push(email);
+      await commitFile(
+        apostleRepo,
+        "wrangler.jsonc",
+        JSON.stringify(wrangler, null, 2) + "\n",
+        wranglerSha,
+        `chore: add ${repoName} email to corner-apostle`,
+      );
+    }
+  }
+}
+
+/**
+ * Removes a church's contact form email from corner-apostle:
+ * - Clears the email field in src/registry.json for this church
+ * - Removes the email from wrangler.jsonc's allowed_destination_addresses
+ *   (only if no other registry entry uses the same address)
+ *
+ * Non-throwing — logs on failure.
+ */
+export async function clearApostleEmail(repoName: string, email: string): Promise<void> {
+  const apostleRepo = process.env.CORNER_APOSTLE_REPO;
+  if (!apostleRepo) return;
+
+  try {
+    // Update registry.json — clear this church's email
+    const { content: registryRaw, sha: registrySha } =
+      await getFileWithSha(apostleRepo, "src/registry.json");
+    const registry = JSON.parse(registryRaw) as Record<string, {
+      email: string; name: string; allowedOrigins: string[];
+    }>;
+    const emailUsedElsewhere = Object.entries(registry).some(
+      ([key, entry]) => key !== repoName && entry.email === email
+    );
+    if (registry[repoName]) {
+      registry[repoName].email = "";
+    }
+    await commitFile(
+      apostleRepo,
+      "src/registry.json",
+      JSON.stringify(registry, null, 2) + "\n",
+      registrySha,
+      `chore: clear ${repoName} contact form email`,
+    );
+
+    // Update wrangler.jsonc — remove from allowed_destination_addresses
+    // only if no other church uses this email
+    if (!emailUsedElsewhere) {
+      const { content: wranglerRaw, sha: wranglerSha } =
+        await getFileWithSha(apostleRepo, "wrangler.jsonc");
+      const wranglerJson = wranglerRaw
+        .replace(/\/\/[^\n]*/g, "")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/,(\s*[}\]])/g, "$1");
+      const wrangler = JSON.parse(wranglerJson) as {
+        send_email?: { name: string; allowed_destination_addresses?: string[] }[];
+      };
+      const sendEmail = wrangler.send_email?.[0];
+      if (sendEmail?.allowed_destination_addresses?.includes(email)) {
+        sendEmail.allowed_destination_addresses =
+          sendEmail.allowed_destination_addresses.filter((a) => a !== email);
+        await commitFile(
+          apostleRepo,
+          "wrangler.jsonc",
+          JSON.stringify(wrangler, null, 2) + "\n",
+          wranglerSha,
+          `chore: remove ${repoName} email from corner-apostle`,
+        );
+      }
+    }
+  } catch (err) {
+    console.error("clearApostleEmail failed (non-fatal):", err);
+  }
+}
+
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 
 async function assertChurchAdmin(churchId: string) {
@@ -410,55 +534,9 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
     }
 
     // 6. Register church with corner-apostle via GitHub commit (non-fatal)
-    const apostleRepo = process.env.CORNER_APOSTLE_REPO;
-    if (apostleRepo && contactEmail && cfPagesUrl) {
+    if (contactEmail && cfPagesUrl) {
       try {
-        // Update registry.json
-        const { content: registryRaw, sha: registrySha } =
-          await getFileWithSha(apostleRepo, "src/registry.json");
-        const registry = JSON.parse(registryRaw) as Record<string, {
-          email: string; name: string; allowedOrigins: string[];
-        }>;
-        registry[repoName] = {
-          email: contactEmail,
-          name: church.displayName,
-          allowedOrigins: [cfPagesUrl],
-        };
-        await commitFile(
-          apostleRepo,
-          "src/registry.json",
-          JSON.stringify(registry, null, 2) + "\n",
-          registrySha,
-          `chore: register ${repoName} contact form`,
-        );
-
-        // Update wrangler.jsonc — add email to allowed_destination_addresses
-        const { content: wranglerRaw, sha: wranglerSha } =
-          await getFileWithSha(apostleRepo, "wrangler.jsonc");
-        // Strip JSONC comments and trailing commas before parsing
-        const wranglerJson = wranglerRaw
-          .replace(/\/\/[^\n]*/g, "")
-          .replace(/\/\*[\s\S]*?\*\//g, "")
-          .replace(/,(\s*[}\]])/g, "$1");
-        const wrangler = JSON.parse(wranglerJson) as {
-          send_email?: { name: string; allowed_destination_addresses?: string[] }[];
-        };
-        const sendEmail = wrangler.send_email?.[0];
-        if (sendEmail) {
-          if (!sendEmail.allowed_destination_addresses) {
-            sendEmail.allowed_destination_addresses = [];
-          }
-          if (!sendEmail.allowed_destination_addresses.includes(contactEmail)) {
-            sendEmail.allowed_destination_addresses.push(contactEmail);
-            await commitFile(
-              apostleRepo,
-              "wrangler.jsonc",
-              JSON.stringify(wrangler, null, 2) + "\n",
-              wranglerSha,
-              `chore: add ${repoName} email to corner-apostle`,
-            );
-          }
-        }
+        await updateApostleForChurch(repoName, church.displayName, cfPagesUrl, contactEmail);
       } catch (err) {
         console.error("corner-apostle registration failed (non-fatal):", err);
       }
