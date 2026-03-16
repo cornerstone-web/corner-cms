@@ -1,10 +1,17 @@
-import { User as LuciaUser } from 'lucia';
+export interface ChurchAssignment {
+  churchId: string;
+  githubRepoName: string;
+  slug: string;
+  displayName: string;
+  cfPagesUrl: string | null;
+  role: "church_admin" | "editor";
+}
 
-export interface User extends LuciaUser {
-  githubId: number;
-  githubUsername: string;
-  githubEmail: string;
-  githubName: string;
+export interface User {
+  id: string;
+  auth0Id: string;
   email: string;
-  accounts?: any[];
-};
+  name: string;
+  isSuperAdmin: boolean;
+  churchAssignment: ChurchAssignment | null;
+}

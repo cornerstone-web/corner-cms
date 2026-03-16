@@ -1,21 +1,12 @@
-import { verifyRequestOrigin } from "lucia";
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { auth0 } from "./lib/auth0";
 
-export function middleware(request: NextRequest) {
-	if (request.method === "GET") {
-		return NextResponse.next();
-	}
-	const originHeader = request.headers.get("Origin");
-	const hostHeader = request.headers.get("Host");
-	if (!originHeader || !hostHeader || !verifyRequestOrigin(originHeader, [hostHeader])) {
-		return new NextResponse(null, {
-			status: 403
-		});
-	}
-	return NextResponse.next();
+export async function middleware(request: NextRequest) {
+  return await auth0.middleware(request);
 }
 
 export const config = {
-  matcher: "/api/:path((?!webhook).*)"
-}
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg).*)",
+  ],
+};

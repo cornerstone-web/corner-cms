@@ -1,59 +1,74 @@
-"use client";
-
-import { useState } from "react";
-import { handleAppInstall } from "@/lib/actions/app";
-import { useUser } from "@/contexts/user-context";
-import { RepoSelect } from "@/components/repo/repo-select";
-import { RepoTemplates } from "@/components/repo/repo-templates";
-import { RepoLatest } from "@/components/repo/repo-latest";
-import { Message } from "@/components/message";
-import { SubmitButton } from "@/components/submit-button";
+import { redirect } from "next/navigation";
+import { getAuth } from "@/lib/auth";
+import { db } from "@/db";
+import { churchesTable } from "@/db/schema";
+import { eq, isNull } from "drizzle-orm";
 import { MainRootLayout } from "./main-root-layout";
-import { Github } from "lucide-react";
+import { ChurchPortalCard } from "@/components/home/church-portal-card";
+import { SuperAdminDashboard } from "@/components/home/super-admin-dashboard";
+import { getVersionStatus } from "@/lib/actions/cornerstone-update";
 
-export default function Page() {
-	const [defaultAccount, setDefaultAccount] = useState<any>(null);
-  const { user } = useUser();
-	
-	if (!user) throw new Error("User not found");
-	if (!user.accounts) throw new Error("Accounts not found");
+export default async function Page() {
+  const { user } = await getAuth();
+  if (!user) return redirect("/auth/login");
 
-	return (
+  if (user.isSuperAdmin) {
+    const churches = await db
+      .select({
+        id: churchesTable.id,
+        displayName: churchesTable.displayName,
+        slug: churchesTable.slug,
+        githubRepoName: churchesTable.githubRepoName,
+        cfPagesUrl: churchesTable.cfPagesUrl,
+        customDomain: churchesTable.customDomain,
+        status: churchesTable.status,
+        updatedAt: churchesTable.updatedAt,
+      })
+      .from(churchesTable)
+      .where(isNull(churchesTable.deletedAt))
+      .orderBy(churchesTable.displayName);
+
+    return (
+      <MainRootLayout>
+        <SuperAdminDashboard churches={churches} />
+      </MainRootLayout>
+    );
+  }
+
+  if (user.churchAssignment) {
+    const churchId = user.churchAssignment.churchId;
+    const [church, versionStatus] = await Promise.all([
+      db.query.churchesTable.findFirst({
+        where: eq(churchesTable.id, churchId),
+        columns: { status: true },
+      }),
+      // Only check version for active sites — avoid noise during setup
+      getVersionStatus(churchId).catch(() => null),
+    ]);
+
+    return (
+      <MainRootLayout>
+        <ChurchPortalCard
+          assignment={user.churchAssignment}
+          status={church?.status}
+          versionStatus={versionStatus ?? undefined}
+        />
+      </MainRootLayout>
+    );
+  }
+
+  // No church assigned and not super admin
+  return (
     <MainRootLayout>
-			<div className="max-w-screen-sm mx-auto p-4 md:p-6 space-y-6">
-				{user.accounts.length > 0
-					? <>
-							<h2 className="font-semibold text-lg md:text-2xl tracking-tight">Last visited</h2>
-							<RepoLatest/>
-							<h2 className="font-semibold text-lg md:text-2xl tracking-tight">Open a project</h2>
-							<RepoSelect onAccountSelect={(account) => setDefaultAccount(account)}/>
-							{user?.githubId &&
-								<>
-									<h2 className="font-semibold text-lg md:text-2xl tracking-tight">Create from a template</h2>
-									<RepoTemplates defaultAccount={defaultAccount}/>
-								</>
-							}
-						</>
-					:	user.githubId
-							? <Message
-									title="Install the GitHub app"
-									description="You must install the GitHub application for the accounts you want to use Pages CMS with."
-									className="absolute inset-0"
-								>
-									<form action={handleAppInstall}>
-										<SubmitButton type="submit">
-											<Github className="h-4 w-4 mr-2" />
-											Install
-										</SubmitButton>
-									</form>
-								</Message>
-						  : <Message
-									title="Nothing to see (yet)"
-									description="You must be invited to a repository to collaborate. Ask the person who invited you or manages your organization to invite you."
-									className="absolute inset-0"
-								/>
-				}
-			</div>
-		</MainRootLayout>
-	);
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="text-center space-y-2 max-w-sm">
+          <h2 className="font-semibold text-lg">No site assigned</h2>
+          <p className="text-muted-foreground text-sm">
+            You haven&apos;t been assigned to a site yet. Contact your
+            administrator to get access.
+          </p>
+        </div>
+      </div>
+    </MainRootLayout>
+  );
 }

@@ -65,40 +65,47 @@ npm install
 ### 2. Copy the example env file
 
 ```bash
-cp .env.local.example .env
+cp .env.example .env
 ```
 
-### 3. Create a GitHub App
+### 3. Create an Auth0 application
 
-Follow the GitHub App setup instructions in the [Pages CMS docs](https://github.com/pages-cms/pages-cms). A few local-specific notes:
+Authentication is handled by Auth0 (not GitHub OAuth). You need two Auth0 applications:
 
-- Use `openssl rand -base64 32` to generate random secrets (`CRYPTO_KEY`, `GITHUB_APP_WEBHOOK_SECRET`)
-- For the Webhook URL, you need a public tunnel. Start ngrok in a separate terminal:
+**Regular Web App** (for user login):
+- Set the Allowed Callback URL to `http://localhost:3000/api/auth/callback`
+- Set the Allowed Logout URL to `http://localhost:3000`
+- Copy the Domain, Client ID, and Client Secret into `.env`
 
-```bash
-ngrok http 3000
-```
+**Machine-to-Machine App** (for provisioning church admin accounts via the Management API):
+- Authorize it against the Auth0 Management API with the `create:users` and `create:user_tickets` permissions
+- Copy its Client ID and Client Secret into `.env` as `AUTH0_MANAGEMENT_CLIENT_ID` / `AUTH0_MANAGEMENT_CLIENT_SECRET`
 
-- Paste the ngrok HTTPS URL as the Webhook URL (e.g. `https://abc123.ngrok-free.app/api/webhook/github`). **You'll need to update this in your GitHub App settings each time you restart ngrok.**
-- Set the OAuth Callback URL to `http://localhost:3000/api/auth/github`
+### 4. Create a GitHub App
 
-### 4. Start a local PostgreSQL database
+The GitHub App is used for repository access only (not for user auth). Create one in your GitHub org:
+
+- For the Webhook URL, use any placeholder (e.g. `http://localhost:3000/api/webhook/github`) — webhooks are not required for local development
+- Note the Installation ID from the App settings → Installations page
+- Generate and download a private key
+
+### 5. Start a local PostgreSQL database
 
 ```bash
 docker run --name pages-cms-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:15
 ```
 
-Then add this to your `.env`:
+Then add to your `.env`:
 
 ```
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
 ```
 
-### 5. Fill in the remaining `.env` values
+### 6. Fill in the remaining `.env` values
 
-See the environment variables table below. At minimum you need the GitHub App credentials and `CRYPTO_KEY`.
+See the environment variables table below. At minimum you need the Auth0 credentials, GitHub App credentials, and `CRYPTO_KEY`.
 
-### 6. Run migrations and start the dev server
+### 7. Run migrations and start the dev server
 
 ```bash
 npm run db:migrate
@@ -107,22 +114,52 @@ npm run dev
 
 ### Environment variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | ✓ | PostgreSQL connection string (use Supabase Transaction pooler URL) |
-| `CRYPTO_KEY` | ✓ | AES key for encrypting GitHub tokens — `openssl rand -base64 32` |
-| `GITHUB_APP_ID` | ✓ | GitHub App ID |
-| `GITHUB_APP_NAME` | ✓ | GitHub App machine name (slug from the App settings URL) |
-| `GITHUB_APP_PRIVATE_KEY` | ✓ | PEM private key from the GitHub App |
-| `GITHUB_APP_WEBHOOK_SECRET` | ✓ | Webhook secret set on the GitHub App |
-| `GITHUB_APP_CLIENT_ID` | ✓ | OAuth client ID from the GitHub App |
-| `GITHUB_APP_CLIENT_SECRET` | ✓ | OAuth client secret from the GitHub App |
-| `RESEND_API_KEY` | ✓ | [Resend](https://resend.com) API key for magic-link auth emails |
-| `RESEND_FROM_EMAIL` | ✓ | Verified sender address (e.g. `CMS <cms@example.com>`) |
-| `BASE_URL` | | Override base URL when not deploying to Vercel |
-| `FILE_CACHE_TTL` | | File cache TTL in minutes. Default: `1440`. `-1` = never expire, `0` = no cache |
-| `PERMISSION_CACHE_TTL` | | Permission cache TTL in minutes. Default: `60`. `0` = always check GitHub |
-| `CRON_SECRET` | | Secret for the `/api/cron` cache-clearing endpoint |
+#### Core (required)
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (Neon or local Docker) |
+| `AUTH0_DOMAIN` | Auth0 tenant domain (e.g. `your-tenant.us.auth0.com`) |
+| `AUTH0_CLIENT_ID` | Client ID from the Regular Web App |
+| `AUTH0_CLIENT_SECRET` | Client secret from the Regular Web App |
+| `AUTH0_SECRET` | Random 64-char hex for session cookie encryption — `openssl rand -hex 32` |
+| `APP_BASE_URL` | Base URL with no trailing slash (e.g. `https://cms.example.com` or `http://localhost:3000`) |
+| `AUTH0_MANAGEMENT_CLIENT_ID` | Client ID from the M2M app (Management API) |
+| `AUTH0_MANAGEMENT_CLIENT_SECRET` | Client secret from the M2M app |
+| `GITHUB_APP_ID` | GitHub App ID |
+| `GITHUB_APP_PRIVATE_KEY` | PEM private key from the GitHub App |
+| `GITHUB_APP_WEBHOOK_SECRET` | Webhook secret set on the GitHub App |
+| `GITHUB_APP_INSTALLATION_ID` | Org-level installation ID (App settings → Installations) |
+| `CRYPTO_KEY` | AES-256 key for encrypting GitHub tokens — `openssl rand -hex 32` |
+
+#### Wizard & provisioning
+
+| Variable | Description |
+|---|---|
+| `GITHUB_ORG` | GitHub org where church repos live (default: `cornerstone-web`) |
+| `GITHUB_TEMPLATE_REPO` | Template repo to fork when provisioning (default: `template-repo`) |
+| `CF_PAGES_GITHUB_TOKEN` | Classic PAT with `read:packages` — injected into new church CF Pages deployments |
+| `CF_ACCOUNT_ID` | Cloudflare account ID for auto-creating CF Pages projects |
+| `CF_API_TOKEN` | CF API token with Pages edit permission |
+| `CORNER_APOSTLE_URL` | corner-apostle Worker URL (for church form registration at launch) |
+| `CORNER_APOSTLE_REPO` | GitHub repo name for corner-apostle (default: `corner-apostle`) |
+| `CORNERSTONE_INTERNAL_SECRET` | Shared secret for server-to-server calls to corner-apostle (`/send-invite`) |
+| `CORNERSTONE_API_KEY` | Public API key for church form submissions |
+
+#### R2 media
+
+| Variable | Description |
+|---|---|
+| `CORNER_MEDIA_URL` | corner-media Worker URL |
+| `CORNER_MEDIA_SECRET` | Shared HMAC secret — must match `CORNER_MEDIA_SECRET` in corner-media |
+| `R2_PUBLIC_URL` | Public R2 base URL (e.g. `https://media.cornerstoneweb.dev`) |
+
+#### Optional / tuning
+
+| Variable | Description |
+|---|---|
+| `CRON_SECRET` | Bearer token for the `/api/cron` cache-clearing endpoint |
+| `FILE_CACHE_TTL` | File cache TTL in minutes. Default: `1440`. `-1` = never expire, `0` = no cache |
 
 ## License
 

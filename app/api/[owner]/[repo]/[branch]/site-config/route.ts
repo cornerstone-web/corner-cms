@@ -3,6 +3,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import YAML from "yaml";
 import { siteConfigSchema } from "@/components/site-config/schema";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 const SITE_CONFIG_PATH = "src/config/site.config.yaml";
 
@@ -18,8 +19,8 @@ export async function GET(
   { params }: { params: { owner: string; repo: string; branch: string } }
 ) {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -47,15 +48,8 @@ export async function GET(
         config,
       },
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json(
-      {
-        status: "error",
-        message: error.status === 404 ? "Site config not found" : error.message,
-      },
-      { status: error.status === 404 ? 404 : 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }
 
@@ -64,8 +58,8 @@ export async function POST(
   { params }: { params: { owner: string; repo: string; branch: string } }
 ) {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -90,6 +84,7 @@ export async function POST(
       retry: { doNotRetry: [409] },
     });
 
+    const author = user.name && user.email ? { name: user.name, email: user.email } : undefined;
     const response = await octokit.rest.repos.createOrUpdateFileContents({
       owner: params.owner,
       repo: params.repo,
@@ -98,6 +93,7 @@ export async function POST(
       content: contentBase64,
       branch: params.branch,
       sha,
+      ...(author ? { author, committer: author } : {}),
     });
 
     return Response.json({
@@ -107,15 +103,7 @@ export async function POST(
         sha: response.data.content?.sha,
       },
     });
-  } catch (error: any) {
-    console.error(error);
-    const message =
-      error.status === 409
-        ? "Config has changed since you last loaded it. Please refresh and try again."
-        : error.message;
-    return Response.json(
-      { status: "error", message },
-      { status: error.status === 409 ? 409 : 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

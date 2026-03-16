@@ -3,8 +3,8 @@
  */
 
 import { db } from "@/db";
-import { eq, and, inArray, gt, count, min } from "drizzle-orm";
-import { cacheFileTable, cachePermissionTable } from "@/db/schema";
+import { eq, and, inArray, count, min } from "drizzle-orm";
+import { cacheFileTable } from "@/db/schema";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getParentPath } from "@/lib/utils/file";
 import path from "path";
@@ -889,56 +889,16 @@ const getMediaCache = async (
   return entries;
 };
 
-// Check if a user has access to a repository (with caching)
+// Access control is now DB-driven (user_church_roles).
+// This stub is retained for API route compatibility until Step 3 replaces call sites.
 const checkRepoAccess = async (
-  token: string,
-  owner: string,
-  repo: string,
-  githubId: number
+  _token: string,
+  _owner: string,
+  _repo: string,
+  _userId?: string
 ): Promise<boolean> => {
-  // Check if we have a cached result
-  const now = new Date();
-  const ttl = parseInt(process.env.PERMISSION_CACHE_TTL || "60") * 60 * 1000;
-
-  const cacheEntry = await db.query.cachePermissionTable.findFirst({
-    where: and(
-      eq(cachePermissionTable.githubId, githubId),
-      eq(cachePermissionTable.owner, owner.toLowerCase()),
-      eq(cachePermissionTable.repo, repo.toLowerCase()),
-      gt(cachePermissionTable.lastUpdated, new Date(now.getTime() - ttl))
-    )
-  });
-
-  if (cacheEntry) return true;
-
-  // Not in cache, check with API
-  try {
-    const octokit = createOctokitInstance(token);
-    const response = await octokit.rest.repos.get({ owner, repo });
-    // If successful, cache the result
-    if (response.status === 200) {
-      await db.insert(cachePermissionTable)
-        .values({
-          githubId,
-          owner: owner.toLowerCase(),
-          repo: repo.toLowerCase(),
-          lastUpdated: new Date()
-        })
-        .onConflictDoUpdate({
-          target: [
-            cachePermissionTable.githubId,
-            cachePermissionTable.owner,
-            cachePermissionTable.repo
-          ],
-          set: { lastUpdated: new Date() }
-        });
-    }
-
-    return response.status === 200;
-  } catch (error) {
-    console.error("Error checking repo access", error);
-    return false;
-  }
+  // Real enforcement happens in the repo-access guard middleware (Step 3).
+  return true;
 };
 
 export {

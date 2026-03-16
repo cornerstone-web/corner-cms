@@ -5,10 +5,11 @@ import { parse } from "@/lib/serialization";
 import { getConfig } from "@/lib/utils/config";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
-import { getCollectionCache, getMediaCache, checkRepoAccess } from "@/lib/githubCache";
+import { getCollectionCache, getMediaCache } from "@/lib/githubCache";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { generateListToken } from "@/lib/utils/r2-token";
 import YAML from "yaml";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 export interface UploadIssue {
   url: string;
@@ -162,24 +163,11 @@ export async function GET(
   }: { params: { owner: string; repo: string; branch: string } },
 ): Promise<Response> {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
-
-    if (user.githubId) {
-      const hasAccess = await checkRepoAccess(
-        token,
-        params.owner,
-        params.repo,
-        user.githubId,
-      );
-      if (!hasAccess)
-        throw new Error(
-          `No access to repository ${params.owner}/${params.repo}.`,
-        );
-    }
 
     const config = await getConfig(params.owner, params.repo, params.branch);
     if (!config)
@@ -413,11 +401,7 @@ export async function GET(
         scannedAt: new Date().toISOString(),
       },
     } satisfies UploadsHealthResponse);
-  } catch (error: any) {
-    console.error(error);
-    return Response.json(
-      { status: "error", message: error.message } satisfies UploadsHealthResponse,
-      { status: 500 },
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

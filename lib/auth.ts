@@ -1,75 +1,73 @@
 /**
- * Auth helper functions for Lucia auth.
+ * Auth helper functions using @auth0/nextjs-auth0.
+ *
+ * getAuth() resolves the Auth0 session → DB user → church assignment.
+ * Use this in server components / route handlers that need the authenticated user.
  */
 
 import { cache } from "react";
-import { Session, User, Lucia } from "lucia";
-import { DrizzlePostgreSQLAdapter, PostgreSQLSessionTable, PostgreSQLUserTable } from "@lucia-auth/adapter-drizzle";
+import { auth0 } from "@/lib/auth0";
 import { db } from "@/db";
-import { userTable, sessionTable } from "@/db/schema";
-import { GitHub } from "arctic";
-import { cookies } from "next/headers";
-
-const adapter = new DrizzlePostgreSQLAdapter(db, sessionTable as unknown as PostgreSQLSessionTable, userTable as unknown as PostgreSQLUserTable);
-
-export const lucia = new Lucia(adapter, {
-	sessionCookie: {
-		expires: false,
-		attributes: {
-			secure: process.env.NODE_ENV === "production"
-		}
-	},
-	getUserAttributes: (attributes) => {
-		return {
-			githubId: attributes.githubId,
-			githubUsername: attributes.githubUsername,
-			githubEmail: attributes.githubEmail,
-			githubName: attributes.githubName,
-			email: attributes.email
-		};
-	}
-});
-
-declare module "lucia" {
-	interface Register {
-		Lucia: typeof lucia;
-		DatabaseUserAttributes: DatabaseUserAttributes;
-	}
-}
-
-export interface DatabaseUserAttributes {
-	id: string;
-	githubId: number;
-	githubUsername: string;
-	githubEmail: string;
-	githubName: string;
-	email: string;
-}
-
-export const github = new GitHub(process.env.GITHUB_APP_CLIENT_ID!, process.env.GITHUB_APP_CLIENT_SECRET!);
+import { usersTable, userChurchRolesTable, churchesTable } from "@/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+import { User } from "@/types/user";
 
 export const getAuth = cache(
-	async (): Promise<{ user: User; session: Session } | { user: null; session: null }> => {
-		const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
-		if (!sessionId) {
-			return {
-				user: null,
-				session: null
-			};
-		}
+  async (): Promise<{ user: User } | { user: null }> => {
+    const session = await auth0.getSession();
+    if (!session?.user?.sub) return { user: null };
 
-		const result = await lucia.validateSession(sessionId);
-		// next.js throws when you attempt to set cookie when rendering page
-		try {
-			if (result.session && result.session.fresh) {
-				const sessionCookie = lucia.createSessionCookie(result.session.id);
-				cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-			}
-			if (!result.session) {
-				const sessionCookie = lucia.createBlankSessionCookie();
-				cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-			}
-		} catch {}
-		return result;
-	}
+    const auth0Id = session.user.sub as string;
+
+    const dbUser = await db.query.usersTable.findFirst({
+      where: and(
+        eq(usersTable.auth0Id, auth0Id),
+        isNull(usersTable.deletedAt)
+      ),
+    });
+
+    if (!dbUser) return { user: null };
+
+    // Resolve church assignment (one church per user for MVP)
+    const roleRow = await db
+      .select({
+        churchId: userChurchRolesTable.churchId,
+        role: userChurchRolesTable.role,
+        githubRepoName: churchesTable.githubRepoName,
+        slug: churchesTable.slug,
+        displayName: churchesTable.displayName,
+        cfPagesUrl: churchesTable.cfPagesUrl,
+      })
+      .from(userChurchRolesTable)
+      .innerJoin(churchesTable, eq(userChurchRolesTable.churchId, churchesTable.id))
+      .where(
+        and(
+          eq(userChurchRolesTable.userId, dbUser.id),
+          isNull(userChurchRolesTable.deletedAt),
+          isNull(churchesTable.deletedAt)
+        )
+      )
+      .limit(1)
+      .then(rows => rows[0] ?? null);
+
+    const user: User = {
+      id: dbUser.id,
+      auth0Id: dbUser.auth0Id,
+      email: dbUser.email,
+      name: dbUser.name,
+      isSuperAdmin: dbUser.isSuperAdmin,
+      churchAssignment: roleRow
+        ? {
+            churchId: roleRow.churchId,
+            githubRepoName: roleRow.githubRepoName,
+            slug: roleRow.slug,
+            displayName: roleRow.displayName,
+            cfPagesUrl: roleRow.cfPagesUrl,
+            role: roleRow.role,
+          }
+        : null,
+    };
+
+    return { user };
+  }
 );

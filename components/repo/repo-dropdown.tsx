@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
@@ -33,7 +33,16 @@ export function RepoDropdown({
 }) {
   const router = useRouter();
   const { owner, repo, branches, defaultBranch } = useRepo();
-  const{ config } = useConfig();
+  const { config } = useConfig();
+  const [logoUrl, setLogoUrl] = useState<string>(`https://github.com/${owner}.png`);
+
+  useEffect(() => {
+    if (!config) return;
+    fetch(`/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/site-config/branding?file=logo`)
+      .then(r => r.json())
+      .then(data => { if (data?.data?.downloadUrl) setLogoUrl(data.data.downloadUrl); })
+      .catch(() => {});
+  }, [config?.owner, config?.repo, config?.branch]);
 
   const displayBranches = useMemo(() => {
     let branchesToDisplay: string[] = [];
@@ -65,7 +74,14 @@ export function RepoDropdown({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="w-full h-15 justify-start px-3">
-            <Image className="h-10 w-10 rounded-lg" width={40} height={40} src={`https://github.com/${owner}.png`} alt={`${owner}'s avatar`} />
+            <Image
+              className="h-10 w-10 rounded-lg object-contain bg-white"
+              width={40}
+              height={40}
+              src={logoUrl}
+              alt={`${repo} logo`}
+              onError={() => setLogoUrl(`https://github.com/${owner}.png`)}
+            />
             <div className="text-left overflow-hidden ml-3">
               <div className="font-medium truncate">{repo}</div>
               <div className="text-xs text-muted-foreground truncate">{config?.branch}</div>

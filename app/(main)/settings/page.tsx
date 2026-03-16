@@ -2,11 +2,9 @@ import Link from "next/link";
 import { getAuth } from "@/lib/auth";
 import { MainRootLayout } from "../main-root-layout";
 import { getInitialsFromName } from "@/lib/utils/avatar";
-import { Installations } from "@/components/installations";
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
 } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
@@ -24,10 +22,8 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default async function Page() {
-	const { user } = await getAuth();
-	if (!user) throw new Error("User not found");
-
-  const displayName = user.githubId ? user.githubName || user.githubUsername : user.email;
+  const { user } = await getAuth();
+  if (!user) throw new Error("User not found");
 
   return (
     <MainRootLayout>
@@ -43,60 +39,38 @@ export default async function Page() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base md:text-lg">Profile</CardTitle>
-              <CardDescription>Manage the information displayed to other users.</CardDescription>
+              <CardDescription>Your account information.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="w-full">
-                <div className="grid w-full items-center gap-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <div className="col-span-3">
-                      <Input name="name" disabled defaultValue={displayName}/>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="picture" className="text-right">
-                      Picture
-                    </Label>
-                    <div className="col-span-3">
-                      <Avatar className="h-24 w-24 rounded-md">
-                        <AvatarImage
-                          src={
-                            user?.githubId
-                              ? `https://avatars.githubusercontent.com/u/${user.githubId}`
-                              : `https://unavatar.io/${user?.email}?fallback=false`
-                          }
-                          alt={
-                            user?.githubId
-                              ? user.githubUsername
-                              : user.email
-                          }
-                        />
-                        <AvatarFallback className="rounded-md">{getInitialsFromName(displayName)}</AvatarFallback>
-                      </Avatar>
-                    </div>
+              <div className="w-full space-y-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Name</Label>
+                  <div className="col-span-3">
+                    <Input disabled defaultValue={user.name || ""} />
                   </div>
                 </div>
-              </form>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Email</Label>
+                  <div className="col-span-3">
+                    <Input disabled defaultValue={user.email} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Picture</Label>
+                  <div className="col-span-3">
+                    <Avatar className="h-24 w-24 rounded-md">
+                      <AvatarFallback className="rounded-md text-3xl">
+                        {getInitialsFromName(user.name || user.email)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </div>
+              </div>
             </CardContent>
             <CardFooter>
-              <Button size="sm" className="ml-auto" disabled>Save profile</Button>
+              <p className="text-xs text-muted-foreground">Profile managed via Auth0. Contact your admin to make changes.</p>
             </CardFooter>
           </Card>
-          
-          {user.githubId &&
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base md:text-lg">Installations</CardTitle>
-                <CardDescription>Manage the accounts the Github application is installed on.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Installations/>
-              </CardContent>
-            </Card>
-          }
         </div>
       </div>
     </MainRootLayout>

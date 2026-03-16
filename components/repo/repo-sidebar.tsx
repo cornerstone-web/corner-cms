@@ -18,7 +18,6 @@ const RepoSidebar = ({
   const { user } = useUser();
   const repo = useRepo();
 
-  const account = user?.accounts?.find((account) => account.login === repo.owner);
 
   return (
     <>

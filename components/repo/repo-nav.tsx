@@ -81,22 +81,23 @@ const RepoNav = ({
       }
       : null;
 
-    const collaboratorsItem = configObject && Object.keys(configObject).length !== 0 && user?.githubId
-      ? {
-        key: "collaborators",
-        icon: <Users className="h-5 w-5 mr-2" />,
-        href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collaborators`,
-        label: "Collaborators"
-      }
-      : null;
+    const usersItem =
+      user?.isSuperAdmin || user?.churchAssignment?.role === "church_admin"
+        ? {
+            key: "users",
+            icon: <Users className="h-5 w-5 mr-2" />,
+            href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/users`,
+            label: "Users",
+          }
+        : null;
 
     return [
       ...contentItems,
       ...mediaItems,
+      usersItem,
       settingsItem,
-      collaboratorsItem
     ].filter(Boolean);
-  }, [config, user?.githubId, features]);
+  }, [config, features, user]);
 
   if (!items.length) return null;
 

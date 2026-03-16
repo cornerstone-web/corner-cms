@@ -7,6 +7,7 @@ import { getConfig } from "@/lib/utils/config";
 import { getFileExtension, normalizePath } from "@/lib/utils/file";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 /**
  * Fetches and parses individual file contents from GitHub repositories
@@ -23,8 +24,8 @@ export async function GET(
   { params }: { params: { owner: string, repo: string, branch: string, path: string } }
 ) {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -81,12 +82,8 @@ export async function GET(
         contentObject
       }
     });
-  } catch (error: any) {
-    console.error(error);
-    return Response.json({
-      status: "error",
-      message: error.status === 404 ? "Not found" : error.message,
-    });
+  } catch (error) {
+    return handleRouteError(error);
   }
 }
 

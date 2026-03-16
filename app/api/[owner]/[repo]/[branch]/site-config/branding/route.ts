@@ -1,6 +1,7 @@
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
+import { handleRouteError } from "@/lib/utils/apiError";
 
 const PATHS = {
   logo: "public/images/logo.png",
@@ -26,8 +27,8 @@ export async function GET(
   { params }: { params: { owner: string; repo: string; branch: string } }
 ) {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -60,15 +61,8 @@ export async function GET(
         downloadUrl: response.data.download_url,
       },
     });
-  } catch (error: any) {
-    if (error.status === 404) {
-      return Response.json({ status: "success", data: null });
-    }
-    console.error(error);
-    return Response.json(
-      { status: "error", message: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }
 
@@ -77,8 +71,8 @@ export async function POST(
   { params }: { params: { owner: string; repo: string; branch: string } }
 ) {
   try {
-    const { user, session } = await getAuth();
-    if (!session) return new Response(null, { status: 401 });
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -146,6 +140,7 @@ export async function POST(
     const path = PATHS[file];
     const octokit = createOctokitInstance(token, { retry: { doNotRetry: [409] } });
 
+    const author = user.name && user.email ? { name: user.name, email: user.email } : undefined;
     const response = await octokit.rest.repos.createOrUpdateFileContents({
       owner: params.owner,
       repo: params.repo,
@@ -154,6 +149,7 @@ export async function POST(
       content: base64,
       branch: params.branch,
       sha: sha || undefined,
+      ...(author ? { author, committer: author } : {}),
     });
 
     return Response.json({
@@ -163,15 +159,7 @@ export async function POST(
         sha: response.data.content?.sha,
       },
     });
-  } catch (error: any) {
-    console.error(error);
-    const message =
-      error.status === 409
-        ? "File has changed since you last loaded it. Please refresh and try again."
-        : error.message;
-    return Response.json(
-      { status: "error", message },
-      { status: error.status === 409 ? 409 : 500 }
-    );
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

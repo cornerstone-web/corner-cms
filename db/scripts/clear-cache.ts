@@ -1,13 +1,9 @@
 import { db } from '../index';
-import { cacheFileTable, cachePermissionTable } from '../schema';
+import { cacheFileTable } from '../schema';
 
 db.delete(cacheFileTable)
   .then(() => {
     console.log('✅ File cache cleared successfully');
-    return db.delete(cachePermissionTable);
-  })
-  .then(() => {
-    console.log('✅ Permission cache cleared successfully');
     process.exit(0);
   })
   .catch((error) => {

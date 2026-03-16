@@ -1,40 +1,91 @@
 import {
   pgTable,
+  pgEnum,
   text,
   integer,
   serial,
+  boolean,
   timestamp,
+  uuid,
   index,
   uniqueIndex
 } from "drizzle-orm/pg-core";
 
-const userTable = pgTable("user", {
-  id: text("id").notNull().primaryKey(),
-  githubEmail: text("github_email"),
-  githubName: text("github_name"),
-  githubId: integer("github_id").unique(),
-  githubUsername: text("github_username"),
-  email: text("email").unique()
-});
+// ─── Enums ────────────────────────────────────────────────────────────────────
 
-const sessionTable = pgTable("session", {
-  id: text("id").notNull().primaryKey(),
-  expiresAt: timestamp("expires_at").notNull(),
-  userId: text("user_id").notNull().references(() => userTable.id)
+export const churchStatusEnum = pgEnum("church_status", [
+  "provisioning",
+  "active",
+  "suspended",
+]);
+
+export const churchRoleEnum = pgEnum("church_role", [
+  "church_admin",
+  "editor",
+]);
+
+// ─── Multi-tenant tables ──────────────────────────────────────────────────────
+
+export const churchesTable = pgTable("churches", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  githubRepoName: text("github_repo_name").notNull().unique(),
+  slug: text("slug").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  cfPagesProjectName: text("cf_pages_project_name"),
+  cfPagesUrl: text("cf_pages_url"),
+  customDomain: text("custom_domain"),
+  status: churchStatusEnum("status").notNull().default("provisioning"),
+  plan: text("plan").notNull().default("free"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  wizardStartedAt: timestamp("wizard_started_at"),
+  deletedAt: timestamp("deleted_at"),
 }, table => ({
-  idx_session_userId: index("idx_session_userId").on(table.userId)
+  idx_churches_slug: uniqueIndex("idx_churches_slug").on(table.slug),
+  idx_churches_github_repo_name: uniqueIndex("idx_churches_github_repo_name").on(table.githubRepoName),
 }));
 
-const githubUserTokenTable = pgTable("github_user_token", {
-  id: serial("id").primaryKey(),
-  ciphertext: text("ciphertext").notNull(),
-  iv: text("iv").notNull(),
-  userId: text("user_id").notNull().references(() => userTable.id)
+export const usersTable = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  auth0Id: text("auth0_id").notNull().unique(),
+  email: text("email").notNull(),
+  name: text("name").notNull().default(""),
+  isSuperAdmin: boolean("is_super_admin").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 }, table => ({
-  idx_github_user_token_userId: uniqueIndex("idx_github_user_token_userId").on(table.userId)
+  idx_users_auth0_id: uniqueIndex("idx_users_auth0_id").on(table.auth0Id),
+  idx_users_email: uniqueIndex("idx_users_email").on(table.email),
 }));
 
-const githubInstallationTokenTable = pgTable("github_installation_token", {
+export const userChurchRolesTable = pgTable("user_church_roles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  churchId: uuid("church_id").notNull().references(() => churchesTable.id),
+  role: churchRoleEnum("role").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+}, table => ({
+  idx_user_church_roles_user_id: index("idx_user_church_roles_user_id").on(table.userId),
+  idx_user_church_roles_church_id: index("idx_user_church_roles_church_id").on(table.churchId),
+  idx_user_church_roles_user_church: uniqueIndex("idx_user_church_roles_user_church").on(table.userId, table.churchId),
+}));
+
+export const churchWizardStepsTable = pgTable("church_wizard_steps", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  churchId: uuid("church_id").notNull().references(() => churchesTable.id),
+  stepKey: text("step_key").notNull(),
+  completedAt: timestamp("completed_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("church_wizard_steps_church_step_idx").on(t.churchId, t.stepKey),
+  index("church_wizard_steps_church_id_idx").on(t.churchId),
+]);
+
+// ─── GitHub App installation token cache ──────────────────────────────────────
+
+export const githubInstallationTokenTable = pgTable("github_installation_token", {
   id: serial("id").primaryKey(),
   ciphertext: text("ciphertext").notNull(),
   iv: text("iv").notNull(),
@@ -44,30 +95,9 @@ const githubInstallationTokenTable = pgTable("github_installation_token", {
   idx_github_installation_token_installationId: index("idx_github_installation_token_installationId").on(table.installationId)
 }));
 
-const emailLoginTokenTable = pgTable("email_login_token", {
-  tokenHash: text("token_hash").notNull().unique(),
-  email: text("email").notNull(),
-  expiresAt: timestamp("expires_at").notNull()
-});
+// ─── CMS config + file cache (unchanged) ─────────────────────────────────────
 
-const collaboratorTable = pgTable("collaborator", {
-  id: serial("id").primaryKey(),
-  type: text("type").notNull(),
-  installationId: integer("installation_id").notNull(),
-  ownerId: integer("owner_id").notNull(),
-  repoId: integer("repo_id"),
-  owner: text("owner").notNull(),
-  repo: text("repo").notNull(),
-  branch: text("branch"),
-  email: text("email").notNull(),
-  userId: text("user_id").references(() => userTable.id),
-  invitedBy: text("invited_by").notNull().references(() => userTable.id)
-}, table => ({
-  idx_collaborator_owner_repo_email: index("idx_collaborator_owner_repo_email").on(table.owner, table.repo, table.email),
-  idx_collaborator_userId: index("idx_collaborator_userId").on(table.userId)
-}));
-
-const configTable = pgTable("config", {
+export const configTable = pgTable("config", {
   id: serial("id").primaryKey(),
   owner: text("owner").notNull(),
   repo: text("repo").notNull(),
@@ -79,7 +109,7 @@ const configTable = pgTable("config", {
   idx_config_owner_repo_branch: uniqueIndex("idx_config_owner_repo_branch").on(table.owner, table.repo, table.branch)
 }));
 
-const cacheFileTable = pgTable("cache_file", {
+export const cacheFileTable = pgTable("cache_file", {
   id: serial("id").primaryKey(),
   context: text("context").notNull().default('collection'),
   owner: text("owner").notNull(),
@@ -100,25 +130,3 @@ const cacheFileTable = pgTable("cache_file", {
   idx_cache_file_owner_repo_branch_parentPath: index("idx_cache_file_owner_repo_branch_parentPath").on(table.owner, table.repo, table.branch, table.parentPath),
   idx_cache_file_owner_repo_branch_path: uniqueIndex("idx_cache_file_owner_repo_branch_path").on(table.owner, table.repo, table.branch, table.path)
 }));
-
-const cachePermissionTable = pgTable("cache_permission", {
-  id: serial("id").primaryKey(),
-  githubId: integer("github_id").notNull(),
-  owner: text("owner").notNull(),
-  repo: text("repo").notNull(),
-  lastUpdated: timestamp("last_updated").notNull()
-}, table => ({
-  idx_cache_permission_githubId_owner_repo: uniqueIndex("idx_cache_permission_githubId_owner_repo").on(table.githubId, table.owner, table.repo)
-}));
-
-export {
-  userTable,
-  sessionTable,
-  githubUserTokenTable,
-  githubInstallationTokenTable,
-  emailLoginTokenTable,
-  collaboratorTable,
-  configTable,
-  cacheFileTable,
-  cachePermissionTable
-};

@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
-import { getAuth } from "@/lib/auth";
-import { SignIn } from "@/components/sign-in";
+import { auth0 } from "@/lib/auth0";
 
-export default async function Page() {  
-  const { session } = await getAuth();
+export default async function Page() {
+  const session = await auth0.getSession();
   if (session) return redirect("/");
 
-	return (
-    <SignIn/>
-  );
+  return redirect("/auth/login");
 }
