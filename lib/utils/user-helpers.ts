@@ -43,10 +43,13 @@ export async function createOrResolveAuth0User(
       { headers: { Authorization: `Bearer ${mgmtToken}` } },
     );
     if (searchRes.ok) {
-      const existing = await searchRes.json();
-      const auth0UserId = existing[0]?.user_id as string | undefined;
+      const existing = (await searchRes.json()) as { user_id?: string }[];
+      const auth0UserId = existing[0]?.user_id;
       if (auth0UserId) return auth0UserId;
+      // 409 but search returned no results — likely a connection mismatch (e.g. social login)
+      throw new Error(`Auth0 user with email ${email} exists in another connection and cannot be resolved.`);
     }
+    throw new Error(`Auth0 email lookup failed (${searchRes.status}) after 409 conflict.`);
   }
 
   throw new Error(`Auth0 user creation failed: ${err.message ?? createRes.status}`);
