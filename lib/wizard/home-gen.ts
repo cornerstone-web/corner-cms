@@ -10,6 +10,8 @@ export interface HomeGenOptions {
   heroVideo?: string;
   marqueeImages?: string[];
   serviceTimes?: { time: string; label: string }[];
+  name?: string;
+  description?: string;
 }
 
 export function generateHomeBlocks(opts: HomeGenOptions): unknown[] {
@@ -22,10 +24,13 @@ export function generateHomeBlocks(opts: HomeGenOptions): unknown[] {
     ...(opts.heroImage ? { backgroundImage: opts.heroImage } : {}),
     ...(opts.heroVideo ? { backgroundVideo: opts.heroVideo } : {}),
     blockHeight: "full",
-    headline: "Welcome",
-    subheadline: "We're glad you're here.",
+    headline: opts.name ? `Welcome to ${opts.name}` : "Welcome",
+    showSubheadline: Boolean(opts.description),
+    subheadline: opts.description ?? "",
     overlayOpacity: 40,
-    showScrollIndicator: false,
+    showScrollIndicator: true,
+    showPrimaryCta: false,
+    showSecondaryCta: false,
   });
 
   if (opts.photos || (opts.marqueeImages?.length ?? 0) > 0) {

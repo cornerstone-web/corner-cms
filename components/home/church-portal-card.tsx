@@ -17,15 +17,20 @@ import {
   ExternalLink,
   Loader2,
   Pencil,
+  RefreshCw,
   Settings2,
 } from "lucide-react";
+import type { VersionStatus } from "@/lib/actions/cornerstone-update";
+import { applyLatestVersion } from "@/lib/actions/cornerstone-update";
 
 export function ChurchPortalCard({
   assignment,
   status,
+  versionStatus,
 }: {
   assignment: ChurchAssignment;
   status?: string;
+  versionStatus?: VersionStatus;
 }) {
   const isProvisioning = status === "provisioning";
   const [owner, repo] = assignment.githubRepoName.split("/");
@@ -37,6 +42,18 @@ export function ChurchPortalCard({
   const [buildStatus, setBuildStatus] = useState<
     "checking" | "building" | "success" | "failure"
   >(shouldPoll ? "checking" : "success");
+  const [updateState, setUpdateState] = useState<"idle" | "updating" | "done" | "error">("idle");
+  const showUpdateBanner = versionStatus?.needsUpdate && updateState === "idle";
+
+  async function handleUpdate() {
+    setUpdateState("updating");
+    try {
+      const result = await applyLatestVersion(assignment.churchId);
+      setUpdateState(result.ok ? "done" : "error");
+    } catch {
+      setUpdateState("error");
+    }
+  }
 
   useEffect(() => {
     if (!shouldPoll) return;
@@ -96,18 +113,53 @@ export function ChurchPortalCard({
         {!isProvisioning && siteUrl && (
           <CardContent className="space-y-3">
             {buildStatus === "success" ? (
-              <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-                <span className="text-muted-foreground">Live site</span>
-                <a
-                  href={siteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 font-medium hover:underline text-xs truncate max-w-[200px]"
-                >
-                  {siteUrl.replace(/^https?:\/\//, "")}
-                  <ExternalLink className="h-3 w-3 shrink-0" />
-                </a>
-              </div>
+              <>
+                <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">Live site</span>
+                  <a
+                    href={siteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 font-medium hover:underline text-xs truncate max-w-[200px]"
+                  >
+                    {siteUrl.replace(/^https?:\/\//, "")}
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                </div>
+                {showUpdateBanner && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-3 py-2.5 text-sm space-y-2">
+                    <div>
+                      <p className="font-medium text-amber-900 dark:text-amber-200 text-xs">
+                        Update available — Cornerstone Core {versionStatus.latest}
+                      </p>
+                      <p className="text-amber-700 dark:text-amber-400 text-xs mt-0.5">
+                        Your site is on {versionStatus.current}. Updating triggers a rebuild.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleUpdate}
+                      disabled={updateState === "updating"}
+                      className="flex items-center gap-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2 hover:no-underline disabled:opacity-50"
+                    >
+                      {updateState === "updating" ? (
+                        <><Loader2 className="h-3 w-3 animate-spin" /> Updating…</>
+                      ) : (
+                        <><RefreshCw className="h-3 w-3" /> Update now</>
+                      )}
+                    </button>
+                  </div>
+                )}
+                {updateState === "done" && (
+                  <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 px-3 py-2 text-xs text-green-800 dark:text-green-300">
+                    Updated to {versionStatus?.latest} — rebuild triggered.
+                  </div>
+                )}
+                {updateState === "error" && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                    Update failed. Try again later or contact support.
+                  </div>
+                )}
+              </>
             ) : buildStatus === "failure" ? (
               <div className="flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
                 <span className="text-muted-foreground">Live site</span>

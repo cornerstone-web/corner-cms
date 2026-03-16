@@ -5,7 +5,8 @@ export type StepKey =
   | "sermons" | "series" | "ministries" | "events" | "articles"
   | "staff" | "bulletins" | "leadership"
   | "first-sermon" | "first-series" | "first-ministry" | "first-event"
-  | "first-article" | "first-staff" | "first-leaders"
+  | "first-article" | "first-staff" | "first-leaders" | "first-bulletin"
+  | "about-content" | "beliefs-content" | "visit-content" | "faq-content"
   | "hero" | "photos"
   | "launched";
 
@@ -75,6 +76,17 @@ export const STEP_GROUPS: StepGroup[] = [
       { key: "first-article", label: "First Article", group: "content", showWhenFeature: "articles" },
       { key: "first-staff", label: "Staff Members", group: "content", showWhenFeature: "staff" },
       { key: "first-leaders", label: "Leadership", group: "content", showWhenFeature: "leadership" },
+      { key: "first-bulletin", label: "First Bulletin", group: "content", showWhenFeature: "bulletins" },
+    ],
+  },
+  {
+    key: "pages",
+    label: "Pages",
+    steps: [
+      { key: "about-content", label: "About Us", group: "pages" },
+      { key: "beliefs-content", label: "What We Believe", group: "pages" },
+      { key: "visit-content", label: "Plan Your Visit", group: "pages" },
+      { key: "faq-content", label: "FAQ", group: "pages" },
     ],
   },
   {

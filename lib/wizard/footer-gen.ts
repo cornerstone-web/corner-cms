@@ -24,6 +24,7 @@ export function generateFooterSections(features: WizardFeatures): FooterSection[
   if (features.staff) {
     churchLinks.push({ label: "Our Staff", href: "/staff" });
   }
+  churchLinks.push({ label: "FAQ", href: "/faq" });
   churchLinks.push({ label: "Plan Your Visit", href: "/visit" });
   churchLinks.push({ label: "Contact Us", href: "/contact" });
 
@@ -35,13 +36,10 @@ export function generateFooterSections(features: WizardFeatures): FooterSection[
     resourceLinks.push({ label: "Sermons", href: "/sermons" });
   }
   if (features.series) {
-    resourceLinks.push({ label: "Series", href: "/sermons" });
+    resourceLinks.push({ label: "Series", href: "/series" });
   }
   if (features.events) {
     resourceLinks.push({ label: "Events", href: "/events" });
-  }
-  if (features.ministries) {
-    resourceLinks.push({ label: "Ministries", href: "/ministries" });
   }
   if (features.articles) {
     resourceLinks.push({ label: "Articles", href: "/articles" });

@@ -259,3 +259,18 @@ export async function getDirectoryFileNames(
     return [];
   }
 }
+
+export async function getDirectoryAllFileNames(
+  repoName: string,
+  dirPath: string,
+): Promise<string[]> {
+  try {
+    const token = await getInstallationToken(GITHUB_ORG, repoName);
+    const octokit = createOctokitInstance(token);
+    const res = await octokit.rest.repos.getContent({ owner: GITHUB_ORG, repo: repoName, path: dirPath });
+    const items = res.data as { name: string; type: string }[];
+    return items.filter(item => item.type === "file").map(item => item.name);
+  } catch {
+    return [];
+  }
+}

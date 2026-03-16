@@ -7,6 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveFirstArticle } from "@/lib/actions/setup-steps";
 import WizardProseEditor from "@/components/setup/WizardProseEditor";
+import { compressImage } from "@/lib/utils/image-compression";
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
@@ -32,8 +45,23 @@ export default function FirstArticleStep({
   const [category, setCategory] = useState(initialCategory ?? "");
   const [description, setDescription] = useState(initialDescription ?? "");
   const [proseContent, setProseContent] = useState(initialProseContent ?? "");
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageExt, setImageExt] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    const compressed = await compressImage(file, "content");
+    const preview = URL.createObjectURL(compressed);
+    const base64 = await fileToBase64(compressed);
+    const ext = compressed.type.split("/")[1] ?? "jpg";
+    setImagePreview(preview);
+    setImageBase64(base64);
+    setImageExt(ext);
+  }
 
   async function handleSubmit() {
     if (!title.trim()) {
@@ -53,6 +81,7 @@ export default function FirstArticleStep({
         category: category.trim(),
         ...(description.trim() ? { description: description.trim() } : {}),
         ...(proseContent.trim() ? { proseContent: proseContent.trim() } : {}),
+        ...(imageBase64 ? { imageBase64, imageExt: imageExt ?? "jpg" } : {}),
       });
       onComplete();
     } catch (err) {
@@ -130,6 +159,25 @@ export default function FirstArticleStep({
             The body of the article page.
           </p>
           <WizardProseEditor value={proseContent} onChange={setProseContent} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>
+            Article Image{" "}
+            <span className="text-muted-foreground text-xs">(optional)</span>
+          </Label>
+          <p className="text-xs text-muted-foreground -mt-0.5">
+            Shown as a thumbnail in article listings.
+          </p>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="block w-full text-sm text-muted-foreground file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
+          />
+          {imagePreview && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imagePreview} alt="Preview" className="mt-2 w-full max-h-40 object-cover rounded-md" />
+          )}
         </div>
       </div>
       <Button onClick={handleSubmit} disabled={isLoading}>

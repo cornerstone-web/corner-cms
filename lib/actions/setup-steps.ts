@@ -247,11 +247,22 @@ export async function saveFirstSermon(
     description?: string;
     proseContent?: string;
     videoUrl?: string;
+    imageBase64?: string;
+    imageExt?: string;
   },
 ): Promise<void> {
   await assertChurchAccess(churchId);
   const fileSlug = slugify(fields.title) || "first-sermon";
   const path = `src/content/sermons/${fileSlug}.md`;
+
+  let imagePath: string | undefined;
+  if (fields.imageBase64) {
+    const ext = fields.imageExt ?? "jpg";
+    const repoImagePath = `public/uploads/sermons/${fileSlug}.${ext}`;
+    const imageSha = await tryGetSha(slug, repoImagePath);
+    await commitBinaryFile(slug, repoImagePath, fields.imageBase64, imageSha, "wizard: add sermon image");
+    imagePath = `/uploads/sermons/${fileSlug}.${ext}`;
+  }
   const blocks = [
     ...(fields.videoUrl
       ? [
@@ -283,6 +294,7 @@ export async function saveFirstSermon(
     speaker: fields.speaker,
     ...(fields.series ? { series: fields.series } : {}),
     description: fields.description ?? "",
+    ...(imagePath ? { image: imagePath } : {}),
     draft: false,
     passwordProtected: false,
     blocks,
@@ -314,7 +326,11 @@ export async function saveFirstSeries(
       {
         type: "hero",
         variant: "centered",
-        backgroundType: "default",
+        blockHeight: "sm",
+        backgroundType: "image",
+        backgroundImage: "/uploads/hero.jpg",
+        overlayOpacity: 50,
+        overlayGradient: "top-bottom",
         showHeadline: true,
         headline: fields.title,
         showSubheadline: fields.description ? true : false,
@@ -362,10 +378,11 @@ export async function saveFirstMinistries(
         {
           type: "hero",
           variant: "centered",
-          blockHeight: "md",
-          backgroundType: "default",
+          blockHeight: "sm",
+          backgroundType: "image",
+          backgroundImage: "/uploads/hero.jpg",
           overlayOpacity: 50,
-          overlayGradient: "none",
+          overlayGradient: "top-bottom",
           showHeadline: true,
           headline: ministry.name,
           showSubheadline: !!ministry.description,
@@ -423,10 +440,11 @@ export async function saveFirstEvent(
       {
         type: "hero",
         variant: "centered",
-        blockHeight: "md",
-        backgroundType: "default",
+        blockHeight: "sm",
+        backgroundType: "image",
+        backgroundImage: "/uploads/hero.jpg",
         overlayOpacity: 50,
-        overlayGradient: "none",
+        overlayGradient: "top-bottom",
         showHeadline: true,
         headline: fields.title,
         showSubheadline: !!fields.description,
@@ -449,12 +467,22 @@ export async function saveFirstEvent(
 export async function saveFirstArticle(
   churchId: string,
   slug: string,
-  fields: { title: string; author: string; category?: string; description?: string; proseContent?: string },
+  fields: { title: string; author: string; category?: string; description?: string; proseContent?: string; imageBase64?: string; imageExt?: string },
 ): Promise<void> {
   await assertChurchAccess(churchId);
   const fileSlug = slugify(fields.title) || "first-article";
   const path = `src/content/articles/${fileSlug}.md`;
   const today = new Date().toISOString().split("T")[0];
+
+  let imagePath: string | undefined;
+  if (fields.imageBase64) {
+    const ext = fields.imageExt ?? "jpg";
+    const repoImagePath = `public/uploads/articles/${fileSlug}.${ext}`;
+    const imageSha = await tryGetSha(slug, repoImagePath);
+    await commitBinaryFile(slug, repoImagePath, fields.imageBase64, imageSha, "wizard: add article image");
+    imagePath = `/uploads/articles/${fileSlug}.${ext}`;
+  }
+
   const content = fm({
     title: fields.title,
     template: "article",
@@ -462,16 +490,18 @@ export async function saveFirstArticle(
     date: today,
     category: fields.category ?? "",
     description: fields.description ?? "",
+    ...(imagePath ? { image: imagePath } : {}),
     draft: false,
     passwordProtected: false,
     blocks: [
       {
         type: "hero",
         variant: "centered",
-        blockHeight: "md",
-        backgroundType: "default",
+        blockHeight: "sm",
+        backgroundType: "image",
+        backgroundImage: "/uploads/hero.jpg",
         overlayOpacity: 50,
-        overlayGradient: "none",
+        overlayGradient: "top-bottom",
         showHeadline: true,
         headline: fields.title,
         showSubheadline: !!fields.description,
@@ -514,7 +544,7 @@ export async function saveStaffMembers(
       template: "staff",
       role: member.title ?? "",
       bio: "",
-      ...(hasPhoto ? { image: `/uploads/leadership_staff/${fileSlug}.${ext}` } : {}),
+      image: hasPhoto ? `/uploads/leadership_staff/${fileSlug}.${ext}` : "",
       draft: false,
       passwordProtected: false,
       showDetailPage: true,
@@ -605,10 +635,11 @@ export async function saveLeaders(
       {
         type: "hero",
         variant: "centered",
-        blockHeight: "lg",
-        backgroundType: "default",
+        blockHeight: "sm",
+        backgroundType: "image",
+        backgroundImage: "/uploads/hero.jpg",
         overlayOpacity: 50,
-        overlayGradient: "none",
+        overlayGradient: "top-bottom",
         showHeadline: true,
         headline: "Our Leadership",
         showSubheadline: false,
@@ -632,6 +663,213 @@ export async function saveLeaders(
   await commitFile(slug, leadershipPagePath, leadershipPageContent, leadershipPageSha, "wizard: update leadership page");
 
   const result = await completeStep(churchId, "first-leaders");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── Page Content Steps ───────────────────────────────────────────────────────
+
+const ABOUT_HERO = {
+  type: "hero",
+  variant: "centered",
+  blockHeight: "sm",
+  backgroundType: "image",
+  backgroundImage: "/uploads/hero.jpg",
+  overlayOpacity: 50,
+  overlayGradient: "top-bottom",
+  showHeadline: true,
+  showSubheadline: false,
+  showPrimaryCta: false,
+  showSecondaryCta: false,
+  showScrollIndicator: false,
+};
+
+export async function saveAboutPage(
+  churchId: string,
+  slug: string,
+  proseContent: string,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const path = "src/content/pages/about.md";
+  const content = fm({
+    title: "About Us",
+    description: "Learn about our church's history, mission, and values.",
+    template: "default",
+    draft: false,
+    passwordProtected: false,
+    blocks: [
+      { ...ABOUT_HERO, headline: "About Us" },
+      { type: "prose", maxWidth: "normal", content: proseContent },
+      {
+        type: "cta",
+        variant: "primary",
+        headline: "Come visit us",
+        showDescription: true,
+        description: "We'd love to meet you and welcome you to our church family.",
+        showPrimaryCta: true,
+        primaryCta: { label: "Plan Your Visit", href: "/visit" },
+        showSecondaryCta: false,
+      },
+    ],
+  });
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, "wizard: update about page content");
+  const result = await completeStep(churchId, "about-content");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+export async function saveBeliefPage(
+  churchId: string,
+  slug: string,
+  proseContent: string,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const path = "src/content/pages/beliefs.md";
+  const content = fm({
+    title: "What We Believe",
+    description: "Learn about our core beliefs and values.",
+    template: "default",
+    draft: false,
+    passwordProtected: false,
+    blocks: [
+      { ...ABOUT_HERO, headline: "What We Believe" },
+      { type: "prose", content: proseContent },
+      {
+        type: "cta",
+        headline: "Have questions about our beliefs?",
+        showPrimaryCta: true,
+        primaryCta: { label: "Contact Us", href: "/contact" },
+        showSecondaryCta: true,
+        secondaryCta: { label: "Visit Our FAQ", href: "/faq" },
+        variant: "primary",
+      },
+    ],
+  });
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, "wizard: update beliefs page content");
+  const result = await completeStep(churchId, "beliefs-content");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+export async function saveVisitPage(
+  churchId: string,
+  slug: string,
+  proseContent: string,
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const path = "src/content/pages/visit.md";
+  const content = fm({
+    title: "Plan Your Visit",
+    description: "Everything you need to know before visiting our church.",
+    template: "default",
+    draft: false,
+    passwordProtected: false,
+    blocks: [
+      { ...ABOUT_HERO, headline: "Plan Your Visit" },
+      { type: "prose", content: proseContent },
+      {
+        type: "cta",
+        headline: "Ready to visit?",
+        description: "We can't wait to meet you!",
+        showPrimaryCta: true,
+        primaryCta: { label: "Get Directions", href: "/contact" },
+        showSecondaryCta: true,
+        secondaryCta: { label: "Contact Us", href: "/contact" },
+        variant: "primary",
+      },
+    ],
+  });
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, "wizard: update visit page content");
+  const result = await completeStep(churchId, "visit-content");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+export async function saveFAQPage(
+  churchId: string,
+  slug: string,
+  items: { question: string; answer: string }[],
+): Promise<void> {
+  await assertChurchAccess(churchId);
+  const path = "src/content/pages/faq.md";
+  const content = fm({
+    title: "Frequently Asked Questions",
+    description: "Find answers to common questions about our church and what to expect when you visit.",
+    template: "faq",
+    draft: false,
+    passwordProtected: false,
+    blocks: [
+      { ...ABOUT_HERO, headline: "Frequently Asked Questions" },
+      { type: "faq-accordion", items },
+      {
+        type: "cta",
+        headline: "Still have questions?",
+        description: "We'd love to hear from you.",
+        showPrimaryCta: true,
+        primaryCta: { label: "Contact Us", href: "/contact" },
+        variant: "primary",
+      },
+    ],
+  });
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, content, sha, "wizard: update FAQ page content");
+  const result = await completeStep(churchId, "faq-content");
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+// ─── First Bulletin ───────────────────────────────────────────────────────────
+
+export async function saveFirstBulletin(
+  churchId: string,
+  slug: string,
+  fields: { date: string; pdfBase64: string; passwordProtected: boolean; password?: string },
+): Promise<void> {
+  await assertChurchAccess(churchId);
+
+  // Upload the PDF (skip if no new PDF provided — just updating password settings)
+  if (fields.pdfBase64) {
+    const pdfPath = `public/bulletins/${fields.date}.pdf`;
+    const pdfSha = await tryGetSha(slug, pdfPath);
+    await commitBinaryFile(slug, pdfPath, fields.pdfBase64, pdfSha, "wizard: add first bulletin");
+  }
+
+  // If password-protected, update bulletins.md
+  if (fields.passwordProtected && fields.password) {
+    const bulletinsPath = "src/content/pages/bulletins.md";
+    const bulletinsContent = fm({
+      title: "Bulletins",
+      description: "Weekly church bulletins",
+      template: "bulletins",
+      draft: false,
+      passwordProtected: true,
+      password: fields.password,
+      blocks: [
+        { ...ABOUT_HERO, headline: "Bulletins" },
+        {
+          type: "container",
+          background: "background",
+          padding: "lg",
+          ratio: "1:3",
+          columns: [
+            { blocks: [{ type: "icon", size: "xl", color: "primary", icon: "file" }] },
+            { blocks: [{ type: "bulletin-list", layout: "list", showTitle: false, showDate: true }] },
+          ],
+        },
+        {
+          type: "cta",
+          variant: "default",
+          headline: "Looking for something specific?",
+          showDescription: true,
+          showPrimaryCta: true,
+          primaryCta: { label: "Contact Us", href: "/contact" },
+          showSecondaryCta: false,
+        },
+      ],
+    });
+    const bulletinsSha = await tryGetSha(slug, bulletinsPath);
+    await commitFile(slug, bulletinsPath, bulletinsContent, bulletinsSha, "wizard: enable bulletin password protection");
+  }
+
+  const result = await completeStep(churchId, "first-bulletin");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 

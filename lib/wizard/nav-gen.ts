@@ -21,7 +21,7 @@ export function generateNav(features: WizardFeatures) {
         label: "Sermons",
         links: [
           { label: "All Sermons", href: "/sermons" },
-          ...(features.series ? [{ label: "Series", href: "/sermons" }] : []),
+          ...(features.series ? [{ label: "Series", href: "/series" }] : []),
         ],
       },
     ];
@@ -37,10 +37,6 @@ export function generateNav(features: WizardFeatures) {
     items.push({ type: "link", label: "Media", href: "/sermons", columns: mediaColumns });
   }
 
-  if (features.ministries) {
-    items.push({ type: "link", label: "Ministries", href: "/ministries" });
-  }
-
   if (features.events) {
     items.push({ type: "link", label: "Events", href: "/events" });
   }
@@ -54,6 +50,7 @@ export function generateNav(features: WizardFeatures) {
     { label: "What We Believe", href: "/beliefs" },
     ...(features.leadership ? [{ label: "Leadership", href: "/leadership" }] : []),
     ...(features.staff ? [{ label: "Our Staff", href: "/staff" }] : []),
+    { label: "FAQ", href: "/faq" },
   ];
   const visitLinks = [
     { label: "Plan Your Visit", href: "/visit" },

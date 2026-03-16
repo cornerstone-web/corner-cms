@@ -39,6 +39,11 @@ import StaffStep from "./steps/StaffStep";
 import LeadersStep from "./steps/LeadersStep";
 import HeroStep from "./steps/HeroStep";
 import PhotosStep from "./steps/PhotosStep";
+import AboutContentStep from "./steps/AboutContentStep";
+import BeliefsContentStep from "./steps/BeliefsContentStep";
+import VisitContentStep from "./steps/VisitContentStep";
+import FAQStep from "./steps/FAQStep";
+import FirstBulletinStep from "./steps/FirstBulletinStep";
 
 interface WizardShellProps {
   church: {
@@ -60,9 +65,14 @@ interface WizardShellProps {
   initialFirstStaff?: Record<string, unknown>[];
   initialFirstLeaders?: Record<string, unknown>[];
   initialMarqueePhotos?: { name: string; url: string }[];
+  initialFirstBulletin?: { date: string; passwordProtected: boolean; password?: string };
+  initialAboutProse?: string;
+  initialBeliefsProse?: string;
+  initialVisitProse?: string;
+  initialFaqItems?: { question: string; answer: string }[];
 }
 
-export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialHeroUrl, initialFaviconUrl, userEmail, initialFirstSeries, initialFirstSermon, initialFirstMinistries, initialFirstEvent, initialFirstArticle, initialFirstStaff, initialFirstLeaders, initialMarqueePhotos }: WizardShellProps) {
+export default function WizardShell({ church, completedStepsArray, initialConfig, initialLogoUrl, initialHeroUrl, initialFaviconUrl, userEmail, initialFirstSeries, initialFirstSermon, initialFirstMinistries, initialFirstEvent, initialFirstArticle, initialFirstStaff, initialFirstLeaders, initialMarqueePhotos, initialFirstBulletin, initialAboutProse, initialBeliefsProse, initialVisitProse, initialFaqItems }: WizardShellProps) {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(
     () => new Set(completedStepsArray)
   );
@@ -235,6 +245,11 @@ export default function WizardShell({ church, completedStepsArray, initialConfig
           existingPhotoPath: (l.existingPhotoPath ?? l.photo) as string | undefined,
         }))}
       />;
+      case "first-bulletin": return <FirstBulletinStep {...base} initialDate={initialFirstBulletin?.date} initialPasswordProtected={initialFirstBulletin?.passwordProtected} initialPassword={initialFirstBulletin?.password} />;
+      case "about-content": return <AboutContentStep {...base} initialProseContent={initialAboutProse} />;
+      case "beliefs-content": return <BeliefsContentStep {...base} initialProseContent={initialBeliefsProse} />;
+      case "visit-content": return <VisitContentStep {...base} initialProseContent={initialVisitProse} initialServiceTimes={(cfg.serviceTimes as { day?: string; time?: string; name?: string; label?: string }[] | undefined) ?? []} />;
+      case "faq-content": return <FAQStep {...base} initialItems={initialFaqItems} />;
       case "hero": return <HeroStep {...base} initialHeroUrl={initialHeroUrl} />;
       case "photos": return <PhotosStep {...base} initialPhotos={initialMarqueePhotos} />;
       case "launched": return (

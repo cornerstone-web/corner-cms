@@ -5,7 +5,7 @@ import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable, churchWizardStepsTable } from "@/db/schema";
 import { initWizard } from "@/lib/actions/setup";
-import { getFileWithSha, getFileDownloadUrl, getFirstFileFrontmatter, getAllFilesFrontmatter, getDirectoryImageUrls } from "@/lib/github/wizard";
+import { getFileWithSha, getFileDownloadUrl, getFirstFileFrontmatter, getAllFilesFrontmatter, getDirectoryImageUrls, getDirectoryAllFileNames } from "@/lib/github/wizard";
 import WizardShell from "@/components/setup/WizardShell";
 
 export default async function SetupPage() {
@@ -52,7 +52,7 @@ export default async function SetupPage() {
 
   // Fetch authenticated download URLs for already-uploaded branding assets
   // and first-content frontmatter for completed content steps
-  const [logoUrl, heroUrl, faviconUrl, firstSeries, firstSermon, firstEvent, firstArticle, firstMinistries, firstStaff, marqueePhotos, firstLeaders] = await Promise.all([
+  const [logoUrl, heroUrl, faviconUrl, firstSeries, firstSermon, firstEvent, firstArticle, firstMinistries, firstStaff, marqueePhotos, firstLeaders, firstBulletinData, aboutPageData, beliefsPageData, visitPageData, faqPageData] = await Promise.all([
     completedSteps.has("logo") ? getFileDownloadUrl(church.slug, "public/images/logo.png") : Promise.resolve(null),
     completedSteps.has("hero") ? getFileDownloadUrl(church.slug, "public/uploads/hero.jpg") : Promise.resolve(null),
     completedSteps.has("favicon") ? getFileDownloadUrl(church.slug, "public/favicon.svg") : Promise.resolve(null),
@@ -94,6 +94,66 @@ export default async function SetupPage() {
         return [];
       }
     })() : Promise.resolve([]),
+    // Fetch existing bulletin info (date from filename, password from bulletins.md)
+    (async () => {
+      try {
+        const names = await getDirectoryAllFileNames(church.slug, "public/bulletins");
+        const pdfName = names.find(n => n.endsWith(".pdf"));
+        if (!pdfName) return null;
+        const date = pdfName.replace(".pdf", "");
+        // Check bulletins.md for password protection
+        try {
+          const { content } = await getFileWithSha(church.slug, "src/content/pages/bulletins.md");
+          const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+          if (fmMatch) {
+            const pageFm = YAML.parse(fmMatch[1]) as Record<string, unknown>;
+            return { date, passwordProtected: Boolean(pageFm.passwordProtected), password: pageFm.password as string | undefined };
+          }
+        } catch { /* bulletins.md not accessible */ }
+        return { date, passwordProtected: false };
+      } catch { return null; }
+    })(),
+    (async () => {
+      try {
+        const { content } = await getFileWithSha(church.slug, "src/content/pages/about.md");
+        const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        if (!fmMatch) return null;
+        const pageFm = YAML.parse(fmMatch[1]) as Record<string, unknown>;
+        const blocks = (pageFm.blocks as Record<string, unknown>[] | undefined) ?? [];
+        return (blocks.find(b => b.type === "prose") as Record<string, unknown> | undefined)?.content as string | undefined ?? null;
+      } catch { return null; }
+    })(),
+    (async () => {
+      try {
+        const { content } = await getFileWithSha(church.slug, "src/content/pages/beliefs.md");
+        const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        if (!fmMatch) return null;
+        const pageFm = YAML.parse(fmMatch[1]) as Record<string, unknown>;
+        const blocks = (pageFm.blocks as Record<string, unknown>[] | undefined) ?? [];
+        return (blocks.find(b => b.type === "prose") as Record<string, unknown> | undefined)?.content as string | undefined ?? null;
+      } catch { return null; }
+    })(),
+    (async () => {
+      try {
+        const { content } = await getFileWithSha(church.slug, "src/content/pages/visit.md");
+        const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        if (!fmMatch) return null;
+        const pageFm = YAML.parse(fmMatch[1]) as Record<string, unknown>;
+        const blocks = (pageFm.blocks as Record<string, unknown>[] | undefined) ?? [];
+        return (blocks.find(b => b.type === "prose") as Record<string, unknown> | undefined)?.content as string | undefined ?? null;
+      } catch { return null; }
+    })(),
+    (async () => {
+      try {
+        const { content } = await getFileWithSha(church.slug, "src/content/pages/faq.md");
+        const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        if (!fmMatch) return null;
+        const pageFm = YAML.parse(fmMatch[1]) as Record<string, unknown>;
+        const blocks = (pageFm.blocks as Record<string, unknown>[] | undefined) ?? [];
+        const faqBlock = blocks.find(b => b.type === "faq-accordion") as Record<string, unknown> | undefined;
+        return faqBlock?.items as { question: string; answer: string }[] | undefined ?? null;
+      } catch { return null; }
+    })(),
   ]);
 
   return (
@@ -113,6 +173,11 @@ export default async function SetupPage() {
       initialFirstStaff={firstStaff.length > 0 ? firstStaff : undefined}
       initialFirstLeaders={firstLeaders.length > 0 ? firstLeaders : undefined}
       initialMarqueePhotos={marqueePhotos.length > 0 ? marqueePhotos : undefined}
+      initialFirstBulletin={firstBulletinData ?? undefined}
+      initialAboutProse={aboutPageData ?? undefined}
+      initialBeliefsProse={beliefsPageData ?? undefined}
+      initialVisitProse={visitPageData ?? undefined}
+      initialFaqItems={faqPageData ?? undefined}
     />
   );
 }
