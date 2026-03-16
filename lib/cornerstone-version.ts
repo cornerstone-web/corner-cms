@@ -40,7 +40,7 @@ export async function getLatestCornerstoneVersion(): Promise<string | null> {
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
       },
-      next: { revalidate: 3600 },
+      next: { revalidate: 1200 },
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { "dist-tags"?: { latest?: string } };
