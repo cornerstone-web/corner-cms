@@ -8,8 +8,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Pages CMS",
-    default: "Pages CMS",
+    template: "%s | Cornerstone CMS",
+    default: "Cornerstone CMS",
   },
   description: "The No-Hassle CMS for GitHub",
 };
