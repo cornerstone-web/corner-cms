@@ -71,7 +71,7 @@ export default async function Layout({
   }
 
   // Check DB cache. sha stores the resolved package version; version stores the
-  // pages-cms configVersion (schema format). Both must match to use the cache.
+  // corner-cms configVersion (schema format). Both must match to use the cache.
   const cachedConfig = await getConfig(lowerOwner, lowerRepo, decodedBranch);
 
   let config;

@@ -64,7 +64,7 @@ export async function GET(
       files: Array<{ key: string; name: string; publicUrl: string; size: number; uploadedAt: string | null }>;
     };
 
-    // Construct URLs from R2_PUBLIC_URL (pages-cms env) + key — avoids any
+    // Construct URLs from R2_PUBLIC_URL (corner-cms env) + key — avoids any
     // protocol misconfiguration on the corner-media worker's PUBLIC_URL secret.
     const data = files.map((f) => ({
       name: f.name,
