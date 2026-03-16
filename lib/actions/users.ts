@@ -58,14 +58,15 @@ export async function inviteUser(
     const auth0UserId = await createOrResolveAuth0User(email, name, mgmtToken);
     const resetUrl = await generatePasswordTicket(auth0UserId, mgmtToken);
 
+    // Create DB records first — if these fail, no email is sent and nothing is orphaned
+    const dbUserId = await createOrRestoreDbUser(auth0UserId, email, name);
+    await assignChurchRole(dbUserId, churchId, role as "church_admin" | "editor");
+
     const church = await db.query.churchesTable.findFirst({
       where: eq(churchesTable.id, churchId),
       columns: { displayName: true },
     });
     const emailSent = await sendInviteEmail(email, name, church?.displayName ?? "your site", resetUrl);
-
-    const dbUserId = await createOrRestoreDbUser(auth0UserId, email, name);
-    await assignChurchRole(dbUserId, churchId, role as "church_admin" | "editor");
 
     return resolveInviteEmailStatus(emailSent);
   } catch (err: unknown) {
