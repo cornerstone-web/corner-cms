@@ -43,6 +43,7 @@ export function ChurchPortalCard({
     "checking" | "building" | "success" | "failure"
   >(shouldPoll ? "checking" : "success");
   const [updateState, setUpdateState] = useState<"idle" | "updating" | "done" | "error">("idle");
+  const isUpdating = updateState === "updating";
   const showUpdateBanner = versionStatus?.needsUpdate && updateState === "idle";
 
   async function handleUpdate() {
@@ -138,10 +139,10 @@ export function ChurchPortalCard({
                     </div>
                     <button
                       onClick={handleUpdate}
-                      disabled={updateState === "updating"}
+                      disabled={isUpdating}
                       className="flex items-center gap-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2 hover:no-underline disabled:opacity-50"
                     >
-                      {updateState === "updating" ? (
+                      {isUpdating ? (
                         <><Loader2 className="h-3 w-3 animate-spin" /> Updating…</>
                       ) : (
                         <><RefreshCw className="h-3 w-3" /> Update now</>
