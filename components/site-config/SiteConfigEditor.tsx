@@ -33,6 +33,7 @@ export function SiteConfigEditor() {
   const [saving, setSaving] = useState(false);
   const [sha, setSha] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [initialFormEmail, setInitialFormEmail] = useState<string>("");
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -47,29 +48,31 @@ export function SiteConfigEditor() {
     reValidateMode: "onSubmit",
   });
 
+  const fetchConfig = useCallback(async () => {
+    if (!config) return;
+    try {
+      const response = await fetch(
+        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/site-config`
+      );
+      const result = await response.json();
+      if (result.status === "error") throw new Error(result.message);
+
+      setSha(result.data.sha);
+      // Extract formEmail before Zod strips it (it's not in siteConfigSchema)
+      const rawFormEmail = (result.data.config?.contact as any)?.formEmail as string | undefined;
+      setInitialFormEmail(rawFormEmail ?? "");
+      form.reset(result.data.config);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [config, form]);
+
   // Fetch site config on mount
   useEffect(() => {
-    if (!config) return;
-
-    const fetchConfig = async () => {
-      try {
-        const response = await fetch(
-          `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/site-config`
-        );
-        const result = await response.json();
-        if (result.status === "error") throw new Error(result.message);
-
-        setSha(result.data.sha);
-        form.reset(result.data.config);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchConfig();
-  }, [config, form]);
+  }, [fetchConfig]);
 
   // Watch all form values for live preview updates
   const watchedValues = useWatch({ control: form.control });
@@ -228,7 +231,11 @@ export function SiteConfigEditor() {
                   </div>
                 </TabsContent>
                 <TabsContent value="contact" className="mt-6">
-                  <ContactSection control={form.control} />
+                  <ContactSection
+                    control={form.control}
+                    initialFormEmail={initialFormEmail}
+                    onFormEmailMutated={fetchConfig}
+                  />
                 </TabsContent>
                 <TabsContent value="service-times" className="mt-6">
                   <ServiceTimesSection control={form.control} />

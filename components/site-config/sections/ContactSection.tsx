@@ -10,12 +10,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import type { SiteConfigFormValues } from "../schema";
+import { FormEmailWidget } from "../FormEmailWidget";
 
 interface ContactSectionProps {
   control: Control<SiteConfigFormValues>;
+  initialFormEmail?: string;
+  onFormEmailMutated: () => void;
 }
 
-export function ContactSection({ control }: ContactSectionProps) {
+export function ContactSection({ control, initialFormEmail, onFormEmailMutated }: ContactSectionProps) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -105,6 +108,19 @@ export function ContactSection({ control }: ContactSectionProps) {
               <FormMessage />
             </FormItem>
           )}
+        />
+      </div>
+
+      <hr className="border-border" />
+
+      <div>
+        <h3 className="text-sm font-medium mb-1">Contact Form Email</h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          Verified email address that receives contact form submissions.
+        </p>
+        <FormEmailWidget
+          initialFormEmail={initialFormEmail}
+          onMutated={onFormEmailMutated}
         />
       </div>
     </div>
