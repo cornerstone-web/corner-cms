@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pages CMS is an open-source Content Management System for GitHub, designed for static site generators (Jekyll, Next.js, Hugo, Astro, etc.). It provides a user-friendly web interface to edit content directly on GitHub repositories.
+Cornerstone CMS is the content management system for the Cornerstone church website platform, built on a fork of the open-source Pages CMS project.
 
 **Tech Stack:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, Drizzle ORM with PostgreSQL, Auth0 for authentication, Octokit for GitHub API.
 

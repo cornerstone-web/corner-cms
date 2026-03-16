@@ -1,4 +1,4 @@
-# Cornerstone Pages CMS
+# Cornerstone CMS
 
 A content management system purpose-built for the [Cornerstone](https://github.com/cornerstone-web) church website platform. Originally based on [Pages CMS](https://github.com/pages-cms/pages-cms) — refer to that project for general CMS documentation, field types, and the upstream architecture.
 
@@ -92,7 +92,7 @@ The GitHub App is used for repository access only (not for user auth). Create on
 ### 5. Start a local PostgreSQL database
 
 ```bash
-docker run --name pages-cms-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:15
+docker run --name corner-cms-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:15
 ```
 
 Then add to your `.env`:

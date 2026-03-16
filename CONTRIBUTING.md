@@ -1,4 +1,4 @@
-# Contributing to Pages CMS
+# Contributing to Cornerstone CMS
 
 - Submit pull requests (PRs) against the `development` branch, not `main`.
 - For branches, we have:
