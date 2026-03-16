@@ -17,10 +17,11 @@ async function getChurchContext() {
   const { churchId } = user.churchAssignment;
   const church = await db.query.churchesTable.findFirst({
     where: eq(churchesTable.id, churchId),
-    columns: { slug: true, cfPagesUrl: true, displayName: true, githubRepoName: true },
+    columns: { slug: true, cfPagesUrl: true, displayName: true },
   });
   if (!church) throw new Error("Church not found.");
-  return { churchId, slug: church.slug, cfPagesUrl: church.cfPagesUrl, displayName: church.displayName, repoName: church.githubRepoName };
+  // repoName uses slug (matches the key used in corner-apostle's registry.json)
+  return { churchId, slug: church.slug, cfPagesUrl: church.cfPagesUrl, displayName: church.displayName, repoName: church.slug };
 }
 
 export async function initiateFormEmail(email: string) {
