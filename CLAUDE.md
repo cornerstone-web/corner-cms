@@ -19,7 +19,7 @@ npm run db:migrate       # Apply pending migrations
 npm run db:clear-cache   # Clear file/permission cache from database
 ```
 
-For development, you need a GitHub App configured and a tunnel (e.g., ngrok) for webhooks.
+For development, you need a GitHub App configured. The webhook handler (`/api/webhook/github/`) is not required for local development — the wizard and CMS editor work via direct GitHub API calls.
 
 ## Architecture
 

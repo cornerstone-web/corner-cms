@@ -73,13 +73,7 @@ cp .env.local.example .env
 Follow the GitHub App setup instructions in the [Pages CMS docs](https://github.com/pages-cms/pages-cms). A few local-specific notes:
 
 - Use `openssl rand -base64 32` to generate random secrets (`CRYPTO_KEY`, `GITHUB_APP_WEBHOOK_SECRET`)
-- For the Webhook URL, you need a public tunnel. Start ngrok in a separate terminal:
-
-```bash
-ngrok http 3000
-```
-
-- Paste the ngrok HTTPS URL as the Webhook URL (e.g. `https://abc123.ngrok-free.app/api/webhook/github`). **You'll need to update this in your GitHub App settings each time you restart ngrok.**
+- For the Webhook URL, use any placeholder (e.g. `http://localhost:3000/api/webhook/github`) — webhooks are not required for local development; the wizard and CMS editor work via direct GitHub API calls
 - Set the OAuth Callback URL to `http://localhost:3000/api/auth/github`
 
 ### 4. Start a local PostgreSQL database

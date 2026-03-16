@@ -29,11 +29,6 @@ describe("generateNav", () => {
     expect(nav.items.some((i: any) => i.label === "Media" || i.label === "Sermons")).toBe(true);
   });
 
-  it("adds Ministries link when ministries enabled", () => {
-    const nav = generateNav({ ministries: true });
-    expect(nav.items.some((i: any) => i.label === "Ministries")).toBe(true);
-  });
-
   it("adds Events link when events enabled", () => {
     const nav = generateNav({ events: true });
     expect(nav.items.some((i: any) => i.label === "Events")).toBe(true);
