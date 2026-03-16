@@ -139,7 +139,7 @@ export default function ServicesStep({
             <Input
               value={row.label}
               onChange={(e) => updateRow(row.id, "label", e.target.value)}
-              placeholder="Traditional Service"
+              placeholder="Morning Worship"
             />
             <button
               type="button"
