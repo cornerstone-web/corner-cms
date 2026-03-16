@@ -7,7 +7,15 @@ import { provisionChurch, type ProvisionState } from "@/lib/actions/provision";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Building2, Check, Copy, Loader2, Mail, MailX } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  Check,
+  Copy,
+  Loader2,
+  Mail,
+  MailX,
+} from "lucide-react";
 
 const initialState: ProvisionState = { status: "idle" };
 
@@ -55,35 +63,39 @@ export function ProvisionChurchForm() {
       <div className="max-w-screen-sm mx-auto p-4 md:p-6 space-y-6">
         <div className="flex items-center gap-3">
           <Building2 className="h-5 w-5 text-muted-foreground" />
-          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">Account Created!</h1>
+          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">
+            Account Created!
+          </h1>
         </div>
 
         <div className="rounded-lg border p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm text-green-600">
             <Mail className="h-4 w-4 shrink-0" />
-            An invite email has been sent to {state.adminEmail}. They&apos;ll complete their site
-            setup when they log in for the first time.
+            An invite email has been sent to {state.adminEmail}. They&apos;ll
+            complete their site setup when they log in for the first time.
           </div>
 
           {!state.emailSent && (
             <div className="flex items-start gap-2 text-sm text-amber-600">
               <MailX className="h-4 w-4 shrink-0 mt-0.5" />
               <span>
-                Note: The invite email failed to send. Please share this information with them
-                manually.
+                Note: The invite email failed to send. Please share this
+                information with them manually.
               </span>
             </div>
           )}
 
           {state.adminInviteUrl && (
             <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground font-medium">Admin invite link (expires in 7 days)</p>
+              <p className="text-xs text-muted-foreground font-medium">
+                Admin invite link (expires in 7 days)
+              </p>
               <div className="flex items-center gap-2">
                 <Input
                   readOnly
                   value={state.adminInviteUrl}
                   className="text-xs font-mono"
-                  onFocus={e => e.target.select()}
+                  onFocus={(e) => e.target.select()}
                 />
                 <Button
                   type="button"
@@ -91,7 +103,11 @@ export function ProvisionChurchForm() {
                   size="icon"
                   onClick={() => handleCopy(state.adminInviteUrl!)}
                 >
-                  {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -137,7 +153,7 @@ export function ProvisionChurchForm() {
           <Input
             id="displayName"
             name="displayName"
-            placeholder="First Baptist Houston"
+            placeholder="Main Street Church of Christ"
             required
             onChange={handleDisplayNameChange}
           />
@@ -156,7 +172,7 @@ export function ProvisionChurchForm() {
               id="slug"
               name="slug"
               ref={slugRef}
-              placeholder="first-baptist-houston"
+              placeholder="main-street-coc"
               required
               pattern="^[a-z0-9][a-z0-9\-]*[a-z0-9]$"
               onChange={handleSlugChange}
@@ -188,7 +204,7 @@ export function ProvisionChurchForm() {
               id="adminEmail"
               name="adminEmail"
               type="email"
-              placeholder="jane@firstbaptisthouston.com"
+              placeholder="jane@mainstreetcoc.com"
               required
             />
             <p className="text-xs text-muted-foreground">
