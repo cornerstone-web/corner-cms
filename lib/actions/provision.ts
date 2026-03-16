@@ -54,11 +54,21 @@ export async function provisionChurch(
   const githubRepoName = `${org}/${slug}`;
 
   try {
-    // 1. Insert church record
-    const [church] = await db
-      .insert(churchesTable)
-      .values({ githubRepoName, slug, displayName, status: "provisioning" })
-      .returning({ id: churchesTable.id });
+    // 1. Upsert church record — idempotent so retries after Auth0 failure work cleanly
+    let church: { id: string };
+    const existingChurch = await db.query.churchesTable.findFirst({
+      where: eq(churchesTable.slug, slug),
+      columns: { id: true },
+    });
+    if (existingChurch) {
+      church = existingChurch;
+    } else {
+      const [inserted] = await db
+        .insert(churchesTable)
+        .values({ githubRepoName, slug, displayName, status: "provisioning" })
+        .returning({ id: churchesTable.id });
+      church = inserted;
+    }
 
     // 2. Create Auth0 user + invite ticket (non-fatal — church record still created if this fails)
     let auth0UserId: string | undefined;
