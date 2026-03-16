@@ -28,28 +28,47 @@ export default async function Layout({
   // Read the church repo's package-lock.json to find the exact installed version
   // of @cornerstone-web/core. This drives which .pages.yml tag we fetch so that
   // the CMS config is always version-matched to the deployed site.
+  // Falls back to package.json for new church repos that don't have a committed lock file yet.
   const octokit = createOctokitInstance(token);
-  const lockfileResponse = await octokit.rest.repos.getContent({
-    owner,
-    repo,
-    path: "package-lock.json",
-    ref: decodedBranch,
-  });
-
-  if (!("content" in lockfileResponse.data)) {
-    throw new Error("package-lock.json not found. Ensure it is committed to the church repo.");
-  }
-
-  const lockfile = JSON.parse(
-    Buffer.from((lockfileResponse.data as any).content, "base64").toString()
-  );
-  const coreEntry = lockfile.packages?.["node_modules/@cornerstone-web/core"];
-  if (!coreEntry?.version) {
-    throw new Error(
-      "@cornerstone-web/core not found in package-lock.json. Run npm install and commit the lock file."
+  let resolvedVersion: string;
+  try {
+    const lockfileResponse = await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path: "package-lock.json",
+      ref: decodedBranch,
+    });
+    if (!("content" in lockfileResponse.data)) throw new Error("no content");
+    const lockfile = JSON.parse(
+      Buffer.from((lockfileResponse.data as any).content, "base64").toString()
     );
+    const coreEntry = lockfile.packages?.["node_modules/@cornerstone-web/core"];
+    if (!coreEntry?.version) throw new Error("@cornerstone-web/core not in lockfile");
+    resolvedVersion = coreEntry.version;
+  } catch {
+    // Fallback for repos that don't have a committed lock file yet (e.g. new church repos
+    // created from corner-template before CF Pages has run npm install).
+    const pkgResponse = await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path: "package.json",
+      ref: decodedBranch,
+    });
+    if (!("content" in pkgResponse.data)) {
+      throw new Error("Neither package-lock.json nor package.json found in this repo.");
+    }
+    const pkg = JSON.parse(
+      Buffer.from((pkgResponse.data as any).content, "base64").toString()
+    ) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+    const depVersion =
+      pkg.dependencies?.["@cornerstone-web/core"] ??
+      pkg.devDependencies?.["@cornerstone-web/core"];
+    if (!depVersion) {
+      throw new Error("@cornerstone-web/core not found in package.json.");
+    }
+    // Strip semver range prefix (^, ~, >=, etc.) to get the base version
+    resolvedVersion = depVersion.replace(/^[\^~>=<\s]+/, "");
   }
-  const resolvedVersion: string = coreEntry.version; // e.g. "0.1.2"
 
   // Check DB cache. sha stores the resolved package version; version stores the
   // pages-cms configVersion (schema format). Both must match to use the cache.

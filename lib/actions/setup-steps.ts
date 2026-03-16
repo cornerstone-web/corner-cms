@@ -264,12 +264,6 @@ export async function saveFirstSermon(
     imagePath = `/uploads/sermons/${fileSlug}.${ext}`;
   }
   const blocks = [
-    {
-      ...SECONDARY_HERO,
-      headline: fields.title,
-      showSubheadline: !!fields.description,
-      subheadline: fields.description ?? "",
-    },
     ...(fields.videoUrl
       ? [
           {
@@ -555,21 +549,6 @@ export async function saveStaffMembers(
       passwordProtected: false,
       showDetailPage: true,
       blocks: [
-        {
-          type: "hero",
-          variant: "centered",
-          blockHeight: "md",
-          backgroundType: "default",
-          overlayOpacity: 50,
-          overlayGradient: "none",
-          showHeadline: true,
-          headline: member.name,
-          showSubheadline: !!member.title,
-          subheadline: member.title ?? "",
-          showPrimaryCta: false,
-          showSecondaryCta: false,
-          showScrollIndicator: false,
-        },
         { type: "prose", maxWidth: "normal", content: member.proseContent ?? "" },
       ],
     });
