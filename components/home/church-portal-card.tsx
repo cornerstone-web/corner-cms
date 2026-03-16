@@ -59,6 +59,7 @@ export function ChurchPortalCard({
   useEffect(() => {
     if (!shouldPoll) return;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function poll() {
       if (cancelled) return;
@@ -81,12 +82,13 @@ export function ChurchPortalCard({
         if (cancelled) return;
         setBuildStatus("building");
       }
-      if (!cancelled) setTimeout(poll, 10000);
+      if (!cancelled) timer = setTimeout(poll, 10000);
     }
 
     poll();
     return () => {
       cancelled = true;
+      if (timer !== undefined) clearTimeout(timer);
     };
   }, [shouldPoll, assignment.churchId]);
 
