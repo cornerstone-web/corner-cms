@@ -334,7 +334,6 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
             variant: "centered",
             blockHeight: "sm",
             backgroundType: "image",
-            backgroundColor: "primary",
             backgroundImage: "/uploads/hero.jpg",
             overlayOpacity: 50,
             overlayGradient: "top-bottom",

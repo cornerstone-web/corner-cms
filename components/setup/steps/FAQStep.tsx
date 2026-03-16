@@ -20,14 +20,6 @@ const DEFAULT_FAQ_ITEMS = [
     question: "What is Expected of Me?",
     answer: "Nothing is expected of you at all - you're welcome to simply attend our assemblies. If you are comfortable, you are welcome to sing with us, pray with us, and learn as we open up God's Word! We hope to greet you with smiling faces and help you with whatever you may need. If you have any questions, feel free to ask us - we'd love to talk with you!",
   },
-  {
-    question: "Do You Have Bible Class For My Children?",
-    answer: "At our 9 am Sunday Bible classes, we have classes for all ages, from the newborn nursery to adult studies. The adult class choices include a variety of groupings and topics that change every 3 months. In addition to studying the Bible, our adult classes also usually include a time of taking prayer requests and having a prayer together. We believe you will find these Bible classes to be encouraging and thought-provoking, and our classes are also great places to get to know each other better in a smaller-group setting.",
-  },
-  {
-    question: "How Do I Get More Involved?",
-    answer: "We encourage you to take part in all of our different ministries and activities! If you have not placed membership with us to be recognized as a part of our family here, we ask that you reach out to one of our elders - they'll be glad to schedule a time to meet with you! Upon placing membership, you'll receive a GO! Sheet where you can select which ministries you'd like to serve alongside us in. That will help get you plugged into all the different works of the congregation!",
-  },
 ];
 
 interface FaqItem {

@@ -264,6 +264,12 @@ export async function saveFirstSermon(
     imagePath = `/uploads/sermons/${fileSlug}.${ext}`;
   }
   const blocks = [
+    {
+      ...SECONDARY_HERO,
+      headline: fields.title,
+      showSubheadline: !!fields.description,
+      subheadline: fields.description ?? "",
+    },
     ...(fields.videoUrl
       ? [
           {
@@ -668,7 +674,7 @@ export async function saveLeaders(
 
 // ─── Page Content Steps ───────────────────────────────────────────────────────
 
-const ABOUT_HERO = {
+const SECONDARY_HERO = {
   type: "hero",
   variant: "centered",
   blockHeight: "sm",
@@ -697,7 +703,7 @@ export async function saveAboutPage(
     draft: false,
     passwordProtected: false,
     blocks: [
-      { ...ABOUT_HERO, headline: "About Us" },
+      { ...SECONDARY_HERO, headline: "About Us" },
       { type: "prose", maxWidth: "normal", content: proseContent },
       {
         type: "cta",
@@ -731,8 +737,8 @@ export async function saveBeliefPage(
     draft: false,
     passwordProtected: false,
     blocks: [
-      { ...ABOUT_HERO, headline: "What We Believe" },
-      { type: "prose", content: proseContent },
+      { ...SECONDARY_HERO, headline: "What We Believe" },
+      { type: "prose", maxWidth: "normal", content: proseContent },
       {
         type: "cta",
         headline: "Have questions about our beliefs?",
@@ -764,7 +770,7 @@ export async function saveVisitPage(
     draft: false,
     passwordProtected: false,
     blocks: [
-      { ...ABOUT_HERO, headline: "Plan Your Visit" },
+      { ...SECONDARY_HERO, headline: "Plan Your Visit" },
       { type: "prose", content: proseContent },
       {
         type: "cta",
@@ -772,8 +778,7 @@ export async function saveVisitPage(
         description: "We can't wait to meet you!",
         showPrimaryCta: true,
         primaryCta: { label: "Get Directions", href: "/contact" },
-        showSecondaryCta: true,
-        secondaryCta: { label: "Contact Us", href: "/contact" },
+        showSecondaryCta: false,
         variant: "primary",
       },
     ],
@@ -798,7 +803,7 @@ export async function saveFAQPage(
     draft: false,
     passwordProtected: false,
     blocks: [
-      { ...ABOUT_HERO, headline: "Frequently Asked Questions" },
+      { ...SECONDARY_HERO, headline: "Frequently Asked Questions" },
       { type: "faq-accordion", items },
       {
         type: "cta",
@@ -843,7 +848,7 @@ export async function saveFirstBulletin(
       passwordProtected: true,
       password: fields.password,
       blocks: [
-        { ...ABOUT_HERO, headline: "Bulletins" },
+        { ...SECONDARY_HERO, headline: "Bulletins" },
         {
           type: "container",
           background: "background",
