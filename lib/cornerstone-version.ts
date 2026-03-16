@@ -12,14 +12,16 @@ function parseVersionParts(v: string): [number, number, number] {
 }
 
 /**
- * Returns true if `latest` is in a higher major or minor than `current`.
- * Patch bumps are intentionally ignored — ^ ranges cover them automatically.
+ * Returns true if `latest` is strictly greater than `current` (major, minor, or patch).
+ * We compare all three parts because CF Pages runs `npm ci` against a committed lock file,
+ * so sites do NOT automatically pick up patch bumps via the ^ range.
  */
 export function isBehindLatest(current: string, latest: string): boolean {
-  const [cMaj, cMin] = parseVersionParts(current);
-  const [lMaj, lMin] = parseVersionParts(latest);
+  const [cMaj, cMin, cPat] = parseVersionParts(current);
+  const [lMaj, lMin, lPat] = parseVersionParts(latest);
   if (lMaj > cMaj) return true;
   if (lMaj === cMaj && lMin > cMin) return true;
+  if (lMaj === cMaj && lMin === cMin && lPat > cPat) return true;
   return false;
 }
 
