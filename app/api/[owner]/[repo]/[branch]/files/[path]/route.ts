@@ -241,7 +241,7 @@ const githubSaveFile = async (
       owner,
       repo,
       path,
-      message: sha ? `Update ${path} (via Pages CMS)` : `Create ${path} (via Pages CMS)`,
+      message: sha ? `Update ${path} (via Cornerstone CMS)` : `Create ${path} (via Cornerstone CMS)`,
       content: contentBase64,
       branch,
       sha: sha || undefined,
@@ -288,7 +288,7 @@ const githubSaveFile = async (
             owner,
             repo,
             path: newPath,
-            message: `Create ${newPath} (via Pages CMS)`,
+            message: `Create ${newPath} (via Cornerstone CMS)`,
             content: contentBase64,
             branch,
             ...(author ? { author, committer: author } : {}),
@@ -373,7 +373,7 @@ export async function DELETE(
       branch: params.branch,
       path: params.path,
       sha: sha,
-      message: `Delete ${params.path} (via Pages CMS)`,
+      message: `Delete ${params.path} (via Cornerstone CMS)`,
       ...(author ? { author, committer: author } : {}),
     });
 

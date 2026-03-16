@@ -145,7 +145,7 @@ export async function POST(
       owner: params.owner,
       repo: params.repo,
       path,
-      message: `Update ${file} (via Pages CMS)`,
+      message: `Update ${file} (via Cornerstone CMS)`,
       content: base64,
       branch: params.branch,
       sha: sha || undefined,

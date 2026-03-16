@@ -89,7 +89,7 @@ export async function POST(
       owner: params.owner,
       repo: params.repo,
       path: SITE_CONFIG_PATH,
-      message: `Update site config (via Pages CMS)`,
+      message: `Update site config (via Cornerstone CMS)`,
       content: contentBase64,
       branch: params.branch,
       sha,
