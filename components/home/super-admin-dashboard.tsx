@@ -105,12 +105,21 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={statusVariant[church.status]}
-                        className="capitalize"
-                      >
-                        {church.status}
-                      </Badge>
+                      {church.status === "provisioning" && (
+                        <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium">
+                          Awaiting Setup
+                        </span>
+                      )}
+                      {church.status === "active" && (
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
+                          Active
+                        </span>
+                      )}
+                      {church.status === "suspended" && (
+                        <Badge variant="destructive">
+                          Suspended
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {(church.customDomain || church.cfPagesUrl) ? (() => {

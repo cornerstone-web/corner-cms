@@ -1,26 +1,32 @@
 "use server";
 
 /**
- * Provision a new church:
- * 1. Fork template repo into the org
- * 2. Insert churches DB record
- * 3. Create CF Pages project (if CF env vars present)
- * 4. Create Auth0 user + password-change invite ticket
- * 5. Insert users + user_church_roles DB records
+ * Lightweight provision for a new church:
+ * 1. Insert churches DB record (status: provisioning)
+ * 2. Create Auth0 user + password-change invite ticket
+ * 3. Insert users + user_church_roles DB records
+ *
+ * GitHub repo creation and CF Pages setup happen during the church admin's
+ * onboarding wizard (triggered on first /setup load).
  */
 
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
-import { getInstallationToken } from "@/lib/token";
-import { createOctokitInstance } from "@/lib/utils/octokit";
+import { churchesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
+import {
+  createOrResolveAuth0User,
+  generatePasswordTicket,
+  sendInviteEmail,
+  createOrRestoreDbUser,
+  assignChurchRole,
+} from "@/lib/utils/user-helpers";
 
 export type ProvisionState =
   | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "success"; churchId: string; adminInviteUrl: string | null; emailSent: boolean };
+  | { status: "success"; churchId: string; adminInviteUrl: string | null; emailSent: boolean; adminEmail: string };
 
 export async function provisionChurch(
   _prev: ProvisionState,
@@ -45,193 +51,35 @@ export async function provisionChurch(
   }
 
   const org = process.env.GITHUB_ORG ?? "cornerstone-web";
-  const templateRepoName = process.env.GITHUB_TEMPLATE_REPO ?? "template-repo";
   const githubRepoName = `${org}/${slug}`;
 
   try {
-    // 1. Fork the template repo
-    const token = await getInstallationToken(org, templateRepoName);
-    const octokit = createOctokitInstance(token);
-
-    await octokit.rest.repos.createFork({
-      owner: org,
-      repo: templateRepoName,
-      organization: org,
-      name: slug,
-      default_branch_only: true,
-    });
-
-    // 2. Insert church record
+    // 1. Insert church record
     const [church] = await db
       .insert(churchesTable)
       .values({ githubRepoName, slug, displayName, status: "provisioning" })
       .returning({ id: churchesTable.id });
 
-    // 3. Create CF Pages project (optional — requires CF_ACCOUNT_ID + CF_API_TOKEN)
-    const cfAccountId = process.env.CF_ACCOUNT_ID;
-    const cfApiToken = process.env.CF_API_TOKEN;
-    if (cfAccountId && cfApiToken) {
-      try {
-        const cfRes = await fetch(
-          `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/pages/projects`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${cfApiToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              name: slug,
-              production_branch: "main",
-              source: {
-                type: "github",
-                config: {
-                  owner: org,
-                  repo_name: slug,
-                  production_branch: "main",
-                  pr_comments_enabled: false,
-                  deployments_enabled: true,
-                },
-              },
-              build_config: {
-                build_command: "npm run build",
-                destination_dir: "dist",
-                root_dir: "",
-              },
-            }),
-          },
-        );
-        if (cfRes.ok) {
-          const cfData = await cfRes.json();
-          const cfPagesProjectName = cfData.result?.name as string | undefined;
-          const subdomain = cfData.result?.subdomain as string | undefined;
-          const cfPagesUrl = subdomain ? `https://${subdomain}.pages.dev` : undefined;
-          await db
-            .update(churchesTable)
-            .set({ cfPagesProjectName, cfPagesUrl })
-            .where(eq(churchesTable.id, church.id));
-        } else {
-          const errBody = await cfRes.json();
-          console.error("CF Pages project creation failed (non-fatal):", errBody);
-        }
-      } catch (cfErr) {
-        console.error("CF Pages creation error (non-fatal):", cfErr);
-      }
-    }
-
-    // 4. Create Auth0 user + invite ticket
+    // 2. Create Auth0 user + invite ticket (non-fatal — church record still created if this fails)
     let auth0UserId: string | undefined;
     let adminInviteUrl: string | null = null;
     let emailSent = false;
     try {
       const mgmtToken = await getAuth0ManagementToken();
-
-      const createUserRes = await fetch(`https://${process.env.AUTH0_DOMAIN}/api/v2/users`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${mgmtToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connection: "Username-Password-Authentication",
-          email: adminEmail,
-          name: adminName,
-          // Random password — the invite ticket forces a reset, so this is never used
-          password: `${crypto.randomUUID()}Aa1!`,
-          email_verified: false,
-          blocked: false,
-        }),
-      });
-
-      if (createUserRes.ok) {
-        const auth0User = await createUserRes.json();
-        auth0UserId = auth0User.user_id as string;
-      } else {
-        const errBody = await createUserRes.json();
-        if (errBody.statusCode === 409) {
-          // User exists — look up by email
-          const searchRes = await fetch(
-            `https://${process.env.AUTH0_DOMAIN}/api/v2/users-by-email?email=${encodeURIComponent(adminEmail)}`,
-            { headers: { Authorization: `Bearer ${mgmtToken}` } },
-          );
-          if (searchRes.ok) {
-            const existing = await searchRes.json();
-            auth0UserId = existing[0]?.user_id as string | undefined;
-          }
-        } else {
-          console.error("Auth0 user creation failed (non-fatal):", errBody);
-        }
-      }
-
-      // Generate password-change (invite) ticket and capture the URL
-      if (auth0UserId) {
-        const ticketRes = await fetch(`https://${process.env.AUTH0_DOMAIN}/api/v2/tickets/password-change`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${mgmtToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: auth0UserId,
-            result_url: process.env.APP_BASE_URL ?? "/",
-            ttl_sec: 604800, // 7 days
-            mark_email_as_verified: true,
-          }),
-        });
-        if (ticketRes.ok) {
-          const ticketData = await ticketRes.json();
-          adminInviteUrl = ticketData.ticket as string ?? null;
-        }
-
-        // Send invite email via corner-apostle
-        if (adminInviteUrl) {
-          try {
-            const inviteRes = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-invite`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${process.env.CORNERSTONE_INTERNAL_SECRET ?? ""}`,
-              },
-              body: JSON.stringify({
-                to: adminEmail,
-                name: adminName,
-                siteName: displayName,
-                resetUrl: adminInviteUrl,
-              }),
-            });
-            emailSent = inviteRes.ok;
-            if (!inviteRes.ok) {
-              console.error("Invite email failed (non-fatal):", await inviteRes.text());
-            }
-          } catch (emailErr) {
-            console.error("Invite email error (non-fatal):", emailErr);
-          }
-        }
-      }
+      auth0UserId = await createOrResolveAuth0User(adminEmail, adminName, mgmtToken);
+      adminInviteUrl = await generatePasswordTicket(auth0UserId, mgmtToken);
+      emailSent = await sendInviteEmail(adminEmail, adminName, displayName, adminInviteUrl);
     } catch (auth0Err) {
       console.error("Auth0 provisioning failed (non-fatal):", auth0Err);
     }
 
-    // 5. Insert user + role into DB
+    // 3. Insert user + role into DB
     if (auth0UserId) {
-      const existing = await db.query.usersTable.findFirst({
-        where: eq(usersTable.auth0Id, auth0UserId),
-      });
-      const dbUserId = existing?.id ?? (
-        await db
-          .insert(usersTable)
-          .values({ auth0Id: auth0UserId, email: adminEmail, name: adminName })
-          .returning({ id: usersTable.id })
-      )[0].id;
-
-      await db.insert(userChurchRolesTable).values({
-        userId: dbUserId,
-        churchId: church.id,
-        role: "church_admin",
-      });
+      const dbUserId = await createOrRestoreDbUser(auth0UserId, adminEmail, adminName);
+      await assignChurchRole(dbUserId, church.id, "church_admin");
     }
 
-    return { status: "success", churchId: church.id, adminInviteUrl, emailSent };
+    return { status: "success", churchId: church.id, adminInviteUrl, emailSent, adminEmail };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "An unexpected error occurred.";
     console.error("provisionChurch failed:", err);

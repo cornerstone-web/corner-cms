@@ -55,19 +55,23 @@ export function ProvisionChurchForm() {
       <div className="max-w-screen-sm mx-auto p-4 md:p-6 space-y-6">
         <div className="flex items-center gap-3">
           <Building2 className="h-5 w-5 text-muted-foreground" />
-          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">Site Provisioned</h1>
+          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">Account Created!</h1>
         </div>
 
         <div className="rounded-lg border p-4 space-y-3">
-          {state.emailSent ? (
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <Mail className="h-4 w-4 shrink-0" />
-              Invite email sent successfully.
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-amber-600">
-              <MailX className="h-4 w-4 shrink-0" />
-              Email could not be sent. Share the invite link below with the admin manually.
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <Mail className="h-4 w-4 shrink-0" />
+            An invite email has been sent to {state.adminEmail}. They&apos;ll complete their site
+            setup when they log in for the first time.
+          </div>
+
+          {!state.emailSent && (
+            <div className="flex items-start gap-2 text-sm text-amber-600">
+              <MailX className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                Note: The invite email failed to send. Please share this information with them
+                manually.
+              </span>
             </div>
           )}
 

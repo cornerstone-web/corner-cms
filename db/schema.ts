@@ -38,6 +38,7 @@ export const churchesTable = pgTable("churches", {
   plan: text("plan").notNull().default("free"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  wizardStartedAt: timestamp("wizard_started_at"),
   deletedAt: timestamp("deleted_at"),
 }, table => ({
   idx_churches_slug: uniqueIndex("idx_churches_slug").on(table.slug),
@@ -70,6 +71,17 @@ export const userChurchRolesTable = pgTable("user_church_roles", {
   idx_user_church_roles_church_id: index("idx_user_church_roles_church_id").on(table.churchId),
   idx_user_church_roles_user_church: uniqueIndex("idx_user_church_roles_user_church").on(table.userId, table.churchId),
 }));
+
+export const churchWizardStepsTable = pgTable("church_wizard_steps", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  churchId: uuid("church_id").notNull().references(() => churchesTable.id),
+  stepKey: text("step_key").notNull(),
+  completedAt: timestamp("completed_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("church_wizard_steps_church_step_idx").on(t.churchId, t.stepKey),
+  index("church_wizard_steps_church_id_idx").on(t.churchId),
+]);
 
 // ─── GitHub App installation token cache ──────────────────────────────────────
 

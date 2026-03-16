@@ -2,10 +2,11 @@ import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable } from "@/db/schema";
-import { isNull } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { MainRootLayout } from "./main-root-layout";
 import { ChurchPortalCard } from "@/components/home/church-portal-card";
 import { SuperAdminDashboard } from "@/components/home/super-admin-dashboard";
+import { getVersionStatus } from "@/lib/actions/cornerstone-update";
 
 export default async function Page() {
   const { user } = await getAuth();
@@ -35,9 +36,23 @@ export default async function Page() {
   }
 
   if (user.churchAssignment) {
+    const churchId = user.churchAssignment.churchId;
+    const [church, versionStatus] = await Promise.all([
+      db.query.churchesTable.findFirst({
+        where: eq(churchesTable.id, churchId),
+        columns: { status: true },
+      }),
+      // Only check version for active sites — avoid noise during setup
+      getVersionStatus(churchId).catch(() => null),
+    ]);
+
     return (
       <MainRootLayout>
-        <ChurchPortalCard assignment={user.churchAssignment} />
+        <ChurchPortalCard
+          assignment={user.churchAssignment}
+          status={church?.status}
+          versionStatus={versionStatus ?? undefined}
+        />
       </MainRootLayout>
     );
   }
