@@ -663,7 +663,7 @@ const MediaView = ({
       </MediaUpload>
       <FilePreviewModal
         file={previewFile}
-        files={(data ?? []).filter((item) => item.type === "file")}
+        files={(data ?? []).filter((item) => item.type === "file" && item.name !== ".gitkeep")}
         mediaName={mediaConfig.name}
         onClose={() => setPreviewFile(null)}
       />
