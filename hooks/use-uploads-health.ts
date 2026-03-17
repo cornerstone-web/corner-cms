@@ -108,8 +108,18 @@ export function useUploadsHealth() {
   );
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    // If valid cached data already exists, display it immediately
+    if (cacheKey && isCacheValid(cacheKey)) {
+      fetchData();
+      return;
+    }
+    // Cold start: delay scan so the page's collection API calls have time to
+    // populate the DB file cache before uploads-health reads it. Without this,
+    // getCollectionCache races against itself on first load — entries come back
+    // without content and every image incorrectly appears unused.
+    const timer = setTimeout(fetchData, 3_000);
+    return () => clearTimeout(timer);
+  }, [fetchData, cacheKey]);
 
   const refresh = useCallback(() => {
     if (cacheKey) {
