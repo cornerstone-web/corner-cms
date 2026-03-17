@@ -102,8 +102,17 @@ export function useBrokenLinks() {
   );
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    // If valid cached data already exists, display it immediately
+    if (cacheKey && isCacheValid(cacheKey)) {
+      fetchData();
+      return;
+    }
+    // Cold start: delay scan so the page's collection API calls have time to
+    // populate the DB file cache before broken-links reads it. Same race
+    // condition as uploads-health — see use-uploads-health.ts for details.
+    const timer = setTimeout(fetchData, 3_000);
+    return () => clearTimeout(timer);
+  }, [fetchData, cacheKey]);
 
   const refresh = useCallback(() => {
     // Invalidate cache for current key and re-fetch
