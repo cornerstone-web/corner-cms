@@ -5,7 +5,8 @@ import { db } from "@/db";
 import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
 import { ChurchManagement } from "@/components/admin/church-management";
 
-export default async function ChurchPage({ params }: { params: { id: string } }) {
+export default async function ChurchPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { user } = await getAuth();
   if (!user || !user.isSuperAdmin) return redirect("/");
 

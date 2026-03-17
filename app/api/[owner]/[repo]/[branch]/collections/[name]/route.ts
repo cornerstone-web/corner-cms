@@ -23,8 +23,9 @@ import { handleRouteError } from "@/lib/utils/apiError";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { owner: string, repo: string, branch: string, name: string } }
+  props: { params: Promise<{ owner: string, repo: string, branch: string, name: string }> }
 ) {
+  const params = await props.params;
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });

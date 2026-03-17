@@ -8,13 +8,24 @@ import { ConfigProvider } from "@/contexts/config-context";
 import { RepoLayout } from "@/components/repo/repo-layout";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 
-export default async function Layout({
-  children,
-  params: { owner, repo, branch },
-}: {
-  children: React.ReactNode;
-  params: { owner: string; repo: string; branch: string; };
-}) {
+export default async function Layout(
+  props: {
+    children: React.ReactNode;
+    params: Promise<{ owner: string; repo: string; branch: string; }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    owner,
+    repo,
+    branch
+  } = params;
+
+  const {
+    children
+  } = props;
+
   const { user } = await getAuth();
   if (!user) return redirect("/auth/login");
 

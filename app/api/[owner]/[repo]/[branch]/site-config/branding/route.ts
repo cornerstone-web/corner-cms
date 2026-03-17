@@ -24,8 +24,9 @@ const MAX_SIZES: Record<BrandingFile, number> = {
 
 export async function GET(
   request: Request,
-  { params }: { params: { owner: string; repo: string; branch: string } }
+  props: { params: Promise<{ owner: string; repo: string; branch: string }> }
 ) {
+  const params = await props.params;
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });
@@ -68,8 +69,9 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { owner: string; repo: string; branch: string } }
+  props: { params: Promise<{ owner: string; repo: string; branch: string }> }
 ) {
+  const params = await props.params;
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });

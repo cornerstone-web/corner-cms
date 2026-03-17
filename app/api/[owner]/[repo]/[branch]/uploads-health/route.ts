@@ -158,10 +158,9 @@ async function listR2Files(
  */
 export async function GET(
   _request: NextRequest,
-  {
-    params,
-  }: { params: { owner: string; repo: string; branch: string } },
+  props: { params: Promise<{ owner: string; repo: string; branch: string }> }
 ): Promise<Response> {
+  const params = await props.params;
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });

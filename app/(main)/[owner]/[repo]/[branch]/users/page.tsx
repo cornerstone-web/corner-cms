@@ -5,11 +5,18 @@ import { db } from "@/db";
 import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
 import { UsersPanel } from "@/components/repo/users-panel";
 
-export default async function UsersPage({
-  params: { owner, repo },
-}: {
-  params: { owner: string; repo: string; branch: string };
-}) {
+export default async function UsersPage(
+  props: {
+    params: Promise<{ owner: string; repo: string; branch: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    owner,
+    repo
+  } = params;
+
   const { user } = await getAuth();
   if (!user) return redirect("/auth/login");
 

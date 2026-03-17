@@ -13,12 +13,13 @@ const TAB_LABELS: Record<MediaCategory, string> = {
   bulletins: "Bulletins",
 };
 
-export default function Page({
-  searchParams,
-}: {
-  params: { owner: string; repo: string; branch: string };
-  searchParams: { category?: string };
-}) {
+export default async function Page(
+  props: {
+    params: Promise<{ owner: string; repo: string; branch: string }>;
+    searchParams: Promise<{ category?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const category: MediaCategory = VALID_CATEGORIES.includes(
     searchParams.category as MediaCategory
   )
