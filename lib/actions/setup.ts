@@ -309,12 +309,26 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
 
     const channelId = (currentConfig?.integrations as { youtubeChannelId?: string } | undefined)?.youtubeChannelId;
 
-    // Collect marquee image paths uploaded during the wizard
-    let marqueeImages: string[] = [];
-    if (opts.homeOpts.photos) {
-      const names = await getDirectoryFileNames(repoName, "public/uploads/marquee");
-      marqueeImages = names.map(n => `/uploads/marquee/${n}`);
-    }
+    // Read features from site.config.yaml — the authoritative source.
+    // saveFeature() only writes features the user explicitly enabled (true).
+    // completedSteps includes both "yes" and "no" answers, so opts.features
+    // cannot distinguish enabled from dismissed.
+    const configFeatures = (currentConfig?.features as Record<string, boolean> | undefined) ?? {};
+    const features: WizardFeatures = {
+      sermons:    configFeatures.sermons    === true,
+      series:     configFeatures.series     === true,
+      ministries: configFeatures.ministries === true,
+      events:     configFeatures.events     === true,
+      articles:   configFeatures.articles   === true,
+      staff:      configFeatures.staff      === true,
+      bulletins:  configFeatures.bulletins  === true,
+      leadership: configFeatures.leadership === true,
+      givingUrl,
+    };
+
+    // Collect marquee image paths — only if photos were actually uploaded
+    const marqueeNames = await getDirectoryFileNames(repoName, "public/uploads/marquee").catch(() => []);
+    const marqueeImages = marqueeNames.map(n => `/uploads/marquee/${n}`);
 
     // 2. Create Cloudflare Pages project (before commits so builds are triggered)
     let cfPagesUrl: string | undefined;
@@ -402,8 +416,8 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
     const siteDescription = (currentConfig?.description as string) ?? "";
 
     // 4. Commit auto-generated navigation + footer sections → triggers first CF Pages build
-    const nav = generateNav({ ...opts.features, givingUrl });
-    const footerSections = generateFooterSections({ ...opts.features, givingUrl });
+    const nav = generateNav(features);
+    const footerSections = generateFooterSections(features);
     await updateSiteConfig(
       repoName,
       { navigation: nav, footer: { sections: footerSections }, previewUrl: cfPagesUrl ?? "" },
@@ -411,7 +425,20 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
     );
 
     // 5. Commit home page blocks → triggers second CF Pages build (final state)
-    const blocks = generateHomeBlocks({ ...opts.homeOpts, marqueeImages, serviceTimes, channelId, name: siteName, description: siteDescription });
+    const blocks = generateHomeBlocks({
+      ...opts.homeOpts,
+      // Override with config-derived feature flags so disabled features are excluded
+      sermons:    features.sermons,
+      ministries: features.ministries,
+      events:     features.events,
+      articles:   features.articles,
+      streaming:  opts.homeOpts.streaming && Boolean(channelId),
+      marqueeImages,
+      serviceTimes,
+      channelId,
+      name: siteName,
+      description: siteDescription,
+    });
     const indexPath = "src/content/pages/index.md";
     const sha = await tryGetSha(repoName, indexPath);
     const blocksYaml = YAML.stringify(blocks, { lineWidth: 0 })
@@ -526,7 +553,54 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
       console.error("Contact page personalization failed (non-fatal):", err);
     }
 
-    // 5c. Pin @cornerstone-web/core to latest version (non-fatal)
+    // 5c. Draft pages for disabled features so they don't generate public routes
+    try {
+      const featurePages: { enabled: boolean | undefined; paths: { path: string; title: string }[] }[] = [
+        {
+          enabled: features.sermons,
+          paths: [
+            { path: "src/content/pages/sermons.md", title: "Sermons" },
+            { path: "src/content/pages/series.md", title: "Sermon Series" },
+          ],
+        },
+        {
+          enabled: features.articles,
+          paths: [{ path: "src/content/pages/articles.md", title: "Articles" }],
+        },
+        {
+          enabled: features.bulletins,
+          paths: [{ path: "src/content/pages/bulletins.md", title: "Bulletins" }],
+        },
+        {
+          enabled: features.events,
+          paths: [{ path: "src/content/pages/events.md", title: "Events" }],
+        },
+        {
+          enabled: features.staff,
+          paths: [{ path: "src/content/pages/staff.md", title: "Our Staff" }],
+        },
+        {
+          enabled: features.leadership,
+          paths: [{ path: "src/content/pages/leadership.md", title: "Our Leadership" }],
+        },
+      ];
+
+      await Promise.all(
+        featurePages
+          .filter(({ enabled }) => !enabled)
+          .flatMap(({ paths }) => paths)
+          .map(async ({ path, title }) => {
+            const sha = await tryGetSha(repoName, path);
+            if (!sha) return; // page doesn't exist in template — nothing to draft
+            const draftContent = `---\ntitle: ${title}\ndraft: true\n---\n`;
+            await commitFile(repoName, path, draftContent, sha, `chore: draft ${title} page (feature disabled)`);
+          }),
+      );
+    } catch (err) {
+      console.error("Drafting disabled-feature pages failed (non-fatal):", err);
+    }
+
+    // 5e. Pin @cornerstone-web/core to latest version (non-fatal)
     try {
       await applyLatestVersionToRepo(repoName);
     } catch (err) {

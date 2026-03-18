@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { MediaView } from "@/components/media/media-view";
+import { getFileWithSha, getDirectoryFileNames } from "@/lib/github/wizard";
+import YAML from "yaml";
 
 const VALID_CATEGORIES = ["images", "video", "audio", "files", "bulletins"] as const;
 type MediaCategory = (typeof VALID_CATEGORIES)[number];
@@ -13,14 +15,34 @@ const TAB_LABELS: Record<MediaCategory, string> = {
   bulletins: "Bulletins",
 };
 
+async function shouldShowBulletins(repo: string): Promise<boolean> {
+  try {
+    const { content } = await getFileWithSha(repo, "src/config/site.config.yaml");
+    const siteConfig = YAML.parse(content) as { features?: Record<string, boolean> };
+    // If bulletins is not explicitly false, show the tab
+    if (siteConfig.features?.bulletins !== false) return true;
+    // Bulletins is disabled — only show the tab if files already exist
+    const files = await getDirectoryFileNames(repo, "public/bulletins").catch(() => []);
+    return files.length > 0;
+  } catch {
+    return true; // Can't determine — show by default
+  }
+}
+
 export default async function Page(
   props: {
     params: Promise<{ owner: string; repo: string; branch: string }>;
     searchParams: Promise<{ category?: string }>;
   }
 ) {
-  const searchParams = await props.searchParams;
-  const category: MediaCategory = VALID_CATEGORIES.includes(
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
+  const showBulletins = await shouldShowBulletins(params.repo);
+
+  const visibleCategories = showBulletins
+    ? VALID_CATEGORIES
+    : VALID_CATEGORIES.filter((c) => c !== "bulletins");
+
+  const category: MediaCategory = visibleCategories.includes(
     searchParams.category as MediaCategory
   )
     ? (searchParams.category as MediaCategory)
@@ -34,7 +56,7 @@ export default async function Page(
 
       {/* Category tabs */}
       <div className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground mb-6 w-full sm:w-auto">
-        {VALID_CATEGORIES.map((tab) => (
+        {visibleCategories.map((tab) => (
           <Link
             key={tab}
             href={`?category=${tab}`}
