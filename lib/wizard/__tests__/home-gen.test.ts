@@ -12,13 +12,18 @@ describe("generateHomeBlocks", () => {
     expect((blocks[blocks.length - 1] as any).type).toBe("cta");
   });
 
-  it("adds image-marquee when photos enabled", () => {
-    const blocks = generateHomeBlocks({ photos: true });
+  it("adds image-marquee when marqueeImages provided", () => {
+    const blocks = generateHomeBlocks({ marqueeImages: ["a.jpg", "b.jpg"] });
     expect(blocks.some((b: any) => b.type === "image-marquee")).toBe(true);
   });
 
-  it("no image-marquee when photos disabled", () => {
-    const blocks = generateHomeBlocks({ photos: false });
+  it("no image-marquee when marqueeImages is empty", () => {
+    const blocks = generateHomeBlocks({ marqueeImages: [] });
+    expect(blocks.some((b: any) => b.type === "image-marquee")).toBe(false);
+  });
+
+  it("no image-marquee when marqueeImages not provided", () => {
+    const blocks = generateHomeBlocks({});
     expect(blocks.some((b: any) => b.type === "image-marquee")).toBe(false);
   });
 
