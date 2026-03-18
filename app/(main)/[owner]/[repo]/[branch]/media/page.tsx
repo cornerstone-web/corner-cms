@@ -38,9 +38,9 @@ export default async function Page(
   const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
   const showBulletins = await shouldShowBulletins(params.repo);
 
-  const visibleCategories = showBulletins
-    ? VALID_CATEGORIES
-    : VALID_CATEGORIES.filter((c) => c !== "bulletins");
+  const visibleCategories: MediaCategory[] = showBulletins
+    ? [...VALID_CATEGORIES]
+    : VALID_CATEGORIES.filter((c): c is Exclude<MediaCategory, "bulletins"> => c !== "bulletins");
 
   const category: MediaCategory = visibleCategories.includes(
     searchParams.category as MediaCategory
