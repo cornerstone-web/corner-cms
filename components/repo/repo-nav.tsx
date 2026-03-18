@@ -8,6 +8,7 @@ import { useUser } from "@/contexts/user-context";
 import { cn } from "@/lib/utils";
 import { FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
 import { useSiteFeatures } from "@/hooks/use-site-features";
+import { checkNavigationGuard } from "@/lib/navigation-guard";
 
 const RepoNavItem = ({
   children,
@@ -29,6 +30,9 @@ const RepoNavItem = ({
     )}
     href={href}
     onClick={onClick}
+    onNavigate={(e) => {
+      if (!checkNavigationGuard(href)) e.preventDefault();
+    }}
     prefetch={true}
   >
     {icon}

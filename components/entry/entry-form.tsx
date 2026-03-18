@@ -108,6 +108,11 @@ import {
   IFrameWrapper,
   PreviewToolbar,
 } from "./preview/shared";
+import {
+  registerNavigationGuard,
+  unregisterNavigationGuard,
+  checkNavigationGuard,
+} from "@/lib/navigation-guard";
 
 const SortableItem = ({
   id,
@@ -1136,7 +1141,6 @@ const EntryForm = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingNavUrl, setPendingNavUrl] = useState<string | null>(null);
-  const originalPushStateRef = useRef<typeof window.window.history.pushState | null>(null);
   const router = useRouter();
   const slugRef = useRef<string | undefined>(undefined);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(
@@ -1215,46 +1219,17 @@ const EntryForm = ({
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  // Intercept all in-app navigation (window.history.pushState) while the form is
-  // dirty. Suspended during form submission so that post-save navigations
-  // (e.g. redirect to the new entry's edit URL) are never blocked.
+  // Register/unregister the navigation guard when dirty state changes.
+  // Nav components call checkNavigationGuard() before navigating; if dirty,
+  // it invokes this callback which opens the AlertDialog.
   useEffect(() => {
-    if (!isDirty || isSubmitting) {
-      if (originalPushStateRef.current) {
-        window.history.pushState = originalPushStateRef.current;
-        originalPushStateRef.current = null;
-      }
-      return;
+    if (isDirty && !isSubmitting) {
+      registerNavigationGuard((url) => setPendingNavUrl(url));
+    } else {
+      unregisterNavigationGuard();
     }
-    const orig = window.history.pushState.bind(history);
-    originalPushStateRef.current = orig;
-    window.history.pushState = function (
-      state: unknown,
-      title: string,
-      url?: string | URL | null,
-    ) {
-      setPendingNavUrl(url ? url.toString() : window.location.pathname);
-    };
-    return () => {
-      if (originalPushStateRef.current) {
-        window.history.pushState = originalPushStateRef.current;
-        originalPushStateRef.current = null;
-      }
-    };
+    return () => unregisterNavigationGuard();
   }, [isDirty, isSubmitting]);
-
-  // Navigate away after restoring the real pushState so the router isn't
-  // blocked by our own interceptor.
-  const navigateAway = useCallback(
-    (url: string) => {
-      if (originalPushStateRef.current) {
-        window.history.pushState = originalPushStateRef.current;
-        originalPushStateRef.current = null;
-      }
-      router.push(url);
-    },
-    [router],
-  );
 
   const renderFields = useCallback(
     (fields: Field[], parentName?: string): React.ReactNode[] => {
@@ -1475,7 +1450,10 @@ const EntryForm = ({
                       buttonVariants({ variant: "outline", size: "icon-xs" }),
                       "mr-4 shrink-0",
                     )}
-                    onClick={() => router.push(navigateBack)}
+                    onClick={() => {
+                      if (!checkNavigationGuard(navigateBack)) return;
+                      router.push(navigateBack);
+                    }}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
@@ -1659,7 +1637,7 @@ const EntryForm = ({
               onClick={() => {
                 const url = pendingNavUrl!;
                 setPendingNavUrl(null);
-                navigateAway(url);
+                router.push(url);
               }}
             >
               Leave without saving
@@ -1670,7 +1648,7 @@ const EntryForm = ({
                 form.handleSubmit(
                   async (values) => {
                     await handleSubmit(values);
-                    navigateAway(url);
+                    router.push(url);
                   },
                   handleError,
                 )();

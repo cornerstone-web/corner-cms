@@ -25,6 +25,7 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { ArrowUpRight, ChevronsUpDown } from "lucide-react";
+import { checkNavigationGuard } from "@/lib/navigation-guard";
 
 export function RepoDropdown({
   onClick
@@ -66,7 +67,9 @@ export function RepoDropdown({
   }, [branches]);
 
   const handleBranchChange = (branch: string) => {
-    router.push(`/${owner}/${repo}/${encodeURIComponent(branch)}`);
+    const url = `/${owner}/${repo}/${encodeURIComponent(branch)}`;
+    if (!checkNavigationGuard(url)) return;
+    router.push(url);
   };
 
   return (

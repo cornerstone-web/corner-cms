@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils";
 import { Check, Loader } from "lucide-react";
+import { checkNavigationGuard } from "@/lib/navigation-guard";
 
 export function RepoBranches() {
   const { owner, repo, branches, setBranches } = useRepo();
@@ -98,6 +99,9 @@ export function RepoBranches() {
                 "inline-flex items-center rounded-lg px-3 py-2 transition-all ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
               href={`/${owner}/${repo}/${encodeURIComponent(branch)}`}
+              onNavigate={(e) => {
+                if (!checkNavigationGuard(`/${owner}/${repo}/${encodeURIComponent(branch)}`)) e.preventDefault();
+              }}
             >
               <span className="truncate">{branch}</span>
               {branch === config?.branch && <Check className="h-4 w-4 ml-auto opacity-50" />}

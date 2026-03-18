@@ -9,6 +9,7 @@ import { RepoNav } from "@/components/repo/repo-nav";
 import { About } from "@/components/about";
 import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { checkNavigationGuard } from "@/lib/navigation-guard";
 
 const RepoSidebar = ({
   onClick
@@ -22,7 +23,14 @@ const RepoSidebar = ({
   return (
     <>
       <header className="border-b flex items-center px-3 py-2">
-        <Link className={buttonVariants({ variant: "ghost", size: "xs" })} href="/" prefetch={true}>
+        <Link
+          className={buttonVariants({ variant: "ghost", size: "xs" })}
+          href="/"
+          prefetch={true}
+          onNavigate={(e) => {
+            if (!checkNavigationGuard("/")) e.preventDefault();
+          }}
+        >
           <ArrowLeft className="h-4 w-4 mr-1.5" />
           All projects
         </Link>
