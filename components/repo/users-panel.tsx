@@ -106,7 +106,7 @@ export function UsersPanel({
       router.refresh();
       setShowInvite(false);
     }
-  }, [inviteState.status]);
+  }, [inviteState.status, router]);
 
   function handleRoleChange(userId: string, role: "church_admin" | "editor") {
     setActionError(null);

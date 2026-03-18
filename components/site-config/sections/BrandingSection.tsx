@@ -82,6 +82,7 @@ function AssetUpload({ type, state, onUpload }: AssetUploadProps) {
           }`}
         >
           {state.previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={state.previewUrl}
               alt={constraint.label}

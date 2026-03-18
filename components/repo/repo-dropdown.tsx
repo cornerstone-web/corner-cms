@@ -43,7 +43,7 @@ export function RepoDropdown({
       .then(r => r.json())
       .then(data => { if (data?.data?.downloadUrl) setLogoUrl(data.data.downloadUrl); })
       .catch(() => {});
-  }, [config?.owner, config?.repo, config?.branch]);
+  }, [config, config?.owner, config?.repo, config?.branch]);
 
   const displayBranches = useMemo(() => {
     let branchesToDisplay: string[] = [];
