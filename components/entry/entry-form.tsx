@@ -1135,7 +1135,8 @@ const EntryForm = ({
   onSlugRename?: (slug: string) => Promise<void>;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showBackConfirm, setShowBackConfirm] = useState(false);
+  const [pendingNavUrl, setPendingNavUrl] = useState<string | null>(null);
+  const originalPushStateRef = useRef<typeof window.window.history.pushState | null>(null);
   const router = useRouter();
   const slugRef = useRef<string | undefined>(undefined);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(
@@ -1213,6 +1214,47 @@ const EntryForm = ({
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
+
+  // Intercept all in-app navigation (window.history.pushState) while the form is
+  // dirty. Suspended during form submission so that post-save navigations
+  // (e.g. redirect to the new entry's edit URL) are never blocked.
+  useEffect(() => {
+    if (!isDirty || isSubmitting) {
+      if (originalPushStateRef.current) {
+        window.history.pushState = originalPushStateRef.current;
+        originalPushStateRef.current = null;
+      }
+      return;
+    }
+    const orig = window.history.pushState.bind(history);
+    originalPushStateRef.current = orig;
+    window.history.pushState = function (
+      state: unknown,
+      title: string,
+      url?: string | URL | null,
+    ) {
+      setPendingNavUrl(url ? url.toString() : window.location.pathname);
+    };
+    return () => {
+      if (originalPushStateRef.current) {
+        window.history.pushState = originalPushStateRef.current;
+        originalPushStateRef.current = null;
+      }
+    };
+  }, [isDirty, isSubmitting]);
+
+  // Navigate away after restoring the real pushState so the router isn't
+  // blocked by our own interceptor.
+  const navigateAway = useCallback(
+    (url: string) => {
+      if (originalPushStateRef.current) {
+        window.history.pushState = originalPushStateRef.current;
+        originalPushStateRef.current = null;
+      }
+      router.push(url);
+    },
+    [router],
+  );
 
   const renderFields = useCallback(
     (fields: Field[], parentName?: string): React.ReactNode[] => {
@@ -1427,61 +1469,16 @@ const EntryForm = ({
             <div className="flex-1 w-0">
               <header className="flex items-center mb-6">
                 {navigateBack && (
-                  <>
-                    <button
-                      type="button"
-                      className={cn(
-                        buttonVariants({ variant: "outline", size: "icon-xs" }),
-                        "mr-4 shrink-0",
-                      )}
-                      onClick={() =>
-                        isDirty
-                          ? setShowBackConfirm(true)
-                          : router.push(navigateBack)
-                      }
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <AlertDialog
-                      open={showBackConfirm}
-                      onOpenChange={setShowBackConfirm}
-                    >
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            You have unsaved changes that will be lost if you
-                            leave this page.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className={cn(
-                              buttonVariants({ variant: "outline" }),
-                              "mt-2 sm:mt-0",
-                            )}
-                            onClick={() => router.push(navigateBack)}
-                          >
-                            Leave without saving
-                          </AlertDialogAction>
-                          <AlertDialogAction
-                            onClick={() =>
-                              form.handleSubmit(
-                                async (values) => {
-                                  await handleSubmit(values);
-                                  router.push(navigateBack);
-                                },
-                                handleError,
-                              )()
-                            }
-                          >
-                            Save
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </>
+                  <button
+                    type="button"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "icon-xs" }),
+                      "mr-4 shrink-0",
+                    )}
+                    onClick={() => router.push(navigateBack)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
                 )}
 
                 <h1 className="font-semibold text-lg md:text-2xl truncate">
@@ -1640,6 +1637,50 @@ const EntryForm = ({
           </div>
         </form>
       </Form>
+
+      {/* Unsaved-changes guard — triggered by any intercepted navigation */}
+      <AlertDialog
+        open={!!pendingNavUrl}
+        onOpenChange={(open) => !open && setPendingNavUrl(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes that will be lost if you leave this page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2 sm:mt-0"
+              onClick={() => {
+                const url = pendingNavUrl!;
+                setPendingNavUrl(null);
+                navigateAway(url);
+              }}
+            >
+              Leave without saving
+            </Button>
+            <AlertDialogAction
+              onClick={() => {
+                const url = pendingNavUrl!;
+                form.handleSubmit(
+                  async (values) => {
+                    await handleSubmit(values);
+                    navigateAway(url);
+                  },
+                  handleError,
+                )();
+              }}
+            >
+              Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </BlockListControlsContext.Provider>
   );
 };
