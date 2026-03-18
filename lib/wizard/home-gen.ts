@@ -33,7 +33,7 @@ export function generateHomeBlocks(opts: HomeGenOptions): unknown[] {
     showSecondaryCta: false,
   });
 
-  if (opts.photos || (opts.marqueeImages?.length ?? 0) > 0) {
+  if ((opts.marqueeImages?.length ?? 0) > 0) {
     blocks.push({
       type: "image-marquee",
       images: (opts.marqueeImages ?? []).map(src => ({ src, alt: "" })),
@@ -117,7 +117,10 @@ export function generateHomeBlocks(opts: HomeGenOptions): unknown[] {
     type: "cta",
     variant: "primary",
     headline: "Join Us This Sunday",
+    showDescription: false,
+    showPrimaryCta: true,
     primaryCta: { label: "Plan Your Visit", href: "/visit" },
+    showSecondaryCta: false,
   });
 
   return blocks;
