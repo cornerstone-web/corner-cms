@@ -11,6 +11,7 @@ import React, {
 import slugify from "slugify";
 import { getFileName, normalizePath } from "@/lib/utils/file";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useForm,
   useFieldArray,
@@ -1134,6 +1135,8 @@ const EntryForm = ({
   onSlugRename?: (slug: string) => Promise<void>;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
+  const router = useRouter();
   const slugRef = useRef<string | undefined>(undefined);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(
     null,
@@ -1199,6 +1202,17 @@ const EntryForm = ({
   const { isDirty } = useFormState({
     control: form.control,
   });
+
+  // Warn on browser close / hard refresh when there are unsaved changes
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   const renderFields = useCallback(
     (fields: Field[], parentName?: string): React.ReactNode[] => {
@@ -1413,15 +1427,61 @@ const EntryForm = ({
             <div className="flex-1 w-0">
               <header className="flex items-center mb-6">
                 {navigateBack && (
-                  <Link
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "icon-xs" }),
-                      "mr-4 shrink-0",
-                    )}
-                    href={navigateBack}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Link>
+                  <>
+                    <button
+                      type="button"
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "icon-xs" }),
+                        "mr-4 shrink-0",
+                      )}
+                      onClick={() =>
+                        isDirty
+                          ? setShowBackConfirm(true)
+                          : router.push(navigateBack)
+                      }
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <AlertDialog
+                      open={showBackConfirm}
+                      onOpenChange={setShowBackConfirm}
+                    >
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            You have unsaved changes that will be lost if you
+                            leave this page.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className={cn(
+                              buttonVariants({ variant: "outline" }),
+                              "mt-2 sm:mt-0",
+                            )}
+                            onClick={() => router.push(navigateBack)}
+                          >
+                            Leave without saving
+                          </AlertDialogAction>
+                          <AlertDialogAction
+                            onClick={() =>
+                              form.handleSubmit(
+                                async (values) => {
+                                  await handleSubmit(values);
+                                  router.push(navigateBack);
+                                },
+                                handleError,
+                              )()
+                            }
+                          >
+                            Save
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
                 )}
 
                 <h1 className="font-semibold text-lg md:text-2xl truncate">
