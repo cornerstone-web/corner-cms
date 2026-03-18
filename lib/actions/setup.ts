@@ -590,10 +590,18 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
           .filter(({ enabled }) => !enabled)
           .flatMap(({ paths }) => paths)
           .map(async ({ path, title }) => {
-            const sha = await tryGetSha(repoName, path);
-            if (!sha) return; // page doesn't exist in template — nothing to draft
-            const draftContent = `---\ntitle: ${title}\ndraft: true\n---\n`;
-            await commitFile(repoName, path, draftContent, sha, `chore: draft ${title} page (feature disabled)`);
+            let content: string;
+            let sha: string;
+            try {
+              ({ content, sha } = await getFileWithSha(repoName, path));
+            } catch {
+              return; // page doesn't exist in template — nothing to draft
+            }
+            // Flip existing draft field, or insert it if missing
+            const updated = content.includes("draft:")
+              ? content.replace(/^draft:.*$/m, "draft: true")
+              : content.replace(/^---\n/, "---\ndraft: true\n");
+            await commitFile(repoName, path, updated, sha, `chore: draft ${title} page (feature disabled)`);
           }),
       );
     } catch (err) {
