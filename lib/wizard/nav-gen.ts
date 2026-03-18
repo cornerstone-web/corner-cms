@@ -18,7 +18,8 @@ export function generateNav(features: WizardFeatures) {
   if (features.sermons) {
     const mediaColumns: unknown[] = [
       {
-        label: "Sermons",
+        heading: "Sermons",
+        icon: "video",
         links: [
           { label: "All Sermons", href: "/sermons" },
           ...(features.series ? [{ label: "Series", href: "/series" }] : []),
@@ -27,7 +28,8 @@ export function generateNav(features: WizardFeatures) {
     ];
     if (features.articles) {
       mediaColumns.push({
-        label: "Resources",
+        heading: "Resources",
+        icon: "book-open",
         links: [
           { label: "Articles", href: "/articles" },
           ...(features.bulletins ? [{ label: "Bulletins", href: "/bulletins" }] : []),
@@ -61,8 +63,8 @@ export function generateNav(features: WizardFeatures) {
     label: "About",
     href: "/about",
     columns: [
-      { label: "Our Church", links: aboutLinks },
-      { label: "Visit", links: visitLinks },
+      { heading: "Our Church", icon: "church", links: aboutLinks },
+      { heading: "Visit", icon: "map-pin", links: visitLinks },
     ],
   });
 

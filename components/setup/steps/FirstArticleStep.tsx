@@ -72,6 +72,10 @@ export default function FirstArticleStep({
       setError("Please enter the author's name.");
       return;
     }
+    if (!proseContent.trim()) {
+      setError("Please add content for the article.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -149,11 +153,13 @@ export default function FirstArticleStep({
             placeholder="A short summary shown in article listings..."
             rows={2}
           />
+          <p className="text-xs text-muted-foreground">
+            Keep this brief — it appears in article listings. Use the Content section below to share the full details.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label>
-            Content{" "}
-            <span className="text-muted-foreground text-xs">(optional)</span>
+            Content <span className="text-destructive">*</span>
           </Label>
           <p className="text-xs text-muted-foreground -mt-0.5">
             The body of the article page.

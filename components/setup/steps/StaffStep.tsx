@@ -11,13 +11,14 @@ import WizardProseEditor from "@/components/setup/WizardProseEditor";
 interface StepProps {
   church: { id: string; displayName: string; slug: string };
   onComplete: () => void;
-  initialMembers?: { name: string; title?: string; proseContent?: string; photoUrl?: string }[];
+  initialMembers?: { name: string; title?: string; showDetailPage?: boolean; proseContent?: string; photoUrl?: string }[];
 }
 
 interface StaffRow {
   id: number;
   name: string;
   title: string;
+  showDetailPage: boolean;
   proseContent: string;
   photoPreview: string | null;
   photoBase64: string | null;
@@ -29,6 +30,7 @@ function makeRow(): StaffRow {
     id: Date.now() + Math.random(),
     name: "",
     title: "",
+    showDetailPage: true,
     proseContent: "",
     photoPreview: null,
     photoBase64: null,
@@ -59,6 +61,7 @@ export default function StaffStep({
           id: Date.now() + Math.random(),
           name: m.name,
           title: m.title ?? "",
+          showDetailPage: m.showDetailPage !== false,
           proseContent: m.proseContent ?? "",
           photoPreview: m.photoUrl ?? null,
           photoBase64: null,
@@ -79,11 +82,8 @@ export default function StaffStep({
 
   function updateRow(
     id: number,
-    field: keyof Omit<
-      StaffRow,
-      "id" | "photoPreview" | "photoBase64" | "photoExt"
-    >,
-    value: string,
+    field: keyof Omit<StaffRow, "id" | "photoPreview" | "photoBase64" | "photoExt">,
+    value: string | boolean,
   ) {
     setRows((prev) =>
       prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
@@ -115,6 +115,11 @@ export default function StaffStep({
       setError("Please add at least one staff member.");
       return;
     }
+    const missingBio = filled.find((r) => r.showDetailPage && !r.proseContent.trim());
+    if (missingBio) {
+      setError(`Please add a bio for ${missingBio.name.trim() || "this staff member"}, or disable their detail page.`);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -123,6 +128,7 @@ export default function StaffStep({
         church.slug,
         filled.map((r) => ({
           name: r.name.trim(),
+          showDetailPage: r.showDetailPage,
           ...(r.title.trim() ? { title: r.title.trim() } : {}),
           ...(r.proseContent.trim()
             ? { proseContent: r.proseContent.trim() }
@@ -206,21 +212,36 @@ export default function StaffStep({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>
-                Bio{" "}
-                <span className="text-muted-foreground text-xs">
-                  (optional)
-                </span>
-              </Label>
-              <p className="text-xs text-muted-foreground -mt-0.5">
-                Background, ministry focus, personal details shown on their
-                staff page.
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`detail-page-${row.id}`}
+                  checked={row.showDetailPage}
+                  onChange={(e) => updateRow(row.id, "showDetailPage", e.target.checked)}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                <Label htmlFor={`detail-page-${row.id}`} className="cursor-pointer">
+                  Show detail page
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                When enabled, their name links to a full bio page on your site.
               </p>
-              <WizardProseEditor
-                value={row.proseContent}
-                onChange={(v) => updateRow(row.id, "proseContent", v)}
-              />
             </div>
+            {row.showDetailPage && (
+              <div className="space-y-1.5">
+                <Label>
+                  Bio <span className="text-destructive">*</span>
+                </Label>
+                <p className="text-xs text-muted-foreground -mt-0.5">
+                  Background, ministry focus, and personal details — shown on their staff page.
+                </p>
+                <WizardProseEditor
+                  value={row.proseContent}
+                  onChange={(v) => updateRow(row.id, "proseContent", v)}
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>
                 Photo{" "}

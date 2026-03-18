@@ -82,6 +82,10 @@ export default function FirstSermonStep({
       setError("Please enter the speaker's name.");
       return;
     }
+    if (!proseContent.trim()) {
+      setError("Please add content for the sermon page.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -202,11 +206,13 @@ export default function FirstSermonStep({
             placeholder="A short excerpt shown in sermon listings..."
             rows={2}
           />
+          <p className="text-xs text-muted-foreground">
+            Keep this brief — it appears in sermon listings. Use the Content section below to share the full details.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label>
-            Content{" "}
-            <span className="text-muted-foreground text-xs">(optional)</span>
+            Content <span className="text-destructive">*</span>
           </Label>
           <p className="text-xs text-muted-foreground -mt-0.5">
             The body of the sermon page — notes, an outline, or a full transcript. Shown below the video on your site.

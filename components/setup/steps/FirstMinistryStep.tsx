@@ -60,6 +60,11 @@ export default function FirstMinistryStep({ church, onComplete, initialMinistrie
   async function handleSubmit() {
     const filled = rows.filter((r) => r.name.trim());
     if (filled.length === 0) { setError("Please add at least one ministry."); return; }
+    const missingContent = filled.find((r) => !r.proseContent.trim());
+    if (missingContent) {
+      setError(`Please add content for "${missingContent.name.trim()}".`);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -130,11 +135,13 @@ export default function FirstMinistryStep({ church, onComplete, initialMinistrie
                 placeholder="A short summary shown in ministry listings..."
                 rows={2}
               />
+              <p className="text-xs text-muted-foreground">
+                Keep this brief — it appears in ministry listings. Use the Content section below for the full details.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>
-                Content{" "}
-                <span className="text-muted-foreground text-xs">(optional)</span>
+                Content <span className="text-destructive">*</span>
               </Label>
               <p className="text-xs text-muted-foreground -mt-0.5">
                 The body of the ministry page — who it&apos;s for, when it meets, how to get involved.

@@ -42,6 +42,10 @@ export default function FirstEventStep({ church, onComplete, initialTitle, initi
       setError("Please enter the event time.");
       return;
     }
+    if (!proseContent.trim()) {
+      setError("Please add content for the event page.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -128,11 +132,13 @@ export default function FirstEventStep({ church, onComplete, initialTitle, initi
             placeholder="A brief description shown in event listings..."
             rows={2}
           />
+          <p className="text-xs text-muted-foreground">
+            Keep this brief — it appears in event listings. Use the Content section below for the full details.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label>
-            Content{" "}
-            <span className="text-muted-foreground text-xs">(optional)</span>
+            Content <span className="text-destructive">*</span>
           </Label>
           <p className="text-xs text-muted-foreground -mt-0.5">
             The body of the event page — details, schedule, how to sign up.

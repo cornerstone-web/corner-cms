@@ -524,7 +524,7 @@ export async function saveFirstArticle(
 export async function saveStaffMembers(
   churchId: string,
   slug: string,
-  members: { name: string; title?: string; proseContent?: string; photoBase64?: string; photoExt?: string }[],
+  members: { name: string; title?: string; showDetailPage?: boolean; proseContent?: string; photoBase64?: string; photoExt?: string }[],
 ): Promise<void> {
   await assertChurchAccess(churchId);
   await Promise.all(members.map(async (member) => {
@@ -547,10 +547,10 @@ export async function saveStaffMembers(
       image: hasPhoto ? `/uploads/leadership_staff/${fileSlug}.${ext}` : "",
       draft: false,
       passwordProtected: false,
-      showDetailPage: true,
-      blocks: [
-        { type: "prose", maxWidth: "normal", content: member.proseContent ?? "" },
-      ],
+      showDetailPage: member.showDetailPage !== false,
+      blocks: member.showDetailPage !== false
+        ? [{ type: "prose", maxWidth: "normal", content: member.proseContent ?? "" }]
+        : [],
     });
     const sha = await tryGetSha(slug, mdPath);
     await commitFile(slug, mdPath, content, sha, "wizard: add staff member");
