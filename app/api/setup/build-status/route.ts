@@ -66,6 +66,7 @@ export async function GET(request: Request) {
         Authorization: `Bearer ${apiToken}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(8000),
     });
   } catch {
     return Response.json({ error: "Failed to reach Cloudflare API" }, { status: 502 });

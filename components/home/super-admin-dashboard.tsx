@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Building2, ExternalLink, Pencil, Plus, Settings } from "lucide-react";
+import { Building2, ExternalLink, LayoutDashboard, Pencil, Plus, Settings } from "lucide-react";
 
 type ChurchRow = {
   id: string;
@@ -144,6 +144,12 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button asChild variant="ghost" size="xs">
+                          <Link href={`/admin/churches/${church.id}/portal`}>
+                            <LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
+                            <span className="hidden sm:inline">Portal</span>
+                          </Link>
+                        </Button>
                         <Button asChild variant="ghost" size="xs">
                           <Link href={`/${owner}/${repo}`}>
                             <Pencil className="h-3.5 w-3.5 mr-1.5" />

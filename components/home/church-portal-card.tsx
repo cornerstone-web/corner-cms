@@ -67,6 +67,12 @@ export function ChurchPortalCard({
         const res = await fetch(
           `/api/setup/build-status?churchId=${assignment.churchId}`,
         );
+        if (cancelled) return;
+        if (!res.ok) {
+          // API error — retry later without changing displayed state
+          if (!cancelled) timer = setTimeout(poll, 10000);
+          return;
+        }
         const data = await res.json();
         if (cancelled) return;
         if (data.status === "success") {
@@ -80,7 +86,9 @@ export function ChurchPortalCard({
         setBuildStatus("building");
       } catch {
         if (cancelled) return;
-        setBuildStatus("building");
+        // Network error — retry later without changing displayed state
+        if (!cancelled) timer = setTimeout(poll, 10000);
+        return;
       }
       if (!cancelled) timer = setTimeout(poll, 10000);
     }
