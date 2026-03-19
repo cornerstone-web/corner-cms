@@ -17,6 +17,7 @@ import { FileOptions } from "@/components/file/file-options";
 import { PathBreadcrumb } from "@/components/path-breadcrumb";
 import { MediaUpload} from "./media-upload";
 import { FilePreviewModal } from "./file-preview-modal";
+import { BulletinUploader } from "./bulletin-uploader";
 import {
   Dialog,
   DialogContent,
@@ -198,6 +199,7 @@ const MediaView = ({
   // -------------------------------------------------------------------------
 
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (isR2Category) {
@@ -211,8 +213,11 @@ const MediaView = ({
         setIsLoading(true);
         setError(null);
         try {
+          // Always bypass the DB cache for bulletins — directory is small and changes
+          // after uploads must be reflected immediately without cache invalidation complexity.
+          const qs = category === "bulletins" ? "?nocache=1" : "";
           const response = await fetch(
-            `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/media/${encodeURIComponent(mediaConfig.name)}/${encodeURIComponent(path)}`
+            `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/media/${encodeURIComponent(mediaConfig.name)}/${encodeURIComponent(path)}${qs}`
           );
           if (!response.ok) throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`);
           const responseData: any = await response.json();
@@ -227,7 +232,7 @@ const MediaView = ({
       }
     }
     fetchMedia();
-  }, [config, path, mediaConfig, isR2Category]);
+  }, [config, path, mediaConfig, isR2Category, refreshKey]);
 
   // Fetch R2 files on mount (and whenever category changes)
   useEffect(() => {
@@ -550,6 +555,70 @@ const MediaView = ({
         </Message>
       );
     }
+  }
+
+  // =========================================================================
+  // BULLETINS MODE RENDER
+  // =========================================================================
+
+  if (category === "bulletins") {
+    return (
+      <div className="flex-1 flex flex-col space-y-6">
+        <div className="rounded-lg border p-4 space-y-4">
+          <BulletinUploader
+            repoName={config.repo}
+            onSuccess={() => setRefreshKey((k) => k + 1)}
+          />
+        </div>
+        <div ref={filesGridRef} className="flex-1 overflow-auto scrollbar">
+          {isLoading
+            ? loadingSkeleton
+            : filteredData && filteredData.length > 0
+              ? <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 p-1">
+                  {filteredData.filter((item) => item.type === "file" && item.name !== ".gitkeep").map((item, index) =>
+                    <li key={item.path}>
+                      <label htmlFor={`bulletin-item-${index}`}>
+                        <div className="rounded-md border border-border overflow-hidden">
+                          <button
+                            type="button"
+                            className="w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-zoom-in"
+                            onClick={(e) => { e.preventDefault(); setPreviewFile(item); }}
+                            aria-label={`Preview ${item.name}`}
+                          >
+                            <div className="flex items-center justify-center rounded-t-md aspect-video">
+                              <File className="stroke-[0.5] h-24 w-24"/>
+                            </div>
+                          </button>
+                          <div className="flex gap-x-2 items-center p-2">
+                            <div className="overflow-hidden mr-auto h-9">
+                              <div className="text-sm font-medium truncate">{item.name}</div>
+                              <div className="text-xs text-muted-foreground truncate">{getFileSize(item.size)}</div>
+                            </div>
+                            <FileOptions path={item.path} sha={item.sha} type="media" name={mediaConfig.name} onDelete={handleDelete} onRename={handleRename} portalProps={{container: filesGridRef.current}}>
+                              <Button variant="ghost" size="icon" className="shrink-0">
+                                <EllipsisVertical className="h-4 w-4" />
+                              </Button>
+                            </FileOptions>
+                          </div>
+                        </div>
+                      </label>
+                    </li>
+                  )}
+                </ul>
+              : <p className="text-muted-foreground flex items-center justify-center text-sm p-6">
+                  <Ban className="h-4 w-4 mr-2"/>
+                  No bulletins uploaded yet.
+                </p>
+          }
+        </div>
+        <FilePreviewModal
+          file={previewFile}
+          files={(data ?? []).filter((item) => item.type === "file" && item.name !== ".gitkeep")}
+          mediaName={mediaConfig.name}
+          onClose={() => setPreviewFile(null)}
+        />
+      </div>
+    );
   }
 
   return (

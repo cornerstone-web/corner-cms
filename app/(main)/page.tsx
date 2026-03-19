@@ -7,6 +7,8 @@ import { MainRootLayout } from "./main-root-layout";
 import { ChurchPortalCard } from "@/components/home/church-portal-card";
 import { SuperAdminDashboard } from "@/components/home/super-admin-dashboard";
 import { getVersionStatus } from "@/lib/actions/cornerstone-update";
+import { getFileWithSha } from "@/lib/github/wizard";
+import YAML from "yaml";
 
 export default async function Page() {
   const { user } = await getAuth();
@@ -37,13 +39,20 @@ export default async function Page() {
 
   if (user.churchAssignment) {
     const churchId = user.churchAssignment.churchId;
-    const [church, versionStatus] = await Promise.all([
+    const repoName = user.churchAssignment.githubRepoName.split("/")[1];
+    const [church, versionStatus, bulletinsEnabled] = await Promise.all([
       db.query.churchesTable.findFirst({
         where: eq(churchesTable.id, churchId),
-        columns: { status: true },
+        columns: { status: true, customDomain: true },
       }),
       // Only check version for active sites — avoid noise during setup
       getVersionStatus(churchId).catch(() => null),
+      getFileWithSha(repoName, "src/config/site.config.yaml")
+        .then(({ content }) => {
+          const cfg = YAML.parse(content) as { features?: Record<string, boolean> };
+          return cfg.features?.bulletins === true;
+        })
+        .catch(() => false),
     ]);
 
     return (
@@ -52,6 +61,8 @@ export default async function Page() {
           assignment={user.churchAssignment}
           status={church?.status}
           versionStatus={versionStatus ?? undefined}
+          bulletinsEnabled={bulletinsEnabled}
+          customDomain={church?.customDomain}
         />
       </MainRootLayout>
     );

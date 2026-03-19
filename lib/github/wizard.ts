@@ -116,6 +116,23 @@ export async function commitBinaryFile(
   });
 }
 
+export async function deleteRepoFile(
+  repoName: string,
+  path: string,
+  sha: string,
+  message: string,
+): Promise<void> {
+  const token = await getInstallationToken(GITHUB_ORG, repoName);
+  const octokit = createOctokitInstance(token);
+  await octokit.rest.repos.deleteFile({
+    owner: GITHUB_ORG,
+    repo: repoName,
+    path,
+    sha,
+    message,
+  });
+}
+
 export async function updateSiteConfig(
   repoName: string,
   updates: Record<string, unknown>,

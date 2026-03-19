@@ -4,10 +4,11 @@ import { eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { churchesTable } from "@/db/schema";
-import { MainRootLayout } from "@/app/(main)/main-root-layout";
 import { ChurchPortalCard } from "@/components/home/church-portal-card";
 import { getVersionStatus } from "@/lib/actions/cornerstone-update";
+import { getFileWithSha } from "@/lib/github/wizard";
 import { ChevronLeft } from "lucide-react";
+import YAML from "yaml";
 
 export default async function ChurchPortalPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -20,7 +21,15 @@ export default async function ChurchPortalPage(props: { params: Promise<{ id: st
 
   if (!church || church.deletedAt) return notFound();
 
-  const versionStatus = await getVersionStatus(church.id).catch(() => null);
+  const [versionStatus, bulletinsEnabled] = await Promise.all([
+    getVersionStatus(church.id).catch(() => null),
+    getFileWithSha(church.slug, "src/config/site.config.yaml")
+      .then(({ content }) => {
+        const cfg = YAML.parse(content) as { features?: Record<string, boolean> };
+        return cfg.features?.bulletins === true;
+      })
+      .catch(() => false),
+  ]);
 
   const assignment = {
     churchId: church.id,
@@ -32,7 +41,7 @@ export default async function ChurchPortalPage(props: { params: Promise<{ id: st
   };
 
   return (
-    <MainRootLayout>
+    <>
       <div className="px-4 pt-4">
         <Link
           href="/"
@@ -46,7 +55,9 @@ export default async function ChurchPortalPage(props: { params: Promise<{ id: st
         assignment={assignment}
         status={church.status}
         versionStatus={versionStatus ?? undefined}
+        bulletinsEnabled={bulletinsEnabled}
+        customDomain={church.customDomain}
       />
-    </MainRootLayout>
+    </>
   );
 }
