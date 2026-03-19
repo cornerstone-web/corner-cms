@@ -122,6 +122,7 @@ export function BulletinUploader({ repoName, onSuccess }: BulletinUploaderProps)
             value={date}
             onChange={(e) => { setDate(e.target.value); setError(null); }}
             disabled={isBusy}
+            className="w-auto"
           />
         </div>
 
