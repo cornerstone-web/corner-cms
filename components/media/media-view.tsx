@@ -564,7 +564,7 @@ const MediaView = ({
   if (category === "bulletins") {
     return (
       <div className="flex-1 flex flex-col space-y-6">
-        <div className="rounded-lg border p-4 space-y-4">
+        <div className="rounded-lg border p-4 space-y-4 overflow-hidden">
           <BulletinUploader
             repoName={config.repo}
             onSuccess={() => setRefreshKey((k) => k + 1)}
@@ -613,7 +613,7 @@ const MediaView = ({
         </div>
         <FilePreviewModal
           file={previewFile}
-          files={(data ?? []).filter((item) => item.type === "file" && item.name !== ".gitkeep")}
+          files={(data ?? []).filter((item) => item.type === "file" && item.name !== ".gitkeep").sort((a, b) => b.name.localeCompare(a.name))}
           mediaName={mediaConfig.name}
           onClose={() => setPreviewFile(null)}
         />
