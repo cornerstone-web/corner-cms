@@ -575,7 +575,7 @@ const MediaView = ({
             ? loadingSkeleton
             : filteredData && filteredData.length > 0
               ? <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 p-1">
-                  {filteredData.filter((item) => item.type === "file" && item.name !== ".gitkeep").map((item, index) =>
+                  {filteredData.filter((item) => item.type === "file" && item.name !== ".gitkeep").sort((a, b) => b.name.localeCompare(a.name)).map((item, index) =>
                     <li key={item.path}>
                       <label htmlFor={`bulletin-item-${index}`}>
                         <div className="rounded-md border border-border overflow-hidden">
