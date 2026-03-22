@@ -566,7 +566,9 @@ const MediaView = ({
       <div className="flex-1 flex flex-col space-y-6">
         <div className="rounded-lg border p-4 space-y-4">
           <BulletinUploader
+            owner={config.owner}
             repoName={config.repo}
+            branch={config.branch}
             onSuccess={() => setRefreshKey((k) => k + 1)}
           />
         </div>

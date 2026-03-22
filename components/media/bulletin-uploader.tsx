@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { checkBulletinUpload, performBulletinUpload } from "@/lib/actions/bulletins";
+import { checkBulletinUpload } from "@/lib/actions/bulletins";
 import type { BulletinCheckResult } from "@/lib/actions/bulletins";
 
 const MAX_BULLETINS = 52;
@@ -37,11 +37,13 @@ type UploaderState =
   | "error";
 
 interface BulletinUploaderProps {
+  owner: string;
   repoName: string;
+  branch: string;
   onSuccess?: () => void;
 }
 
-export function BulletinUploader({ repoName, onSuccess }: BulletinUploaderProps) {
+export function BulletinUploader({ owner, repoName, branch, onSuccess }: BulletinUploaderProps) {
   const [date, setDate] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [state, setState] = useState<UploaderState>("idle");
@@ -99,7 +101,18 @@ export function BulletinUploader({ repoName, onSuccess }: BulletinUploaderProps)
     setState("uploading");
     try {
       const pdfBase64 = await fileToBase64(pdfFile);
-      await performBulletinUpload(repoName, date, pdfBase64, deleteOldestName);
+      const res = await fetch(
+        `/api/${owner}/${repoName}/${encodeURIComponent(branch)}/bulletins`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date, pdfBase64, deleteOldestName }),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as any)?.error ?? "Upload failed.");
+      }
       setState("success");
       onSuccess?.();
       setTimeout(reset, 3000);

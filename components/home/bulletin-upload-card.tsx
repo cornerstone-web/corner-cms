@@ -11,10 +11,14 @@ import {
 import { BulletinUploader } from "@/components/media/bulletin-uploader";
 
 export function BulletinUploadCard({
+  owner,
   repoName,
+  branch,
   viewAllHref,
 }: {
+  owner: string;
   repoName: string;
+  branch: string;
   viewAllHref: string;
 }) {
   return (
@@ -36,7 +40,7 @@ export function BulletinUploadCard({
         </div>
       </CardHeader>
       <CardContent>
-        <BulletinUploader repoName={repoName} />
+        <BulletinUploader owner={owner} repoName={repoName} branch={branch} />
       </CardContent>
     </Card>
   );

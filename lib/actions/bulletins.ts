@@ -4,9 +4,6 @@ import { getAuth } from "@/lib/auth";
 import {
   getDirectoryAllFileNames,
   getFileDownloadUrl,
-  tryGetSha,
-  commitBinaryFile,
-  deleteRepoFile,
 } from "@/lib/github/wizard";
 
 const BULLETIN_DIR = "public/bulletins";
@@ -51,25 +48,4 @@ export async function checkBulletinUpload(
     count: pdfs.length,
     oldest: { name: oldestName, downloadUrl },
   };
-}
-
-export async function performBulletinUpload(
-  repoName: string,
-  date: string,
-  pdfBase64: string,
-  deleteOldestName?: string,
-): Promise<void> {
-  await assertBulletinAccess(repoName);
-
-  if (deleteOldestName) {
-    const oldestPath = `${BULLETIN_DIR}/${deleteOldestName}`;
-    const sha = await tryGetSha(repoName, oldestPath);
-    if (sha) {
-      await deleteRepoFile(repoName, oldestPath, sha, "bulletin: remove oldest (52-file limit)");
-    }
-  }
-
-  const targetPath = `${BULLETIN_DIR}/${date}.pdf`;
-  const existingSha = await tryGetSha(repoName, targetPath);
-  await commitBinaryFile(repoName, targetPath, pdfBase64, existingSha, `bulletin: upload ${date}`);
 }
