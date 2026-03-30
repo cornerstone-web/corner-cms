@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { cn } from "@/lib/utils";
-import { FileStack, FileText, FolderOpen, Globe, Settings, Users } from "lucide-react";
+import { FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
 import { useSiteFeatures } from "@/hooks/use-site-features";
 import { checkNavigationGuard } from "@/lib/navigation-guard";
 
@@ -95,22 +95,11 @@ const RepoNav = ({
           }
         : null;
 
-    const domainItem =
-      user?.isSuperAdmin || user?.churchAssignment?.role === "church_admin"
-        ? {
-            key: "domain",
-            icon: <Globe className="h-5 w-5 mr-2" />,
-            href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/settings/domain`,
-            label: "Custom Domain",
-          }
-        : null;
-
     return [
       ...contentItems,
       ...mediaItems,
       usersItem,
       settingsItem,
-      domainItem,
     ].filter(Boolean);
   }, [config, features, user]);
 

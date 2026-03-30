@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useConfig } from "@/contexts/config-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Globe, Copy, Check, AlertCircle, Loader2 } from "lucide-react";
 
-interface DomainSettingsProps {
-  initialDomain: string | null;
+interface DomainData {
+  customDomain: string | null;
   cfPagesProjectName: string | null;
   rootStatus: string | null;
   wwwStatus: string | null;
@@ -42,28 +42,42 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-export function DomainSettings({
-  initialDomain,
-  cfPagesProjectName,
-  rootStatus: initialRootStatus,
-  wwwStatus: initialWwwStatus,
-}: DomainSettingsProps) {
+export function DomainSettings() {
   const { config } = useConfig();
   const owner = config?.owner;
   const repo = config?.repo;
   const branch = config?.branch;
 
-  const [domain, setDomain] = useState(initialDomain ?? "");
-  const [savedDomain, setSavedDomain] = useState(initialDomain);
-  const [rootStatus, setRootStatus] = useState(initialRootStatus);
-  const [wwwStatus, setWwwStatus] = useState(initialWwwStatus);
+  const [loadingData, setLoadingData] = useState(true);
+  const [data, setData] = useState<DomainData>({
+    customDomain: null,
+    cfPagesProjectName: null,
+    rootStatus: null,
+    wwwStatus: null,
+  });
+
+  const [domain, setDomain] = useState("");
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!owner || !repo || !branch) return;
+    fetch(`/api/${owner}/${repo}/${encodeURIComponent(branch)}/custom-domain`)
+      .then(r => r.json())
+      .then((d: DomainData) => {
+        setData(d);
+        setDomain(d.customDomain ?? "");
+      })
+      .catch(() => {/* non-fatal */})
+      .finally(() => setLoadingData(false));
+  }, [owner, repo, branch]);
+
+  const { customDomain: savedDomain, cfPagesProjectName } = data;
   const pagesDomain = cfPagesProjectName ? `${cfPagesProjectName}.pages.dev` : null;
 
-  const isDirty = domain.trim().replace(/^www\./i, "").toLowerCase() !== (savedDomain ?? "");
+  const normalizedInput = domain.trim().replace(/^www\./i, "").toLowerCase();
+  const isDirty = normalizedInput !== (savedDomain ?? "");
   const showInstructions = savedDomain && pagesDomain;
 
   async function handleSave() {
@@ -78,15 +92,18 @@ export function DomainSettings({
           body: JSON.stringify({ domain }),
         },
       );
-      const data = await res.json();
+      const json = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to save domain.");
+        setError(json.error ?? "Failed to save domain.");
         return;
       }
-      setSavedDomain(data.customDomain);
-      setDomain(data.customDomain);
-      setRootStatus("pending");
-      setWwwStatus("pending");
+      setData(prev => ({
+        ...prev,
+        customDomain: json.customDomain,
+        rootStatus: "pending",
+        wwwStatus: "pending",
+      }));
+      setDomain(json.customDomain);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -103,14 +120,12 @@ export function DomainSettings({
         { method: "DELETE" },
       );
       if (!res.ok && res.status !== 204) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Failed to remove domain.");
+        const json = await res.json().catch(() => ({}));
+        setError(json.error ?? "Failed to remove domain.");
         return;
       }
-      setSavedDomain(null);
+      setData(prev => ({ ...prev, customDomain: null, rootStatus: null, wwwStatus: null }));
       setDomain("");
-      setRootStatus(null);
-      setWwwStatus(null);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -118,14 +133,18 @@ export function DomainSettings({
     }
   }
 
+  if (loadingData) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-2xl space-y-8 p-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Globe className="h-5 w-5" />
-          Custom Domain
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground">
           Serve your site from your own domain instead of the default{" "}
           {pagesDomain ? (
             <span className="font-mono">{pagesDomain}</span>
@@ -141,7 +160,7 @@ export function DomainSettings({
         <div className="flex items-center gap-3 rounded-lg border px-4 py-3 bg-muted/40">
           <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="font-mono text-sm font-medium">{savedDomain}</span>
-          <StatusBadge status={rootStatus} />
+          <StatusBadge status={data.rootStatus} />
         </div>
       )}
 
@@ -198,41 +217,25 @@ export function DomainSettings({
             </p>
           </div>
 
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-muted-foreground border-b">
-                <th className="pb-2 font-medium pr-4">Type</th>
-                <th className="pb-2 font-medium pr-4">Name</th>
-                <th className="pb-2 font-medium">Value</th>
-              </tr>
-            </thead>
-            <tbody className="font-mono">
-              <tr className="border-b">
-                <td className="py-2.5 pr-4 text-muted-foreground font-sans">CNAME</td>
-                <td className="py-2.5 pr-4">
-                  <span className="flex items-center">
-                    @ <span className="font-sans text-xs text-muted-foreground ml-1">(root)</span>
-                  </span>
-                </td>
-                <td className="py-2.5">
-                  <span className="flex items-center">
-                    {pagesDomain}
-                    <CopyButton value={pagesDomain} />
-                  </span>
-                </td>
-              </tr>
-              <tr>
-                <td className="py-2.5 pr-4 text-muted-foreground font-sans">CNAME</td>
-                <td className="py-2.5 pr-4">www</td>
-                <td className="py-2.5">
-                  <span className="flex items-center">
-                    {pagesDomain}
-                    <CopyButton value={pagesDomain} />
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="space-y-3">
+            {[
+              { name: "@", label: "(root)" },
+              { name: "www", label: null },
+            ].map(({ name, label }) => (
+              <div key={name} className="rounded-md border bg-muted/30 px-4 py-3 space-y-1">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-medium">CNAME</span>
+                  <span>·</span>
+                  <span className="font-mono font-medium text-foreground">{name}</span>
+                  {label && <span>{label}</span>}
+                </div>
+                <div className="flex items-center gap-1 font-mono text-sm break-all">
+                  {pagesDomain}
+                  <CopyButton value={pagesDomain} />
+                </div>
+              </div>
+            ))}
+          </div>
 
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>
@@ -240,7 +243,7 @@ export function DomainSettings({
               update to <span className="font-medium text-green-700">Active</span> automatically
               once Cloudflare verifies the records.
             </p>
-            {rootStatus !== "active" && (
+            {data.rootStatus !== "active" && (
               <p className="flex items-start gap-1.5">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                 If your DNS provider doesn&apos;t support CNAME flattening for root domains, use an{" "}
@@ -251,17 +254,15 @@ export function DomainSettings({
             )}
           </div>
 
-          <div className="rounded-md bg-muted px-4 py-3 text-sm">
-            <p className="font-medium mb-0.5">Status</p>
-            <div className="flex gap-6 mt-1">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="font-mono">{savedDomain}</span>
-                <StatusBadge status={rootStatus} />
-              </span>
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="font-mono">www.{savedDomain}</span>
-                <StatusBadge status={wwwStatus} />
-              </span>
+          <div className="rounded-md bg-muted px-4 py-3 text-sm space-y-2">
+            <p className="font-medium">Status</p>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-muted-foreground break-all">{savedDomain}</span>
+              <StatusBadge status={data.rootStatus} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-muted-foreground break-all">www.{savedDomain}</span>
+              <StatusBadge status={data.wwwStatus} />
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/config-context";
+import { useUser } from "@/contexts/user-context";
 import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -25,10 +26,13 @@ import { NavigationSection } from "./sections/NavigationSection";
 import { FooterSection } from "./sections/FooterSection";
 import { IntegrationsSection } from "./sections/IntegrationsSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
+import { DomainSettings } from "@/components/settings/DomainSettings";
 
 export function SiteConfigEditor() {
   const { config } = useConfig();
+  const { user } = useUser();
   const { previewUrl } = useSiteFeaturesContext();
+  const isAdmin = user?.isSuperAdmin || user?.churchAssignment?.role === "church_admin";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sha, setSha] = useState<string | null>(null);
@@ -219,6 +223,7 @@ export function SiteConfigEditor() {
                   <TabsTrigger value="footer">Footer</TabsTrigger>
                   <TabsTrigger value="integrations">Integrations</TabsTrigger>
                   <TabsTrigger value="features">Features</TabsTrigger>
+                  {isAdmin && <TabsTrigger value="domain">Domain</TabsTrigger>}
                 </TabsList>
 
                 <TabsContent value="identity" className="mt-6">
@@ -255,6 +260,11 @@ export function SiteConfigEditor() {
                 <TabsContent value="features" className="mt-6">
                   <FeaturesSection control={form.control} onSaveAndReload={saveAndReload} />
                 </TabsContent>
+                {isAdmin && (
+                  <TabsContent value="domain" className="mt-6">
+                    <DomainSettings />
+                  </TabsContent>
+                )}
               </Tabs>
             </form>
           </Form>
