@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { churchesTable } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { updateApostleOrigins } from "@/lib/actions/setup";
 
 const CF_API_BASE = "https://api.cloudflare.com/client/v4";
 
@@ -178,6 +179,14 @@ export async function POST(
       .set({ customDomain: domain, updatedAt: new Date() })
       .where(eq(churchesTable.id, church.id));
 
+    // Update corner-apostle allowedOrigins (non-fatal)
+    const origins = [
+      ...(church.cfPagesUrl ? [church.cfPagesUrl] : []),
+      `https://${domain}`,
+      `https://www.${domain}`,
+    ];
+    await updateApostleOrigins(params.repo, origins).catch(() => null);
+
     return Response.json({
       customDomain: domain,
       cfPagesProjectName: projectName,
@@ -238,6 +247,12 @@ export async function DELETE(
       .update(churchesTable)
       .set({ customDomain: null, updatedAt: new Date() })
       .where(eq(churchesTable.id, church.id));
+
+    // Restore corner-apostle allowedOrigins to pages.dev only (non-fatal)
+    await updateApostleOrigins(
+      params.repo,
+      church.cfPagesUrl ? [church.cfPagesUrl] : [],
+    ).catch(() => null);
 
     return new Response(null, { status: 204 });
   } catch (error) {

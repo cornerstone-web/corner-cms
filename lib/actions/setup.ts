@@ -75,6 +75,39 @@ export async function updateApostleForChurch(
 }
 
 /**
+ * Updates the allowedOrigins for a church in corner-apostle's registry.json.
+ * Call this when a church's custom domain is set or removed.
+ *
+ * Non-throwing — logs on failure. No-op if CORNER_APOSTLE_REPO is unset or
+ * the church entry doesn't exist yet.
+ */
+export async function updateApostleOrigins(
+  repoName: string,
+  allowedOrigins: string[],
+): Promise<void> {
+  const apostleRepo = process.env.CORNER_APOSTLE_REPO;
+  if (!apostleRepo) return;
+  try {
+    const { content: registryRaw, sha: registrySha } =
+      await getFileWithSha(apostleRepo, "src/registry.json");
+    const registry = JSON.parse(registryRaw) as Record<string, {
+      email: string; name: string; allowedOrigins: string[];
+    }>;
+    if (!registry[repoName]) return; // not yet launched — skip
+    registry[repoName] = { ...registry[repoName], allowedOrigins };
+    await commitFile(
+      apostleRepo,
+      "src/registry.json",
+      JSON.stringify(registry, null, 2) + "\n",
+      registrySha,
+      `chore: update ${repoName} allowed origins`,
+    );
+  } catch (err) {
+    console.error("updateApostleOrigins failed (non-fatal):", err);
+  }
+}
+
+/**
  * Removes a church's contact form email from corner-apostle:
  * - Clears the email field in src/registry.json for this church
  * - Removes the email from wrangler.jsonc's allowed_destination_addresses
