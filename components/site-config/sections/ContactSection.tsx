@@ -16,9 +16,10 @@ interface ContactSectionProps {
   control: Control<SiteConfigFormValues>;
   initialFormEmail?: string;
   onFormEmailMutated: () => void;
+  repoSlug?: string;
 }
 
-export function ContactSection({ control, initialFormEmail, onFormEmailMutated }: ContactSectionProps) {
+export function ContactSection({ control, initialFormEmail, onFormEmailMutated, repoSlug }: ContactSectionProps) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -121,6 +122,7 @@ export function ContactSection({ control, initialFormEmail, onFormEmailMutated }
         <FormEmailWidget
           initialFormEmail={initialFormEmail}
           onMutated={onFormEmailMutated}
+          repoSlug={repoSlug}
         />
       </div>
     </div>

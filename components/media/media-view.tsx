@@ -232,7 +232,7 @@ const MediaView = ({
       }
     }
     fetchMedia();
-  }, [config, path, mediaConfig, isR2Category, refreshKey]);
+  }, [config, path, mediaConfig, isR2Category, refreshKey, category]);
 
   // Fetch R2 files on mount (and whenever category changes)
   useEffect(() => {

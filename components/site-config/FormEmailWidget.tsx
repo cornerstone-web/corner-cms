@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 interface FormEmailWidgetProps {
   initialFormEmail?: string;
   onMutated: () => void;
+  repoSlug?: string;
 }
 
 type Status = "idle" | "checking" | "sending" | "waiting" | "verified" | "removing" | "error";
 
-export function FormEmailWidget({ initialFormEmail, onMutated }: FormEmailWidgetProps) {
+export function FormEmailWidget({ initialFormEmail, onMutated, repoSlug }: FormEmailWidgetProps) {
   const [email, setEmail] = useState(initialFormEmail ?? "");
   const [status, setStatus] = useState<Status>(initialFormEmail ? "checking" : "idle");
   const [verifiedEmail, setVerifiedEmail] = useState<string | undefined>(
@@ -54,7 +55,7 @@ export function FormEmailWidget({ initialFormEmail, onMutated }: FormEmailWidget
     }
     setStatus("sending");
     setErrorMsg(undefined);
-    const res = await initiateFormEmail(email.trim());
+    const res = await initiateFormEmail(email.trim(), repoSlug);
     if (!res.ok) {
       setStatus("error");
       setErrorMsg(res.error ?? "Something went wrong.");
@@ -62,7 +63,7 @@ export function FormEmailWidget({ initialFormEmail, onMutated }: FormEmailWidget
     }
     setVerifiedEmail(res.email);
     if (res.alreadyVerified) {
-      await confirmFormEmail(email.trim());
+      await confirmFormEmail(email.trim(), repoSlug);
       onMutated();
       setStatus("verified");
       return;
@@ -75,11 +76,11 @@ export function FormEmailWidget({ initialFormEmail, onMutated }: FormEmailWidget
   function startPolling(target: string) {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
-      const check = await checkFormEmail(target);
+      const check = await checkFormEmail(target, repoSlug);
       if (check.verified) {
         clearInterval(pollRef.current!);
         pollRef.current = null;
-        await confirmFormEmail(target);
+        await confirmFormEmail(target, repoSlug);
         setStatus("verified");
       }
     }, 5000);
@@ -88,7 +89,7 @@ export function FormEmailWidget({ initialFormEmail, onMutated }: FormEmailWidget
   async function handleRemove() {
     if (!verifiedEmail) return;
     setStatus("removing");
-    const res = await removeFormEmail(verifiedEmail);
+    const res = await removeFormEmail(verifiedEmail, repoSlug);
     if (!res.ok) {
       setStatus("verified");
       setErrorMsg(res.error ?? "Failed to remove email.");

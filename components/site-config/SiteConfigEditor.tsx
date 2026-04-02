@@ -240,6 +240,7 @@ export function SiteConfigEditor() {
                     control={form.control}
                     initialFormEmail={initialFormEmail}
                     onFormEmailMutated={fetchConfig}
+                    repoSlug={config?.repo}
                   />
                 </TabsContent>
                 <TabsContent value="service-times" className="mt-6">

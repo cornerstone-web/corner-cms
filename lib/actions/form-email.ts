@@ -11,10 +11,22 @@ import {
 } from "./setup-steps";
 import { updateApostleForChurch, clearApostleEmail } from "./setup";
 
-async function getChurchContext() {
+async function getChurchContext(repoSlug?: string) {
   const { user } = await getAuth();
-  if (!user?.churchAssignment) throw new Error("Not authenticated.");
-  const { churchId } = user.churchAssignment;
+  if (!user) throw new Error("Not authenticated.");
+
+  if (user.isSuperAdmin && repoSlug) {
+    // Super admins don't have a churchAssignment — look up church by repo slug
+    const church = await db.query.churchesTable.findFirst({
+      where: eq(churchesTable.slug, repoSlug),
+      columns: { id: true, slug: true, cfPagesUrl: true, displayName: true },
+    });
+    if (!church) throw new Error("Church not found.");
+    return { churchId: church.id, slug: church.slug, cfPagesUrl: church.cfPagesUrl, displayName: church.displayName, repoName: church.slug };
+  }
+
+  if (!user.churchAssignment) throw new Error("Not authenticated.");
+  const churchId = user.churchAssignment.churchId;
   const church = await db.query.churchesTable.findFirst({
     where: eq(churchesTable.id, churchId),
     columns: { slug: true, cfPagesUrl: true, displayName: true },
@@ -24,18 +36,18 @@ async function getChurchContext() {
   return { churchId, slug: church.slug, cfPagesUrl: church.cfPagesUrl, displayName: church.displayName, repoName: church.slug };
 }
 
-export async function initiateFormEmail(email: string) {
-  const { churchId, slug } = await getChurchContext();
+export async function initiateFormEmail(email: string, repoSlug?: string) {
+  const { churchId, slug } = await getChurchContext(repoSlug);
   return initiateContactFormVerification(churchId, slug, email);
 }
 
-export async function checkFormEmail(email: string) {
-  const { churchId, slug } = await getChurchContext();
+export async function checkFormEmail(email: string, repoSlug?: string) {
+  const { churchId, slug } = await getChurchContext(repoSlug);
   return checkContactFormVerification(churchId, slug, email);
 }
 
-export async function removeFormEmail(email: string) {
-  const { churchId, slug, repoName } = await getChurchContext();
+export async function removeFormEmail(email: string, repoSlug?: string) {
+  const { churchId, slug, repoName } = await getChurchContext(repoSlug);
   const result = await removeContactFormEmail(churchId, slug, email);
   if (result.ok) {
     await clearApostleEmail(repoName, email);
@@ -47,8 +59,8 @@ export async function removeFormEmail(email: string) {
  * Called from the settings widget when a new email is confirmed verified.
  * Updates corner-apostle registry.json and wrangler.jsonc with the new address.
  */
-export async function confirmFormEmail(email: string) {
-  const { repoName, displayName, cfPagesUrl } = await getChurchContext();
+export async function confirmFormEmail(email: string, repoSlug?: string) {
+  const { repoName, displayName, cfPagesUrl } = await getChurchContext(repoSlug);
   if (!cfPagesUrl) return { ok: false, error: "Site not yet launched." };
   try {
     await updateApostleForChurch(repoName, displayName, cfPagesUrl, email);
