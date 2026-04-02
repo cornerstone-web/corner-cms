@@ -27,6 +27,7 @@ export async function updateApostleForChurch(
   displayName: string,
   cfPagesUrl: string,
   email: string,
+  customDomain?: string,
 ): Promise<void> {
   const apostleRepo = process.env.CORNER_APOSTLE_REPO;
   if (!apostleRepo) return;
@@ -37,7 +38,8 @@ export async function updateApostleForChurch(
   const registry = JSON.parse(registryRaw) as Record<string, {
     email: string; name: string; allowedOrigins: string[];
   }>;
-  registry[repoName] = { email, name: displayName, allowedOrigins: [cfPagesUrl] };
+  const allowedOrigins = [cfPagesUrl, ...(customDomain ? [customDomain] : [])];
+  registry[repoName] = { email, name: displayName, allowedOrigins };
   await commitFile(
     apostleRepo,
     "src/registry.json",

@@ -19,21 +19,21 @@ async function getChurchContext(repoSlug?: string) {
     // Super admins don't have a churchAssignment — look up church by repo slug
     const church = await db.query.churchesTable.findFirst({
       where: eq(churchesTable.slug, repoSlug),
-      columns: { id: true, slug: true, cfPagesUrl: true, displayName: true },
+      columns: { id: true, slug: true, cfPagesUrl: true, customDomain: true, displayName: true },
     });
     if (!church) throw new Error("Church not found.");
-    return { churchId: church.id, slug: church.slug, cfPagesUrl: church.cfPagesUrl, displayName: church.displayName, repoName: church.slug };
+    return { churchId: church.id, slug: church.slug, cfPagesUrl: church.cfPagesUrl, customDomain: church.customDomain, displayName: church.displayName, repoName: church.slug };
   }
 
   if (!user.churchAssignment) throw new Error("Not authenticated.");
   const churchId = user.churchAssignment.churchId;
   const church = await db.query.churchesTable.findFirst({
     where: eq(churchesTable.id, churchId),
-    columns: { slug: true, cfPagesUrl: true, displayName: true },
+    columns: { slug: true, cfPagesUrl: true, customDomain: true, displayName: true },
   });
   if (!church) throw new Error("Church not found.");
   // repoName uses slug (matches the key used in corner-apostle's registry.json)
-  return { churchId, slug: church.slug, cfPagesUrl: church.cfPagesUrl, displayName: church.displayName, repoName: church.slug };
+  return { churchId, slug: church.slug, cfPagesUrl: church.cfPagesUrl, customDomain: church.customDomain, displayName: church.displayName, repoName: church.slug };
 }
 
 export async function initiateFormEmail(email: string, repoSlug?: string) {
@@ -60,10 +60,10 @@ export async function removeFormEmail(email: string, repoSlug?: string) {
  * Updates corner-apostle registry.json and wrangler.jsonc with the new address.
  */
 export async function confirmFormEmail(email: string, repoSlug?: string) {
-  const { repoName, displayName, cfPagesUrl } = await getChurchContext(repoSlug);
+  const { repoName, displayName, cfPagesUrl, customDomain } = await getChurchContext(repoSlug);
   if (!cfPagesUrl) return { ok: false, error: "Site not yet launched." };
   try {
-    await updateApostleForChurch(repoName, displayName, cfPagesUrl, email);
+    await updateApostleForChurch(repoName, displayName, cfPagesUrl, email, customDomain ?? undefined);
     return { ok: true };
   } catch (err) {
     console.error("confirmFormEmail: apostle update failed:", err);
