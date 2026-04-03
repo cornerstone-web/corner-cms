@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, forwardRef, useImperativeHandle } from "react";
 import { ChevronLeft, ChevronRight, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfig } from "@/contexts/config-context";
@@ -19,6 +19,11 @@ interface CollectionDependency {
   limit?: number | string;
 }
 
+export interface BlockPreviewHandle {
+  reload: () => void;
+  openNewTab: () => void;
+}
+
 interface BlockPreviewProps {
   blockType?: string;
   blockData?: Record<string, unknown>;
@@ -30,6 +35,9 @@ interface BlockPreviewProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   entryContext?: { collection: string; slug: string };
+  // Full-panel mode: renders just the iframe filling available height
+  fullPanel?: boolean;
+  onLoadedChange?: (loaded: boolean) => void;
 }
 
 // Transform collection API response to format expected by preview blocks
@@ -51,22 +59,27 @@ function transformCollectionData(
     }));
 }
 
-export function BlockPreview({
-  blockType,
-  blockData,
-  previewBaseUrl,
-  currentIndex = 0,
-  totalBlocks = 1,
-  onIndexChange,
-  onBlockSelect,
-  isCollapsed,
-  onToggleCollapse,
-  entryContext,
-}: BlockPreviewProps) {
+const BlockPreviewInner = (
+  {
+    blockType,
+    blockData,
+    previewBaseUrl,
+    currentIndex = 0,
+    totalBlocks = 1,
+    onIndexChange,
+    onBlockSelect,
+    isCollapsed,
+    onToggleCollapse,
+    entryContext,
+    fullPanel = false,
+    onLoadedChange,
+  }: BlockPreviewProps,
+  ref: React.Ref<BlockPreviewHandle>
+) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [hasEverOpened, setHasEverOpened] = useState(false);
+  const [hasEverOpened, setHasEverOpened] = useState(fullPanel); // full-panel always renders
   const [key, setKey] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [collectionData, setCollectionData] = useState<
@@ -75,6 +88,11 @@ export function BlockPreview({
   const [collectionsLoading, setCollectionsLoading] = useState(false);
 
   const { config } = useConfig();
+
+  // Notify parent when loaded state changes (used by parent toolbar)
+  useEffect(() => {
+    onLoadedChange?.(isLoaded);
+  }, [isLoaded, onLoadedChange]);
 
   // For portal rendering
   useEffect(() => {
@@ -255,7 +273,7 @@ export function BlockPreview({
   };
 
   // Reload iframe with fresh data
-  const handleReload = () => {
+  const handleReload = useCallback(() => {
     initialDataRef.current = transformedData;
     setIsLoaded(false);
     setKey((k) => k + 1);
@@ -263,15 +281,21 @@ export function BlockPreview({
     if (blockCollections.length > 0) {
       fetchCollections();
     }
-  };
+  }, [transformedData, blockCollections, fetchCollections]);
 
   // Open preview in new tab with current data
-  const handleOpenNewTab = () => {
+  const handleOpenNewTab = useCallback(() => {
     const currentDataParam = encodeURIComponent(
       JSON.stringify(transformedData),
     );
     window.open(`${basePreviewUrl}?data=${currentDataParam}`, "_blank");
-  };
+  }, [transformedData, basePreviewUrl]);
+
+  // Expose controls to parent via ref (used by full-panel toolbar in entry-form)
+  useImperativeHandle(ref, () => ({
+    reload: handleReload,
+    openNewTab: handleOpenNewTab,
+  }), [handleReload, handleOpenNewTab]);
 
   // Navigate to previous block
   const handlePrevBlock = () => {
@@ -366,6 +390,15 @@ export function BlockPreview({
     />
   ) : null;
 
+  // Full-panel mode: fills available height, no toolbar/collapsible (toolbar is in entry-form header)
+  if (fullPanel) {
+    return (
+      <div className="w-full h-full">
+        {hasBlockData ? iframeContent : emptyStateContent}
+      </div>
+    );
+  }
+
   // Expanded view rendered in a portal for proper z-index - DESKTOP SIZE
   if (isExpanded && mounted && hasEverOpened && hasBlockData) {
     return (
@@ -392,4 +425,6 @@ export function BlockPreview({
       <PreviewFrame>{hasBlockData ? iframeContent : emptyStateContent}</PreviewFrame>
     </CollapsiblePreviewSection>
   );
-}
+};
+
+export const BlockPreview = forwardRef<BlockPreviewHandle, BlockPreviewProps>(BlockPreviewInner);

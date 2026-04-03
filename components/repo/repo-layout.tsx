@@ -15,8 +15,19 @@ import { FormEmailBar } from "@/components/form-email-bar";
 
 export function RepoLayout({ children }: { children: React.ReactNode }) {
   const [isMenuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("sidebar-collapsed") === "true";
+    return false;
+  });
   const { config } = useConfig();
   const { owner, repo } = useRepo();
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((v) => {
+      localStorage.setItem("sidebar-collapsed", String(!v));
+      return !v;
+    });
+  };
 
   const handleMenuClose = () => setMenuOpen(false);
 
@@ -44,8 +55,8 @@ export function RepoLayout({ children }: { children: React.ReactNode }) {
     <SiteFeaturesProvider>
       <>
         <div className="flex h-screen w-full">
-          <aside className="hidden xl:flex flex-col h-screen w-72 border-r gap-y-2">
-            <RepoSidebar />
+          <aside className={cn("hidden xl:flex flex-col h-screen border-r gap-y-2 transition-all duration-200 overflow-hidden", sidebarCollapsed ? "w-12" : "w-72")}>
+            <RepoSidebar collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebar} />
           </aside>
           <main className="flex flex-col flex-1 relative h-screen overflow-hidden">
             <div className="h-14 xl:h-0"></div>

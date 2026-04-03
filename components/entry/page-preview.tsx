@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, forwardRef, useImperativeHandle } from "react";
 import { useConfig } from "@/contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
 import {
@@ -17,6 +17,11 @@ interface CollectionDependency {
   limit?: number | string;
 }
 
+export interface PagePreviewHandle {
+  reload: () => void;
+  openNewTab: () => void;
+}
+
 interface PagePreviewProps {
   blocks: Array<Record<string, unknown>>;
   blockKey: string;
@@ -24,6 +29,9 @@ interface PagePreviewProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   entryContext?: { collection: string; slug: string };
+  // Full-panel mode: renders just the iframe filling available height
+  fullPanel?: boolean;
+  onLoadedChange?: (loaded: boolean) => void;
 }
 
 // Transform collection API response to format expected by preview blocks
@@ -45,18 +53,23 @@ function transformCollectionData(
     }));
 }
 
-export function PagePreview({
-  blocks,
-  blockKey,
-  previewBaseUrl,
-  isCollapsed,
-  onToggleCollapse,
-  entryContext,
-}: PagePreviewProps) {
+const PagePreviewInner = (
+  {
+    blocks,
+    blockKey,
+    previewBaseUrl,
+    isCollapsed,
+    onToggleCollapse,
+    entryContext,
+    fullPanel = false,
+    onLoadedChange,
+  }: PagePreviewProps,
+  ref: React.Ref<PagePreviewHandle>
+) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [hasEverOpened, setHasEverOpened] = useState(false);
+  const [hasEverOpened, setHasEverOpened] = useState(fullPanel); // full-panel always renders
   const [key, setKey] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [collectionData, setCollectionData] = useState<
@@ -65,6 +78,11 @@ export function PagePreview({
   const [collectionsLoading, setCollectionsLoading] = useState(false);
 
   const { config } = useConfig();
+
+  // Notify parent when loaded state changes (used by parent toolbar)
+  useEffect(() => {
+    onLoadedChange?.(isLoaded);
+  }, [isLoaded, onLoadedChange]);
 
   // For portal rendering
   useEffect(() => {
@@ -240,7 +258,7 @@ export function PagePreview({
   };
 
   // Reload iframe with fresh data
-  const handleReload = () => {
+  const handleReload = useCallback(() => {
     initialDataRef.current = { blocks: transformedBlocks, blockKey };
     setIsLoaded(false);
     setKey((k) => k + 1);
@@ -248,15 +266,21 @@ export function PagePreview({
     if (allCollections.length > 0) {
       fetchCollections();
     }
-  };
+  }, [transformedBlocks, blockKey, allCollections, fetchCollections]);
 
   // Open preview in new tab with current data
-  const handleOpenNewTab = () => {
+  const handleOpenNewTab = useCallback(() => {
     const currentDataParam = encodeURIComponent(
       JSON.stringify({ blocks: transformedBlocks, blockKey }),
     );
     window.open(`${basePreviewUrl}?data=${currentDataParam}`, "_blank");
-  };
+  }, [transformedBlocks, blockKey, basePreviewUrl]);
+
+  // Expose controls to parent via ref (used by full-panel toolbar in entry-form)
+  useImperativeHandle(ref, () => ({
+    reload: handleReload,
+    openNewTab: handleOpenNewTab,
+  }), [handleReload, handleOpenNewTab]);
 
   // Handle collapse/expand toggle
   const handleToggleCollapse = () => {
@@ -300,6 +324,15 @@ export function PagePreview({
     />
   ) : null;
 
+  // Full-panel mode: fills available height, no toolbar/collapsible (toolbar is in entry-form header)
+  if (fullPanel) {
+    return (
+      <div className="w-full h-full">
+        {iframeContent}
+      </div>
+    );
+  }
+
   // Expanded view rendered in a portal for proper z-index
   if (isExpanded && mounted && hasEverOpened) {
     return (
@@ -326,4 +359,6 @@ export function PagePreview({
       <PreviewFrame>{iframeContent}</PreviewFrame>
     </CollapsiblePreviewSection>
   );
-}
+};
+
+export const PagePreview = forwardRef<PagePreviewHandle, PagePreviewProps>(PagePreviewInner);
