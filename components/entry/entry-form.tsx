@@ -1164,6 +1164,14 @@ const EntryForm = ({
   // Resizable / collapsible panels
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
   const [leftWidth, setLeftWidth] = useState(50); // percentage 20–80
   const contentAreaRef = useRef<HTMLDivElement>(null);
 
@@ -1497,7 +1505,7 @@ const EntryForm = ({
               )}
               <h1 className="font-semibold text-lg truncate">{title}</h1>
             </div>
-            <div className="flex items-center gap-2 shrink-0 ml-4">
+            <div className="hidden lg:flex items-center gap-2 shrink-0 ml-4">
               {/* History icon button */}
               {path && history && history.length > 0 && (
                 <Tooltip>
@@ -1512,23 +1520,6 @@ const EntryForm = ({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>View history</TooltipContent>
-                </Tooltip>
-              )}
-              {/* Mobile page preview — desktop has the inline preview panel instead */}
-              {mobilePreviewData && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      className="lg:hidden"
-                      onClick={() => setShowMobilePreview(true)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Page preview</TooltipContent>
                 </Tooltip>
               )}
               {/* Options (delete/rename) */}
@@ -1573,9 +1564,9 @@ const EntryForm = ({
             {/* LEFT: scrollable form */}
             <div
               style={
-                leftCollapsed
+                leftCollapsed && isDesktop
                   ? { width: 0 }
-                  : previewUrl && !rightCollapsed
+                  : isDesktop && previewUrl && !rightCollapsed
                   ? { width: `${leftWidth}%`, minWidth: 280 }
                   : { flex: "1 1 0%", minWidth: 0 }
               }
@@ -1900,6 +1891,47 @@ const EntryForm = ({
               onClose={() => setPreviewIsExpanded(false)}
             />
           )}
+
+          {/* MOBILE: fixed top-right bar */}
+          <div className="lg:hidden fixed top-0 right-0 h-14 flex items-center gap-x-2 z-10 pr-4 md:pr-6">
+            {path && history && history.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => setShowHistoryModal(true)}
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>View history</TooltipContent>
+              </Tooltip>
+            )}
+            {mobilePreviewData && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => setShowMobilePreview(true)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Page preview</TooltipContent>
+              </Tooltip>
+            )}
+            {options}
+            <Button type="submit" disabled={isSubmitting || !isDirty}>
+              Save
+              {isSubmitting && (
+                <Loader className="ml-2 h-4 w-4 animate-spin" />
+              )}
+            </Button>
+          </div>
 
           {/* Mobile full-page preview modal */}
           {showMobilePreview && mobilePreviewData && (
