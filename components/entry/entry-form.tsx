@@ -103,6 +103,7 @@ import { toast } from "sonner";
 import { interpolate } from "@/lib/schema";
 import { BlockPreview, BlockPreviewHandle } from "./block-preview";
 import { PagePreview, PagePreviewHandle } from "./page-preview";
+import { NarrowFormLayout } from "./narrow-form-layout";
 import {
   transformImagePaths,
   ExpandedPreviewModal,
@@ -1174,6 +1175,19 @@ const EntryForm = ({
   }, []);
   const [leftWidth, setLeftWidth] = useState(50); // percentage 20–80
   const contentAreaRef = useRef<HTMLDivElement>(null);
+  // Narrow layout: activates when the form panel is < 420px wide
+  // (covers both mobile viewports and a squeezed desktop panel)
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const [isNarrowForm, setIsNarrowForm] = useState(false);
+  useEffect(() => {
+    const el = leftPanelRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setIsNarrowForm(entry.contentRect.width < 420);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Block list controls for preview navigation
   const blockListControlsRef = useRef<Map<string, BlockListControls>>(
@@ -1571,32 +1585,54 @@ const EntryForm = ({
                   : { flex: "1 1 0%", minWidth: 0 }
               }
               className="overflow-y-auto shrink-0 overflow-hidden"
+              ref={leftPanelRef}
             >
               {!leftCollapsed && (
-                <div className="p-6 grid items-start gap-6">
-                  {filePath && (
-                    <div className="space-y-2 overflow-hidden">
-                      <FormLabel>Filename</FormLabel>
-                      {filePath}
-                    </div>
-                  )}
-                  {slugInfo
-                    ? (() => {
-                        const rendered = renderFields(fields).filter(Boolean);
-                        return [
-                          rendered[0],
-                          <PageSlugField
-                            key="__slug"
-                            slugInfo={slugInfo}
-                            onSlugChange={(s) => { slugRef.current = s; }}
-                            onRenameRequest={onSlugRename}
-                          />,
-                          ...rendered.slice(1),
-                        ];
-                      })()
-                    : renderFields(fields)
-                  }
-                </div>
+                isNarrowForm ? (
+                  <NarrowFormLayout
+                    fields={fields}
+                    renderFields={renderFields}
+                    isTemplateMode={isTemplateMode}
+                    filePath={filePath ? (
+                      <div className="space-y-2 overflow-hidden">
+                        <FormLabel>Filename</FormLabel>
+                        {filePath}
+                      </div>
+                    ) : undefined}
+                    pageSettings={slugInfo ? (
+                      <PageSlugField
+                        slugInfo={slugInfo}
+                        onSlugChange={(s) => { slugRef.current = s; }}
+                        onRenameRequest={onSlugRename}
+                      />
+                    ) : undefined}
+                  />
+                ) : (
+                  <div className="p-6 grid items-start gap-6">
+                    {filePath && (
+                      <div className="space-y-2 overflow-hidden">
+                        <FormLabel>Filename</FormLabel>
+                        {filePath}
+                      </div>
+                    )}
+                    {slugInfo
+                      ? (() => {
+                          const rendered = renderFields(fields).filter(Boolean);
+                          return [
+                            rendered[0],
+                            <PageSlugField
+                              key="__slug"
+                              slugInfo={slugInfo}
+                              onSlugChange={(s) => { slugRef.current = s; }}
+                              onRenameRequest={onSlugRename}
+                            />,
+                            ...rendered.slice(1),
+                          ];
+                        })()
+                      : renderFields(fields)
+                    }
+                  </div>
+                )
               )}
             </div>
 

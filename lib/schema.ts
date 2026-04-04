@@ -260,7 +260,6 @@ const generateZodSchema = (
       } else if (field.type === 'block') {
         // Block field
         if (!field.blocks || field.blocks.length === 0) {
-          console.warn(`Block field "${field.name}" has no 'blocks' defined. Allowing any object.`);
           fieldSchema = z.object({}).passthrough();
         } else {
           const discriminator = field.blockKey || "_block";
@@ -332,6 +331,9 @@ const generateZodSchema = (
         // Standard registered field type (e.g. text, number, ...)
         const fieldSchemaFn = schemas[field.type];
         fieldSchema = fieldSchemaFn(fieldForSchema);
+      } else if (field.type === "textarea") {
+        // textarea is a multi-line text input — maps to the same validation as text
+        fieldSchema = schemas["text"](fieldForSchema);
       } else {
         console.warn(`Unknown or invalid type "${field.type}" for field "${field.name}". Defaulting to text validation.`);
         fieldSchema = schemas["text"](fieldForSchema);
