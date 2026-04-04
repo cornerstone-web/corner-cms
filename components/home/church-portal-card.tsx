@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ChurchAssignment } from "@/types/user";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Building2,
   ChevronDown,
-  ExternalLink,
   Globe,
   Loader2,
   Pencil,
@@ -18,6 +17,7 @@ import {
 import type { VersionStatus } from "@/lib/actions/cornerstone-update";
 import { applyLatestVersion } from "@/lib/actions/cornerstone-update";
 import { BulletinUploadCard } from "@/components/home/bulletin-upload-card";
+import { useBuildStatus } from "@/hooks/use-build-status";
 
 export function ChurchPortalCard({
   assignment,
@@ -43,12 +43,10 @@ export function ChurchPortalCard({
       : `https://${customDomain}`
     : (assignment.cfPagesUrl ?? null);
 
-  // Poll build status when the site is active and has a CF Pages URL
-  const shouldPoll =
-    !isProvisioning && !!assignment.cfPagesUrl && !!assignment.churchId;
-  const [buildStatus, setBuildStatus] = useState<
-    "checking" | "building" | "success" | "failure"
-  >(shouldPoll ? "checking" : "success");
+  const churchId =
+    !isProvisioning && !!assignment.cfPagesUrl ? assignment.churchId : undefined;
+  const { buildStatus, triggerRebuildWatch } = useBuildStatus(churchId);
+
   const [updateState, setUpdateState] = useState<
     "idle" | "updating" | "done" | "error"
   >("idle");
@@ -60,53 +58,16 @@ export function ChurchPortalCard({
     setUpdateState("updating");
     try {
       const result = await applyLatestVersion(assignment.churchId);
-      setUpdateState(result.ok ? "done" : "error");
+      if (result.ok) {
+        setUpdateState("done");
+        triggerRebuildWatch();
+      } else {
+        setUpdateState("error");
+      }
     } catch {
       setUpdateState("error");
     }
   }
-
-  useEffect(() => {
-    if (!shouldPoll) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    async function poll() {
-      if (cancelled) return;
-      try {
-        const res = await fetch(
-          `/api/setup/build-status?churchId=${assignment.churchId}`,
-        );
-        if (cancelled) return;
-        if (!res.ok) {
-          if (!cancelled) timer = setTimeout(poll, 10000);
-          return;
-        }
-        const data = await res.json();
-        if (cancelled) return;
-        if (data.status === "success") {
-          setBuildStatus("success");
-          return;
-        }
-        if (data.status === "failure") {
-          setBuildStatus("failure");
-          return;
-        }
-        setBuildStatus("building");
-      } catch {
-        if (cancelled) return;
-        if (!cancelled) timer = setTimeout(poll, 10000);
-        return;
-      }
-      if (!cancelled) timer = setTimeout(poll, 10000);
-    }
-
-    poll();
-    return () => {
-      cancelled = true;
-      if (timer !== undefined) clearTimeout(timer);
-    };
-  }, [shouldPoll, assignment.churchId]);
 
   const isReady = buildStatus === "success" && !isProvisioning;
   const isBuilding = buildStatus === "building" || buildStatus === "checking";

@@ -116,6 +116,7 @@ export function SiteConfigEditor() {
       setSha(result.data.sha);
       form.reset(values);
       toast.success("Site config saved successfully.");
+      window.dispatchEvent(new CustomEvent("cornerstone:filesaved"));
       return true;
     } catch (err: any) {
       toast.error(err.message);

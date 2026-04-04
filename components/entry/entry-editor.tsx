@@ -298,6 +298,7 @@ export function EntryEditor({
       loading: "Saving your file",
       success: (response: any) => {
         if (onSave) onSave(response.data);
+        window.dispatchEvent(new CustomEvent("cornerstone:filesaved"));
         return response.message;
       },
       error: (error: any) => error.message,
@@ -307,6 +308,7 @@ export function EntryEditor({
       await savePromise;
     } catch (error: any) {
       console.error(error.message);
+      throw error; // propagate so entry-form knows not to reset dirty state
     }
   };
 

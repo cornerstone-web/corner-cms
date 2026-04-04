@@ -1379,6 +1379,9 @@ const EntryForm = ({
     setIsSubmitting(true);
     try {
       await onSubmit(values, slugRef.current);
+      form.reset(values); // clear dirty state after successful save
+    } catch {
+      // save failed — keep dirty state so the user can retry
     } finally {
       setIsSubmitting(false);
     }

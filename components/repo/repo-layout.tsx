@@ -12,6 +12,7 @@ import { trackVisit } from "@/lib/tracker";
 import { BrokenLinksBar } from "@/components/broken-links-bar";
 import { BrokenOrUnusedUploadsBar } from "@/components/uploads-health-bar";
 import { FormEmailBar } from "@/components/form-email-bar";
+import { BuildStatusBar } from "@/components/build-status-bar";
 
 export function RepoLayout({ children }: { children: React.ReactNode }) {
   const [isMenuOpen, setMenuOpen] = useState(false);
@@ -64,6 +65,7 @@ export function RepoLayout({ children }: { children: React.ReactNode }) {
           <main className="flex flex-col flex-1 relative h-screen overflow-hidden">
             <div className="h-14 xl:h-0"></div>
             <FormEmailBar />
+            <BuildStatusBar />
             <BrokenOrUnusedUploadsBar />
             <BrokenLinksBar />
             <div className="flex-1 overflow-auto scrollbar p-4 md:p-6">
