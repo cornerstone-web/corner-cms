@@ -327,16 +327,17 @@ const generateZodSchema = (
             );
           }
         }
-      } else if (field.type && schemas[field.type]) {
-        // Standard registered field type (e.g. text, number, ...)
-        const fieldSchemaFn = schemas[field.type];
-        fieldSchema = fieldSchemaFn(fieldForSchema);
-      } else if (field.type === "textarea") {
-        // textarea is a multi-line text input — maps to the same validation as text
-        fieldSchema = schemas["text"](fieldForSchema);
       } else {
-        console.warn(`Unknown or invalid type "${field.type}" for field "${field.name}". Defaulting to text validation.`);
-        fieldSchema = schemas["text"](fieldForSchema);
+        // Standard registered field type (e.g. text, number, ...)
+        // textarea is a multi-line text input — maps to the same validation as text
+        const resolvedType = field.type === "textarea" ? "text" : field.type;
+        const fieldSchemaFn = schemas[resolvedType];
+        if (fieldSchemaFn) {
+          fieldSchema = fieldSchemaFn(fieldForSchema);
+        } else {
+          console.warn(`Unknown or invalid type "${field.type}" for field "${field.name}". Defaulting to text validation.`);
+          fieldSchema = schemas["text"](fieldForSchema);
+        }
       }
 
       if (field.list) {

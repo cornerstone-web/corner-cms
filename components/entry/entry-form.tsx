@@ -1174,9 +1174,21 @@ const EntryForm = ({
     return () => mq.removeEventListener("change", handler);
   }, []);
   const [leftWidth, setLeftWidth] = useState(50); // percentage 20–80
+  useEffect(() => {
+    const stored = localStorage.getItem("preview-split-width");
+    if (stored !== null) setLeftWidth(Number(stored));
+  }, []);
   const contentAreaRef = useRef<HTMLDivElement>(null);
-  // Narrow layout: activates when the form panel is < 420px wide
-  // (covers both mobile viewports and a squeezed desktop panel)
+  // Narrow layout: activates on mobile viewports (< 640px) OR when the form
+  // panel is physically squeezed below 420px on desktop (draggable divider).
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    setIsMobileViewport(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobileViewport(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const [isNarrowForm, setIsNarrowForm] = useState(false);
   useEffect(() => {
@@ -1472,6 +1484,10 @@ const EntryForm = ({
     const handleMouseUp = () => {
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      setLeftWidth((w) => {
+        localStorage.setItem("preview-split-width", String(w));
+        return w;
+      });
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
@@ -1588,7 +1604,7 @@ const EntryForm = ({
               ref={leftPanelRef}
             >
               {!leftCollapsed && (
-                isNarrowForm ? (
+                (isNarrowForm || isMobileViewport) ? (
                   <NarrowFormLayout
                     fields={fields}
                     renderFields={renderFields}

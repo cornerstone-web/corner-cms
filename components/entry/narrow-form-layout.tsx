@@ -24,8 +24,19 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Field } from "@/types/field";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, GripVertical, Plus, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Plus, Settings2, Trash2 } from "lucide-react";
 import { initializeState } from "@/lib/schema";
 import { BlockPickerModal } from "./block-picker-modal";
 import { useConfig } from "@/contexts/config-context";
@@ -60,7 +71,7 @@ function formatBlockType(type: string): string {
 
 // ─── SortableBlockRow ─────────────────────────────────────────────────────────
 
-function SortableBlockRow({ id, label }: { id: string; label: string }) {
+function SortableBlockRow({ id, label, onRemove }: { id: string; label: string; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
     <div
@@ -75,6 +86,25 @@ function SortableBlockRow({ id, label }: { id: string; label: string }) {
         <GripVertical className="h-4 w-4" />
       </button>
       <span className="text-sm capitalize flex-1">{label}</span>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <button type="button" className="p-1 text-muted-foreground hover:text-destructive transition-colors">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove block?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the <span className="font-medium capitalize">{label}</span> block. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onRemove}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -226,8 +256,7 @@ export function NarrowFormLayout({
   // ── Form values ───────────────────────────────────────────────────────────
   const blocksValue: any[] = watch(blockFieldName) ?? [];
 
-  const { fields: arrayFields, move, append } = useFieldArray({ name: blockFieldName });
-  const [, forceUpdate] = useState({});
+  const { fields: arrayFields, move, append, remove } = useFieldArray({ name: blockFieldName });
 
   // ── DnD ──────────────────────────────────────────────────────────────────
   const sensors = useSensors(
@@ -244,7 +273,6 @@ export function NarrowFormLayout({
     move(oldIndex, newIndex);
     setValue(blockFieldName, arrayMove(blocksValue, oldIndex, newIndex));
     if (selectedIndex === oldIndex) setSelectedIndex(newIndex);
-    forceUpdate({});
   };
 
   // ── Available blocks (respects feature flags) ─────────────────────────────
@@ -414,6 +442,10 @@ export function NarrowFormLayout({
                         key={arrayField.id}
                         id={arrayField.id}
                         label={formatBlockType(String(typeName))}
+                        onRemove={() => {
+                          remove(index);
+                          if (selectedIndex >= index) setSelectedIndex((i) => Math.max(0, i - 1));
+                        }}
                       />
                     );
                   })}
@@ -421,12 +453,13 @@ export function NarrowFormLayout({
               </DndContext>
             ) : (
               <div className="divide-y">
-                {blocksValue.map((block, index) => {
+                {arrayFields.map((arrayField, index) => {
+                  const block = blocksValue[index];
                   const typeName = block?.[blockKey] ?? "Block";
                   const summary = getBlockSummary(block, blockKey);
                   return (
                     <button
-                      key={index}
+                      key={arrayField.id}
                       type="button"
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
