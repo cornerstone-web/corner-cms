@@ -15,10 +15,13 @@ import { FormEmailBar } from "@/components/form-email-bar";
 
 export function RepoLayout({ children }: { children: React.ReactNode }) {
   const [isMenuOpen, setMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window !== "undefined") return localStorage.getItem("sidebar-collapsed") === "true";
-    return false;
-  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Read persisted preference after mount to avoid SSR/client hydration mismatch
+  useEffect(() => {
+    const stored = localStorage.getItem("sidebar-collapsed");
+    if (stored !== null) setSidebarCollapsed(stored === "true");
+  }, []);
   const { config } = useConfig();
   const { owner, repo } = useRepo();
 

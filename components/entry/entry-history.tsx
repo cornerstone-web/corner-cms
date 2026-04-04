@@ -39,7 +39,7 @@ export function EntryHistoryModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm flex flex-col max-h-[80vh]">
+      <DialogContent className="max-w-sm flex flex-col max-h-[80vh] rounded-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>Page History</DialogTitle>
         </DialogHeader>

@@ -30,7 +30,7 @@ import { Field } from "@/types/field";
 import { useConfig } from "@/contexts/config-context";
 import { useSiteFeatures } from "@/hooks/use-site-features";
 import { BlockPickerModal } from "./block-picker-modal";
-import { EntryHistoryModal, EntryHistoryDropdown } from "./entry-history";
+import { EntryHistoryModal } from "./entry-history";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -1156,6 +1156,9 @@ const EntryForm = ({
   const [previewIsLoaded, setPreviewIsLoaded] = useState(false);
   const [previewIsExpanded, setPreviewIsExpanded] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  // Both the inline panel and ExpandedPreviewModal share these refs.
+  // Invariant: only one mounts at a time — the inline panel renders a placeholder div when expanded,
+  // so the ref always points to the active instance.
   const blockPreviewRef = useRef<BlockPreviewHandle>(null);
   const pagePreviewRef = useRef<PagePreviewHandle>(null);
   // Resizable / collapsible panels
@@ -1501,7 +1504,7 @@ const EntryForm = ({
                   <TooltipTrigger asChild>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="icon-sm"
                       onClick={() => setShowHistoryModal(true)}
                     >
@@ -1511,8 +1514,25 @@ const EntryForm = ({
                   <TooltipContent>View history</TooltipContent>
                 </Tooltip>
               )}
+              {/* Mobile page preview — desktop has the inline preview panel instead */}
+              {mobilePreviewData && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      className="lg:hidden"
+                      onClick={() => setShowMobilePreview(true)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Page preview</TooltipContent>
+                </Tooltip>
+              )}
               {/* Options (delete/rename) */}
-              {options ? options : null}
+              {options}
               {/* Save */}
               <Button
                 type="submit"
@@ -1806,40 +1826,14 @@ const EntryForm = ({
                     )}
                   </div>
                 </div>
-                </>}
+                </>
+                }
               </div>
             )}
           </div>
 
           {/* MOBILE: fixed top-right bar */}
 
-          <div className="lg:hidden fixed top-0 right-0 h-14 flex items-center gap-x-2 z-10 pr-4 md:pr-6">
-            {path && history && (
-              <EntryHistoryDropdown history={history} path={path} />
-            )}
-            {mobilePreviewData && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowMobilePreview(true)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Page preview</TooltipContent>
-              </Tooltip>
-            )}
-            <Button type="submit" disabled={isSubmitting}>
-              Save
-              {isSubmitting && (
-                <Loader className="ml-2 h-4 w-4 animate-spin" />
-              )}
-            </Button>
-            {options ? options : null}
-          </div>
 
           {/* Expanded preview modal */}
           {previewIsExpanded && (
