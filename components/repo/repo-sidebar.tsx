@@ -7,18 +7,45 @@ import { User } from "@/components/user";
 import { RepoDropdown } from "@/components/repo/repo-dropdown";
 import { RepoNav } from "@/components/repo/repo-nav";
 import { About } from "@/components/about";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { checkNavigationGuard } from "@/lib/navigation-guard";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const RepoSidebar = ({
-  onClick
+  onClick,
+  collapsed = false,
+  onToggleCollapse,
 }: {
-  onClick?: () => void
+  onClick?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) => {
   const { user } = useUser();
   const repo = useRepo();
 
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center py-3">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={buttonVariants({ variant: "ghost", size: "icon-xs" })}
+              onClick={onToggleCollapse}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Expand sidebar</TooltipContent>
+        </Tooltip>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -34,6 +61,18 @@ const RepoSidebar = ({
           <ArrowLeft className="h-4 w-4 mr-1.5" />
           All projects
         </Link>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`${buttonVariants({ variant: "ghost", size: "icon-xs" })} ml-auto`}
+              onClick={onToggleCollapse}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Collapse sidebar</TooltipContent>
+        </Tooltip>
       </header>
       <div className="px-3 pt-1">
         <RepoDropdown onClick={onClick} />

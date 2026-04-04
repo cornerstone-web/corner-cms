@@ -260,7 +260,6 @@ const generateZodSchema = (
       } else if (field.type === 'block') {
         // Block field
         if (!field.blocks || field.blocks.length === 0) {
-          console.warn(`Block field "${field.name}" has no 'blocks' defined. Allowing any object.`);
           fieldSchema = z.object({}).passthrough();
         } else {
           const discriminator = field.blockKey || "_block";
@@ -328,13 +327,17 @@ const generateZodSchema = (
             );
           }
         }
-      } else if (field.type && schemas[field.type]) {
-        // Standard registered field type (e.g. text, number, ...)
-        const fieldSchemaFn = schemas[field.type];
-        fieldSchema = fieldSchemaFn(fieldForSchema);
       } else {
-        console.warn(`Unknown or invalid type "${field.type}" for field "${field.name}". Defaulting to text validation.`);
-        fieldSchema = schemas["text"](fieldForSchema);
+        // Standard registered field type (e.g. text, number, ...)
+        // textarea is a multi-line text input — maps to the same validation as text
+        const resolvedType = field.type === "textarea" ? "text" : field.type;
+        const fieldSchemaFn = schemas[resolvedType];
+        if (fieldSchemaFn) {
+          fieldSchema = fieldSchemaFn(fieldForSchema);
+        } else {
+          console.warn(`Unknown or invalid type "${field.type}" for field "${field.name}". Defaulting to text validation.`);
+          fieldSchema = schemas["text"](fieldForSchema);
+        }
       }
 
       if (field.list) {

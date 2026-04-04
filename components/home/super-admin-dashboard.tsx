@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Building2, ExternalLink, LayoutDashboard, Pencil, Plus, Settings } from "lucide-react";
+import { Building2, ChevronDown, ChevronUp, ChevronsUpDown, ExternalLink, LayoutDashboard, Pencil, Plus, Settings } from "lucide-react";
 
 type ChurchRow = {
   id: string;
@@ -44,7 +45,49 @@ function formatRelativeDate(date: Date): string {
   return `${Math.floor(months / 12)}y ago`;
 }
 
+type SortKey = "name" | "status" | "updatedAt";
+type SortDir = "asc" | "desc";
+
+const STATUS_ORDER: Record<ChurchRow["status"], number> = {
+  active: 0,
+  provisioning: 1,
+  suspended: 2,
+};
+
+function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
+  if (col !== sortKey) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 opacity-40" />;
+  return sortDir === "asc"
+    ? <ChevronUp className="h-3.5 w-3.5 ml-1" />
+    : <ChevronDown className="h-3.5 w-3.5 ml-1" />;
+}
+
 export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const sorted = useMemo(() => {
+    return [...churches].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") {
+        cmp = a.displayName.localeCompare(b.displayName);
+      } else if (sortKey === "status") {
+        cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      } else if (sortKey === "updatedAt") {
+        cmp = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [churches, sortKey, sortDir]);
+
   return (
     <div className="max-w-screen-lg mx-auto p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -84,15 +127,42 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Congregation</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <button
+                    type="button"
+                    className="flex items-center hover:text-foreground transition-colors"
+                    onClick={() => toggleSort("name")}
+                  >
+                    Congregation
+                    <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    type="button"
+                    className="flex items-center hover:text-foreground transition-colors"
+                    onClick={() => toggleSort("status")}
+                  >
+                    Status
+                    <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} />
+                  </button>
+                </TableHead>
                 <TableHead className="hidden sm:table-cell">Live Site</TableHead>
-                <TableHead className="hidden md:table-cell">Last Updated</TableHead>
+                <TableHead className="hidden md:table-cell">
+                  <button
+                    type="button"
+                    className="flex items-center hover:text-foreground transition-colors"
+                    onClick={() => toggleSort("updatedAt")}
+                  >
+                    Last Updated
+                    <SortIcon col="updatedAt" sortKey={sortKey} sortDir={sortDir} />
+                  </button>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {churches.map((church) => {
+              {sorted.map((church) => {
                 const [owner, repo] = church.githubRepoName.split("/");
                 return (
                   <TableRow key={church.id}>

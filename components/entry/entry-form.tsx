@@ -30,7 +30,7 @@ import { Field } from "@/types/field";
 import { useConfig } from "@/contexts/config-context";
 import { useSiteFeatures } from "@/hooks/use-site-features";
 import { BlockPickerModal } from "./block-picker-modal";
-import { EntryHistoryBlock, EntryHistoryDropdown } from "./entry-history";
+import { EntryHistoryModal } from "./entry-history";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -88,20 +88,22 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   ChevronLeft,
+  ChevronRight,
   Copy,
+  Dot,
+  Ellipsis,
+  Eye,
   GripVertical,
+  History,
   Loader,
   Plus,
   Trash2,
-  Ellipsis,
-  ChevronRight,
-  Dot,
-  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { interpolate } from "@/lib/schema";
-import { BlockPreview } from "./block-preview";
-import { PagePreview } from "./page-preview";
+import { BlockPreview, BlockPreviewHandle } from "./block-preview";
+import { PagePreview, PagePreviewHandle } from "./page-preview";
+import { NarrowFormLayout } from "./narrow-form-layout";
 import {
   transformImagePaths,
   ExpandedPreviewModal,
@@ -1150,8 +1152,54 @@ const EntryForm = ({
   const [mobilePreviewLoaded, setMobilePreviewLoaded] = useState(false);
   const [mobilePreviewKey, setMobilePreviewKey] = useState(0);
   const mobilePreviewIframeRef = useRef<HTMLIFrameElement>(null);
-  // Track which preview panel is open (only one at a time)
-  const [openPreview, setOpenPreview] = useState<"block" | "page" | null>(null);
+  // Desktop preview panel state
+  const [previewMode, setPreviewMode] = useState<"page" | "block">("page");
+  const [previewIsLoaded, setPreviewIsLoaded] = useState(false);
+  const [previewIsExpanded, setPreviewIsExpanded] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  // Both the inline panel and ExpandedPreviewModal share these refs.
+  // Invariant: only one mounts at a time — the inline panel renders a placeholder div when expanded,
+  // so the ref always points to the active instance.
+  const blockPreviewRef = useRef<BlockPreviewHandle>(null);
+  const pagePreviewRef = useRef<PagePreviewHandle>(null);
+  // Resizable / collapsible panels
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  const [leftWidth, setLeftWidth] = useState(50); // percentage 20–80
+  useEffect(() => {
+    const stored = localStorage.getItem("preview-split-width");
+    if (stored !== null) setLeftWidth(Number(stored));
+  }, []);
+  const contentAreaRef = useRef<HTMLDivElement>(null);
+  // Narrow layout: activates on mobile viewports (< 640px) OR when the form
+  // panel is physically squeezed below 420px on desktop (draggable divider).
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    setIsMobileViewport(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobileViewport(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const [isNarrowForm, setIsNarrowForm] = useState(false);
+  useEffect(() => {
+    const el = leftPanelRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setIsNarrowForm(entry.contentRect.width < 420);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Block list controls for preview navigation
   const blockListControlsRef = useRef<Map<string, BlockListControls>>(
@@ -1420,6 +1468,33 @@ const EntryForm = ({
     }, 150);
   };
 
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!contentAreaRef.current) return;
+      const rect = contentAreaRef.current.getBoundingClientRect();
+      const MIN_PX = 280;
+      const minPct = (MIN_PX / rect.width) * 100;
+      const maxPct = 100 - minPct;
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.min(maxPct, Math.max(minPct, pct)));
+    };
+    const handleMouseUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      setLeftWidth((w) => {
+        localStorage.setItem("preview-split-width", String(w));
+        return w;
+      });
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, []);
+
   const handleCloseMobilePreview = () => {
     setShowMobilePreview(false);
     setMobilePreviewLoaded(false);
@@ -1439,182 +1514,520 @@ const EntryForm = ({
   return (
     <BlockListControlsContext.Provider value={blockListContextValue}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit, handleError)}>
-          <div className="max-w-screen-xl mx-auto flex w-full gap-x-8">
-            <div className="flex-1 w-0">
-              <header className="flex items-center mb-6">
-                {navigateBack && (
-                  <button
-                    type="button"
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "icon-xs" }),
-                      "mr-4 shrink-0",
-                    )}
-                    onClick={() => {
-                      if (!checkNavigationGuard(navigateBack)) return;
-                      router.push(navigateBack);
-                    }}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                )}
-
-                <h1 className="font-semibold text-lg md:text-2xl truncate">
-                  {title}
-                </h1>
-              </header>
-
-              <div
-                onSubmit={form.handleSubmit(handleSubmit)}
-                className="grid items-start gap-6"
-              >
-                {filePath && (
-                  <div className="space-y-2 overflow-hidden">
-                    <FormLabel>Filename</FormLabel>
-                    {filePath}
-                  </div>
-                )}
-                {slugInfo
-                  ? (() => {
-                      const rendered = renderFields(fields).filter(Boolean);
-                      return [
-                        rendered[0],
-                        <PageSlugField
-                          key="__slug"
-                          slugInfo={slugInfo}
-                          onSlugChange={(s) => { slugRef.current = s; }}
-                          onRenameRequest={onSlugRename}
-                        />,
-                        ...rendered.slice(1),
-                      ];
-                    })()
-                  : renderFields(fields)
-                }
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                "hidden lg:block sticky top-0 self-start max-h-[calc(100vh-6rem)] overflow-y-auto",
-                previewUrl && currentBlockData ? "w-96" : "w-64",
-              )}
-            >
-              <div className="flex flex-col gap-y-4 pb-4">
-                <div className="flex gap-x-2">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isSubmitting || !isDirty}
-                  >
-                    Save
-                    {isSubmitting && (
-                      <Loader className="ml-2 h-4 w-4 animate-spin" />
-                    )}
-                  </Button>
-                  {options ? options : null}
-                </div>
-                {previewUrl && (
-                  <BlockPreview
-                    blockType={currentBlockData?.type}
-                    blockData={currentBlockData?.data}
-                    previewBaseUrl={previewUrl}
-                    currentIndex={previewBlockIndex ?? 0}
-                    totalBlocks={blocksValue?.length ?? 0}
-                    onIndexChange={setPreviewBlockIndex}
-                    onBlockSelect={handleBlockSelect}
-                    isCollapsed={openPreview !== "block"}
-                    onToggleCollapse={() =>
-                      setOpenPreview(openPreview === "block" ? null : "block")
-                    }
-                    entryContext={collectionName && path ? {
-                      collection: collectionName,
-                      slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
-                    } : undefined}
-                  />
-                )}
-                {previewUrl &&
-                  blocksValue &&
-                  blocksValue.length > 0 &&
-                  blockFieldInfo && (
-                    <PagePreview
-                      blocks={blocksValue}
-                      blockKey={blockFieldInfo.blockKey}
-                      previewBaseUrl={previewUrl}
-                      isCollapsed={openPreview !== "page"}
-                      onToggleCollapse={() =>
-                        setOpenPreview(openPreview === "page" ? null : "page")
-                      }
-                      entryContext={collectionName && path ? {
-                        collection: collectionName,
-                        slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
-                      } : undefined}
-                    />
+        <form onSubmit={form.handleSubmit(handleSubmit, handleError)} className="flex flex-col h-full">
+          {/* TOP BAR */}
+          <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+            <div className="flex items-center gap-4 min-w-0">
+              {navigateBack && (
+                <button
+                  type="button"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "icon-xs" }),
+                    "shrink-0",
                   )}
-                {path && history && (
-                  <EntryHistoryBlock history={history} path={path} />
-                )}
-              </div>
-            </div>
-            <div className="lg:hidden fixed top-0 right-0 h-14 flex items-center gap-x-2 z-10 pr-4 md:pr-6">
-              {path && history && (
-                <EntryHistoryDropdown history={history} path={path} />
+                  onClick={() => {
+                    if (!checkNavigationGuard(navigateBack)) return;
+                    router.push(navigateBack);
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
               )}
-              {mobilePreviewData && (
+              <h1 className="font-semibold text-lg truncate">{title}</h1>
+            </div>
+            <div className="hidden lg:flex items-center gap-2 shrink-0 ml-4">
+              {/* History icon button */}
+              {path && history && history.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       type="button"
                       variant="outline"
-                      size="icon"
-                      onClick={() => setShowMobilePreview(true)}
+                      size="icon-sm"
+                      onClick={() => setShowHistoryModal(true)}
                     >
-                      <Eye className="h-4 w-4" />
+                      <History className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Page preview</TooltipContent>
+                  <TooltipContent>View history</TooltipContent>
                 </Tooltip>
               )}
-              <Button type="submit" disabled={isSubmitting}>
+              {/* Options (delete/rename) */}
+              {options}
+              {/* Save */}
+              <Button
+                type="submit"
+                disabled={isSubmitting || !isDirty}
+              >
                 Save
                 {isSubmitting && (
                   <Loader className="ml-2 h-4 w-4 animate-spin" />
                 )}
               </Button>
-              {options ? options : null}
+              {/* Preview panel toggle — desktop only, when previewUrl exists */}
+              {previewUrl && (
+                <div className="hidden lg:flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setRightCollapsed((v) => !v)}
+                      >
+                        {rightCollapsed ? (
+                          <ChevronLeft className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{rightCollapsed ? "Show preview" : "Hide preview"}</TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
             </div>
-            {showMobilePreview && mobilePreviewData && (
-              <ExpandedPreviewModal
-                headerContent={
-                  <div className="flex items-center justify-between px-3 py-2 bg-background/80 backdrop-blur-sm border-b">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Page Preview ({blocksValue?.length ?? 0}{" "}
-                      {blocksValue?.length === 1 ? "block" : "blocks"})
-                    </span>
-                    <PreviewToolbar
-                      onReload={handleMobilePreviewReload}
-                      onOpenNewTab={handleMobilePreviewOpenNewTab}
-                      onToggleExpand={handleCloseMobilePreview}
-                      isExpanded={true}
-                      isLoaded={mobilePreviewLoaded}
-                    />
-                  </div>
-                }
-                iframeContent={
-                  <IFrameWrapper
-                    url={mobilePreviewData.url}
-                    title="Full page preview"
-                    onLoad={handleMobilePreviewLoad}
-                    isLoaded={mobilePreviewLoaded}
-                    iframeRef={mobilePreviewIframeRef}
-                    refreshKey={mobilePreviewKey}
+          </div>
+
+          {/* CONTENT */}
+          <div ref={contentAreaRef} className="flex-1 flex overflow-hidden">
+            {/* LEFT: scrollable form */}
+            <div
+              style={
+                leftCollapsed && isDesktop
+                  ? { width: 0 }
+                  : isDesktop && previewUrl && !rightCollapsed
+                  ? { width: `${leftWidth}%`, minWidth: 280 }
+                  : { flex: "1 1 0%", minWidth: 0 }
+              }
+              className="overflow-y-auto shrink-0 overflow-hidden"
+              ref={leftPanelRef}
+            >
+              {!leftCollapsed && (
+                (isNarrowForm || isMobileViewport) ? (
+                  <NarrowFormLayout
+                    fields={fields}
+                    renderFields={renderFields}
+                    isTemplateMode={isTemplateMode}
+                    filePath={filePath ? (
+                      <div className="space-y-2 overflow-hidden">
+                        <FormLabel>Filename</FormLabel>
+                        {filePath}
+                      </div>
+                    ) : undefined}
+                    pageSettings={slugInfo ? (
+                      <PageSlugField
+                        slugInfo={slugInfo}
+                        onSlugChange={(s) => { slugRef.current = s; }}
+                        onRenameRequest={onSlugRename}
+                      />
+                    ) : undefined}
                   />
+                ) : (
+                  <div className="p-6 grid items-start gap-6">
+                    {filePath && (
+                      <div className="space-y-2 overflow-hidden">
+                        <FormLabel>Filename</FormLabel>
+                        {filePath}
+                      </div>
+                    )}
+                    {slugInfo
+                      ? (() => {
+                          const rendered = renderFields(fields).filter(Boolean);
+                          return [
+                            rendered[0],
+                            <PageSlugField
+                              key="__slug"
+                              slugInfo={slugInfo}
+                              onSlugChange={(s) => { slugRef.current = s; }}
+                              onRenameRequest={onSlugRename}
+                            />,
+                            ...rendered.slice(1),
+                          ];
+                        })()
+                      : renderFields(fields)
+                    }
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* DRAGGABLE DIVIDER — desktop only, when preview exists */}
+            {previewUrl && (
+              <div
+                className="hidden lg:flex relative w-4 shrink-0 cursor-col-resize items-center justify-center group z-10 select-none"
+                onMouseDown={handleDividerMouseDown}
+              >
+                {/* Background highlight on hover */}
+                <div className="absolute inset-y-0 inset-x-0 opacity-0 group-hover:opacity-100 bg-muted/60 transition-opacity" />
+                {/* Grip icon — always subtly visible, brighter on hover */}
+                <GripVertical className="relative z-10 h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
+                {/* Collapse buttons — appear on hover above/below grip */}
+                <div className="absolute top-1/2 -translate-y-1/2 z-20 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity bg-background border rounded shadow-sm mt-5">
+                  {/* Only show collapse-form button when preview is expanded (prevents blank screen) */}
+                  {!rightCollapsed && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="p-0.5 hover:bg-muted"
+                          onClick={(e) => { e.stopPropagation(); setLeftCollapsed((v) => !v); }}
+                        >
+                          {leftCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">{leftCollapsed ? "Expand form" : "Collapse form"}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn("p-0.5 hover:bg-muted", !rightCollapsed && "border-t")}
+                        onClick={(e) => { e.stopPropagation(); setRightCollapsed((v) => !v); }}
+                      >
+                        {rightCollapsed ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{rightCollapsed ? "Expand preview" : "Collapse preview"}</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+            )}
+
+            {/* RIGHT: full-height preview panel (desktop only, when previewUrl exists) */}
+            {previewUrl && (
+              <div
+                style={
+                  rightCollapsed
+                    ? { width: "3rem" }
+                    : leftCollapsed
+                    ? { flex: "1 1 0%", minWidth: 280 }
+                    : { width: `${100 - leftWidth}%`, minWidth: 280 }
                 }
-                onClose={handleCloseMobilePreview}
-              />
+                className="hidden lg:flex flex-col shrink-0 border-l bg-muted/30 overflow-hidden"
+              >
+                {rightCollapsed ? (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className={cn(buttonVariants({ variant: "ghost", size: "icon-xs" }))}
+                          onClick={() => setRightCollapsed(false)}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Expand preview</TooltipContent>
+                    </Tooltip>
+                  </div>
+                ) : <>
+                {/* Preview mode toggle bar */}
+                {blocksValue && blocksValue.length > 0 && blockFieldInfo && (
+                  <div className="flex items-center gap-2 px-4 py-2 border-b bg-background shrink-0">
+                    {/* Full Page / Block toggle */}
+                    <div className="flex rounded-md border overflow-hidden text-sm">
+                      <button
+                        type="button"
+                        className={cn(
+                          "px-3 py-1 transition-colors",
+                          previewMode === "page"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background hover:bg-muted text-foreground",
+                        )}
+                        onClick={() => {
+                          setPreviewMode("page");
+                          setPreviewIsLoaded(false);
+                        }}
+                      >
+                        Full Page
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(
+                          "px-3 py-1 transition-colors border-l",
+                          previewMode === "block"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background hover:bg-muted text-foreground",
+                        )}
+                        onClick={() => {
+                          setPreviewMode("block");
+                          setPreviewIsLoaded(false);
+                        }}
+                      >
+                        Block
+                      </button>
+                    </div>
+                    {/* Preview toolbar (reload, new tab, expand) — right-aligned */}
+                    <div className="ml-auto">
+                      <PreviewToolbar
+                        onReload={() => {
+                          if (previewMode === "block") blockPreviewRef.current?.reload();
+                          else pagePreviewRef.current?.reload();
+                        }}
+                        onOpenNewTab={() => {
+                          if (previewMode === "block") blockPreviewRef.current?.openNewTab();
+                          else pagePreviewRef.current?.openNewTab();
+                        }}
+                        onToggleExpand={() => setPreviewIsExpanded((v) => !v)}
+                        isExpanded={previewIsExpanded}
+                        isLoaded={previewIsLoaded}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Block name + navigation — above preview frame in block mode */}
+                {blocksValue && blocksValue.length > 0 && blockFieldInfo && previewMode === "block" && currentBlockData && (
+                  <div className="flex items-center gap-1 px-4 py-1.5 border-b bg-background shrink-0">
+                    {(blocksValue?.length ?? 0) > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => {
+                          const idx = previewBlockIndex ?? 0;
+                          if (idx > 0) {
+                            setPreviewBlockIndex(idx - 1);
+                            handleBlockSelect(idx - 1);
+                          }
+                        }}
+                        disabled={(previewBlockIndex ?? 0) === 0}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {String(currentBlockData.type).replace(/_/g, "-")} preview
+                    </span>
+                    {(blocksValue?.length ?? 0) > 1 && (
+                      <>
+                        <span className="text-xs text-muted-foreground/50">
+                          ({(previewBlockIndex ?? 0) + 1}/{blocksValue?.length ?? 0})
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => {
+                            const idx = previewBlockIndex ?? 0;
+                            const total = blocksValue?.length ?? 0;
+                            if (idx < total - 1) {
+                              setPreviewBlockIndex(idx + 1);
+                              handleBlockSelect(idx + 1);
+                            }
+                          }}
+                          disabled={(previewBlockIndex ?? 0) >= (blocksValue?.length ?? 1) - 1}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Iframe container */}
+                <div className="flex-1 p-4 overflow-hidden">
+                  <div className="h-full rounded-lg overflow-hidden border bg-white">
+                    {previewIsExpanded ? (
+                      <div className="h-full bg-muted/50" />
+                    ) : previewMode === "block" || !blockFieldInfo ? (
+                      <BlockPreview
+                        ref={blockPreviewRef}
+                        blockType={currentBlockData?.type}
+                        blockData={currentBlockData?.data}
+                        previewBaseUrl={previewUrl}
+                        currentIndex={previewBlockIndex ?? 0}
+                        totalBlocks={blocksValue?.length ?? 0}
+                        onIndexChange={setPreviewBlockIndex}
+                        onBlockSelect={handleBlockSelect}
+                        isCollapsed={false}
+                        onToggleCollapse={() => {}}
+                        entryContext={collectionName && path ? {
+                          collection: collectionName,
+                          slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
+                        } : undefined}
+                        fullPanel
+                        onLoadedChange={setPreviewIsLoaded}
+                      />
+                    ) : (
+                      <PagePreview
+                        ref={pagePreviewRef}
+                        blocks={blocksValue ?? []}
+                        blockKey={blockFieldInfo.blockKey}
+                        previewBaseUrl={previewUrl}
+                        isCollapsed={false}
+                        onToggleCollapse={() => {}}
+                        entryContext={collectionName && path ? {
+                          collection: collectionName,
+                          slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
+                        } : undefined}
+                        fullPanel
+                        onLoadedChange={setPreviewIsLoaded}
+                      />
+                    )}
+                  </div>
+                </div>
+                </>
+                }
+              </div>
             )}
           </div>
+
+          {/* MOBILE: fixed top-right bar */}
+
+
+          {/* Expanded preview modal */}
+          {previewIsExpanded && (
+            <ExpandedPreviewModal
+              headerContent={
+                <div className="flex items-center justify-between px-3 py-2 bg-background/80 backdrop-blur-sm border-b">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {previewMode === "page"
+                      ? `Page Preview (${blocksValue?.length ?? 0} ${blocksValue?.length === 1 ? "block" : "blocks"})`
+                      : `${currentBlockData?.type ?? "Block"} Preview`}
+                  </span>
+                  <PreviewToolbar
+                    onReload={() => {
+                      if (previewMode === "block") blockPreviewRef.current?.reload();
+                      else pagePreviewRef.current?.reload();
+                    }}
+                    onOpenNewTab={() => {
+                      if (previewMode === "block") blockPreviewRef.current?.openNewTab();
+                      else pagePreviewRef.current?.openNewTab();
+                    }}
+                    onToggleExpand={() => setPreviewIsExpanded(false)}
+                    isExpanded={true}
+                    isLoaded={previewIsLoaded}
+                  />
+                </div>
+              }
+              iframeContent={
+                previewMode === "block" || !blockFieldInfo ? (
+                  <BlockPreview
+                    ref={blockPreviewRef}
+                    blockType={currentBlockData?.type}
+                    blockData={currentBlockData?.data}
+                    previewBaseUrl={previewUrl!}
+                    currentIndex={previewBlockIndex ?? 0}
+                    totalBlocks={blocksValue?.length ?? 0}
+                    onIndexChange={setPreviewBlockIndex}
+                    onBlockSelect={handleBlockSelect}
+                    isCollapsed={false}
+                    onToggleCollapse={() => {}}
+                    entryContext={collectionName && path ? {
+                      collection: collectionName,
+                      slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
+                    } : undefined}
+                    fullPanel
+                    onLoadedChange={setPreviewIsLoaded}
+                  />
+                ) : (
+                  <PagePreview
+                    ref={pagePreviewRef}
+                    blocks={blocksValue ?? []}
+                    blockKey={blockFieldInfo!.blockKey}
+                    previewBaseUrl={previewUrl!}
+                    isCollapsed={false}
+                    onToggleCollapse={() => {}}
+                    entryContext={collectionName && path ? {
+                      collection: collectionName,
+                      slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
+                    } : undefined}
+                    fullPanel
+                    onLoadedChange={setPreviewIsLoaded}
+                  />
+                )
+              }
+              onClose={() => setPreviewIsExpanded(false)}
+            />
+          )}
+
+          {/* MOBILE: fixed top-right bar */}
+          <div className="lg:hidden fixed top-0 right-0 h-14 flex items-center gap-x-2 z-10 pr-4 md:pr-6">
+            {path && history && history.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => setShowHistoryModal(true)}
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>View history</TooltipContent>
+              </Tooltip>
+            )}
+            {mobilePreviewData && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => setShowMobilePreview(true)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Page preview</TooltipContent>
+              </Tooltip>
+            )}
+            {options}
+            <Button type="submit" disabled={isSubmitting || !isDirty}>
+              Save
+              {isSubmitting && (
+                <Loader className="ml-2 h-4 w-4 animate-spin" />
+              )}
+            </Button>
+          </div>
+
+          {/* Mobile full-page preview modal */}
+          {showMobilePreview && mobilePreviewData && (
+            <ExpandedPreviewModal
+              headerContent={
+                <div className="flex items-center justify-between px-3 py-2 bg-background/80 backdrop-blur-sm border-b">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Page Preview ({blocksValue?.length ?? 0}{" "}
+                    {blocksValue?.length === 1 ? "block" : "blocks"})
+                  </span>
+                  <PreviewToolbar
+                    onReload={handleMobilePreviewReload}
+                    onOpenNewTab={handleMobilePreviewOpenNewTab}
+                    onToggleExpand={handleCloseMobilePreview}
+                    isExpanded={true}
+                    isLoaded={mobilePreviewLoaded}
+                  />
+                </div>
+              }
+              iframeContent={
+                <IFrameWrapper
+                  url={mobilePreviewData.url}
+                  title="Full page preview"
+                  onLoad={handleMobilePreviewLoad}
+                  isLoaded={mobilePreviewLoaded}
+                  iframeRef={mobilePreviewIframeRef}
+                  refreshKey={mobilePreviewKey}
+                />
+              }
+              onClose={handleCloseMobilePreview}
+            />
+          )}
         </form>
       </Form>
+
+      {/* History modal */}
+      {path && history && (
+        <EntryHistoryModal
+          path={path}
+          history={history}
+          open={showHistoryModal}
+          onOpenChange={setShowHistoryModal}
+        />
+      )}
 
       {/* Unsaved-changes guard — triggered by any intercepted navigation */}
       <AlertDialog

@@ -167,30 +167,47 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
         {users.length === 0 ? (
           <p className="text-sm text-muted-foreground">No users assigned yet.</p>
         ) : (
-          <div className="rounded-lg border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.userId}>
-                    <TableCell className="font-medium">{u.name || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="capitalize">
-                        {u.role.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
+          <>
+            {/* Mobile: stacked cards */}
+            <div className="sm:hidden rounded-lg border divide-y overflow-hidden">
+              {users.map((u) => (
+                <div key={u.userId} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-sm truncate">{u.name || "—"}</span>
+                    <Badge variant="secondary" className="capitalize shrink-0 text-xs">
+                      {u.role.replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{u.email}</div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: table */}
+            <div className="hidden sm:block rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u) => (
+                    <TableRow key={u.userId}>
+                      <TableCell className="font-medium">{u.name || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize">
+                          {u.role.replace("_", " ")}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -199,9 +216,9 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-4 py-3">
-      <span className="text-muted-foreground shrink-0 w-32">{label}</span>
-      <div className="text-right min-w-0 overflow-hidden">{children}</div>
+    <div className="px-4 py-3 flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <span className="text-xs text-muted-foreground sm:text-sm sm:shrink-0 sm:w-28">{label}</span>
+      <div className="min-w-0 overflow-hidden sm:text-right">{children}</div>
     </div>
   );
 }

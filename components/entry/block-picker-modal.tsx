@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useConfig } from "@/contexts/config-context";
 import { useSiteFeaturesContext } from "@/contexts/site-features-context";
@@ -133,10 +132,10 @@ export function BlockPickerModal({
           "p-0 gap-0 overflow-hidden flex flex-col",
           // Hide the auto-injected close button (dialog closes via overlay click or Escape)
           "[&>button:last-child]:hidden",
-          // Mobile: full-screen
-          "h-[100dvh] w-full max-w-full rounded-none sm:rounded-lg",
-          // Desktop: large modal
-          "sm:h-[80vh] sm:max-w-4xl sm:w-[90vw]",
+          // Mobile: force anchor to top-left, override base dialog centering with !important
+          "!top-0 !left-0 ![transform:none] !h-[100dvh] !w-screen !max-w-none !rounded-none",
+          // Desktop: restore centered dialog
+          "sm:!top-[50%] sm:!left-[50%] sm:![transform:translate(-50%,-50%)] sm:!h-[80vh] sm:!w-[90vw] sm:!max-w-4xl sm:!rounded-lg",
         )}
       >
         {/* Header */}
@@ -215,7 +214,7 @@ export function BlockPickerModal({
                 : "w-full",
             )}
           >
-            <ScrollArea className="h-full">
+            <div className="h-full overflow-y-auto">
               <div className="p-4">
                 {filteredBlocks !== null ? (
                   // Search results (flat list)
@@ -265,7 +264,7 @@ export function BlockPickerModal({
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
 
           {/* Preview pane - on mobile: full width, on desktop: right panel */}
