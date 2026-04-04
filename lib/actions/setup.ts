@@ -302,12 +302,13 @@ export interface LaunchOptions {
  * Final wizard step:
  * 1. Read site.config.yaml (givingUrl, contactEmail, serviceTimes, channelId)
  * 2. Create Cloudflare Pages project
- * 3. PATCH CF Pages env vars (including GITHUB_TOKEN for GPR)
- * 4. Commit nav config → triggers first CF Pages build
- * 5. Commit home page blocks → triggers second build
- * 6. Register with corner-apostle (non-fatal)
- * 7. Set church status to "active"
- * 8. Mark "launched" step complete
+ * 3. Create Cloudflare Web Analytics site, store beacon tag in DB
+ * 4. PATCH CF Pages env vars (including GITHUB_TOKEN for GPR + analytics token)
+ * 5. Commit nav config → triggers first CF Pages build
+ * 6. Commit home page blocks → triggers second build
+ * 7. Register with corner-apostle (non-fatal)
+ * 8. Set church status to "active"
+ * 9. Mark "launched" step complete
  */
 export async function launchChurch(opts: LaunchOptions): Promise<{
   ok: boolean;
@@ -412,7 +413,39 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
           .set({ cfPagesProjectName, cfPagesUrl, updatedAt: new Date() })
           .where(eq(churchesTable.id, opts.churchId));
 
-        // 3. Set CF Pages env vars (including GITHUB_TOKEN so CF Pages can install @cornerstone-web/core from GPR)
+        // 3. Create Cloudflare Web Analytics site and get the beacon token
+        let cfAnalyticsSiteTag: string | undefined;
+        if (cfPagesUrl) {
+          try {
+            const rumRes = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/rum/site_info`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${cfApiToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ host: cfPagesUrl, auto_install: false }),
+              },
+            );
+            if (rumRes.ok) {
+              const rumData = await rumRes.json();
+              cfAnalyticsSiteTag = rumData.result?.tag as string | undefined;
+              if (cfAnalyticsSiteTag) {
+                await db
+                  .update(churchesTable)
+                  .set({ cfAnalyticsSiteTag, updatedAt: new Date() })
+                  .where(eq(churchesTable.id, opts.churchId));
+              }
+            } else {
+              console.error("CF RUM site creation failed (non-fatal):", await rumRes.json().catch(() => ({})));
+            }
+          } catch (err) {
+            console.error("CF RUM site creation failed (non-fatal):", err);
+          }
+        }
+
+        // 4. Set CF Pages env vars (including GITHUB_TOKEN so CF Pages can install @cornerstone-web/core from GPR)
         const workerUrl = process.env.CORNER_APOSTLE_URL ?? "";
         const cornerstoneApiKey = process.env.CORNERSTONE_API_KEY ?? "";
         if (cfPagesProjectName) {
@@ -432,6 +465,9 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
                       PUBLIC_FORM_WORKER_URL: { type: "plain_text", value: workerUrl },
                       PUBLIC_CORNERSTONE_API_KEY: { type: "plain_text", value: cornerstoneApiKey },
                       GITHUB_TOKEN: { type: "plain_text", value: process.env.CF_PAGES_GITHUB_TOKEN ?? "" },
+                      ...(cfAnalyticsSiteTag
+                        ? { PUBLIC_CF_ANALYTICS_TOKEN: { type: "plain_text", value: cfAnalyticsSiteTag } }
+                        : {}),
                     },
                   },
                 },

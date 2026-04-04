@@ -1,0 +1,1 @@
+ALTER TABLE "churches" ADD COLUMN "cf_analytics_site_tag" text;

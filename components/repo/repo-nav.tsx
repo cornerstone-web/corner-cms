@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { cn } from "@/lib/utils";
-import { FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
+import { BarChart3, FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
 import { useSiteFeatures } from "@/hooks/use-site-features";
 import { checkNavigationGuard } from "@/lib/navigation-guard";
 
@@ -95,9 +95,17 @@ const RepoNav = ({
           }
         : null;
 
+    const analyticsItem = {
+      key: "analytics",
+      icon: <BarChart3 className="h-5 w-5 mr-2" />,
+      href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/analytics`,
+      label: "Analytics",
+    };
+
     return [
       ...contentItems,
       ...mediaItems,
+      analyticsItem,
       usersItem,
       settingsItem,
     ].filter(Boolean);

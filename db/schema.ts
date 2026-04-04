@@ -33,6 +33,7 @@ export const churchesTable = pgTable("churches", {
   displayName: text("display_name").notNull(),
   cfPagesProjectName: text("cf_pages_project_name"),
   cfPagesUrl: text("cf_pages_url"),
+  cfAnalyticsSiteTag: text("cf_analytics_site_tag"),
   customDomain: text("custom_domain"),
   status: churchStatusEnum("status").notNull().default("provisioning"),
   plan: text("plan").notNull().default("free"),
