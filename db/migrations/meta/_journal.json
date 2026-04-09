@@ -43,6 +43,13 @@
       "when": 1775330272328,
       "tag": "0005_lyrical_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775745576405,
+      "tag": "0006_abnormal_lyja",
+      "breakpoints": true
     }
   ]
 }

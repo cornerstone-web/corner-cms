@@ -39,6 +39,7 @@ export const churchesTable = pgTable("churches", {
   plan: text("plan").notNull().default("free"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  lastCmsEditAt: timestamp("last_cms_edit_at"),
   wizardStartedAt: timestamp("wizard_started_at"),
   deletedAt: timestamp("deleted_at"),
 }, table => ({

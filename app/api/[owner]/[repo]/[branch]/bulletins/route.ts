@@ -1,6 +1,7 @@
 import { getAuth } from "@/lib/auth";
 import { commitBinaryFile, deleteRepoFile, tryGetSha } from "@/lib/github/wizard";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
 
 const BULLETIN_DIR = "public/bulletins";
 const MAX_BULLETINS = 52;
@@ -64,6 +65,7 @@ export async function POST(
     const existingSha = await tryGetSha(params.repo, targetPath);
     await commitBinaryFile(params.repo, targetPath, pdfBase64, existingSha, `bulletin: upload ${date}`);
 
+    bumpLastCmsEditAt(params.owner, params.repo);
     return Response.json({ status: "success" });
   } catch (error) {
     return handleRouteError(error);

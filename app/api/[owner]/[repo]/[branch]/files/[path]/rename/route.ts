@@ -6,6 +6,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { updateFileCache } from "@/lib/githubCache";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
 
 /**
  * Renames a file in a GitHub repository.
@@ -98,7 +99,8 @@ export async function POST(
       }
     );
 
-    // TODO: remove success message in backend 
+    // TODO: remove success message in backend
+    bumpLastCmsEditAt(params.owner, params.repo);
     return Response.json({
       status: "success",
       message: `File "${normalizedPath}" moved to "${normalizedNewPath}".`,

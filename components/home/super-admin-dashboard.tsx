@@ -23,6 +23,7 @@ type ChurchRow = {
   customDomain: string | null;
   status: "provisioning" | "active" | "suspended";
   updatedAt: Date;
+  lastCmsEditAt: Date | null;
 };
 
 const statusVariant: Record<
@@ -210,7 +211,10 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                       )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {formatRelativeDate(new Date(church.updatedAt))}
+                      {church.lastCmsEditAt
+                        ? formatRelativeDate(new Date(church.lastCmsEditAt))
+                        : <span className="text-muted-foreground/50">—</span>
+                      }
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">

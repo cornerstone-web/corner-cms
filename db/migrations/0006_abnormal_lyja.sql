@@ -1,0 +1,1 @@
+ALTER TABLE "churches" ADD COLUMN "last_cms_edit_at" timestamp;

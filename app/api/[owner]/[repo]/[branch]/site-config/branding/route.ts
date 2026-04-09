@@ -2,6 +2,7 @@ import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
 
 const PATHS = {
   logo: "public/images/logo.png",
@@ -154,6 +155,7 @@ export async function POST(
       ...(author ? { author, committer: author } : {}),
     });
 
+    bumpLastCmsEditAt(params.owner, params.repo);
     return Response.json({
       status: "success",
       message: `${file === "logo" ? "Logo" : "Favicon"} updated successfully.`,

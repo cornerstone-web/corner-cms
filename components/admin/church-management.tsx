@@ -28,6 +28,7 @@ type Church = {
   plan: string;
   createdAt: Date;
   updatedAt: Date;
+  lastCmsEditAt: Date | null;
 };
 
 type RoleRow = {
@@ -115,6 +116,23 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
           <span className="text-muted-foreground">
             {new Date(church.createdAt).toLocaleDateString()}
           </span>
+        </Row>
+        <Row label="Last CMS Edit">
+          <span className="text-muted-foreground">
+            {church.lastCmsEditAt
+              ? new Date(church.lastCmsEditAt).toLocaleDateString()
+              : "Never"}
+          </span>
+        </Row>
+        <Row label="Record Updated">
+          <div className="text-right">
+            <span className="text-muted-foreground">
+              {new Date(church.updatedAt).toLocaleDateString()}
+            </span>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">
+              Changes on: status, CF Pages project, analytics tag, or custom domain
+            </p>
+          </div>
         </Row>
       </div>
 

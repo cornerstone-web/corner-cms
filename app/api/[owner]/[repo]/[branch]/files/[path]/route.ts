@@ -10,6 +10,7 @@ import { getToken } from "@/lib/token";
 import { updateFileCache } from "@/lib/githubCache";
 import mergeWith from "lodash.mergewith";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
 
 /**
  * Create, update and delete individual files in a GitHub repository.
@@ -202,6 +203,7 @@ export async function POST(
       );
     }
 
+    bumpLastCmsEditAt(params.owner, params.repo);
     return Response.json({
       status: "success",
       message: savedPath !== normalizedPath
@@ -391,6 +393,7 @@ export async function DELETE(
       }
     );
 
+    bumpLastCmsEditAt(params.owner, params.repo);
     return Response.json({
       status: "success",
       message: `File "${normalizedPath}" deleted successfully.`,

@@ -4,6 +4,7 @@ import { getToken } from "@/lib/token";
 import YAML from "yaml";
 import { siteConfigSchema } from "@/components/site-config/schema";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
 
 const SITE_CONFIG_PATH = "src/config/site.config.yaml";
 
@@ -98,6 +99,7 @@ export async function POST(
       ...(author ? { author, committer: author } : {}),
     });
 
+    bumpLastCmsEditAt(params.owner, params.repo);
     return Response.json({
       status: "success",
       message: "Site config saved successfully.",

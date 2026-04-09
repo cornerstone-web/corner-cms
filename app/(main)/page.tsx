@@ -25,6 +25,7 @@ export default async function Page() {
         customDomain: churchesTable.customDomain,
         status: churchesTable.status,
         updatedAt: churchesTable.updatedAt,
+        lastCmsEditAt: churchesTable.lastCmsEditAt,
       })
       .from(churchesTable)
       .where(isNull(churchesTable.deletedAt))
