@@ -11,10 +11,13 @@ import { handleRouteError } from "@/lib/utils/apiError";
 type Range = "7d" | "30d" | "90d";
 
 function dateRange(range: Range): { start: string; end: string } {
-  const end = new Date();
-  const start = new Date();
   const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
-  start.setDate(end.getDate() - days);
+  // Use tomorrow as end so CF includes today's partial-day data regardless of
+  // the user's local timezone offset vs UTC. CF ignores future dates gracefully.
+  const end = new Date();
+  end.setUTCDate(end.getUTCDate() + 1);
+  const start = new Date(end);
+  start.setUTCDate(end.getUTCDate() - days);
   return {
     start: start.toISOString().slice(0, 10),
     end: end.toISOString().slice(0, 10),
@@ -52,8 +55,7 @@ function buildFilter(start: string, end: string, siteTag: string): string {
   return `{ AND: [{ date_geq: "${start}" }, { date_leq: "${end}" }, { siteTag: "${siteTag}" }] }`;
 }
 
-type TotalsShape = { viewer: { accounts: Array<{ rows: Array<{ count: number; sum: { visits: number } }> }> } };
-type TsShape     = { viewer: { accounts: Array<{ rows: Array<{ count: number; dimensions: { date: string } }> }> } };
+type TsShape     = { viewer: { accounts: Array<{ rows: Array<{ count: number; sum: { visits: number }; dimensions: { date: string } }> }> } };
 type PathShape   = { viewer: { accounts: Array<{ rows: Array<{ count: number; dimensions: { requestPath: string } }> }> } };
 type CountryShape = { viewer: { accounts: Array<{ rows: Array<{ count: number; dimensions: { countryName: string } }> }> } };
 type DeviceShape  = { viewer: { accounts: Array<{ rows: Array<{ count: number; dimensions: { deviceType: string } }> }> } };
@@ -72,27 +74,13 @@ async function queryCfAnalytics(
   const accountFilter = `(filter: { accountTag: $accountTag })`;
   const rowsFilter = `filter: ${filter}`;
 
-  // All 5 queries are independent — run in parallel
-  const [totalsData, tsData, pathData, countryData, deviceData] = await Promise.all([
-    // Totals: no dimension grouping → CF returns a single aggregate row for the date range.
-    // limit: 1 is correct here; sum.visits = unique sessions (CF's proxy for visitors).
-    cfQuery<TotalsShape>(apiToken, `
-      query($accountTag: String!) {
-        viewer {
-          accounts ${accountFilter} {
-            rows: rumPageloadEventsAdaptiveGroups(
-              ${rowsFilter}
-              limit: 1
-            ) {
-              count
-              sum { visits }
-            }
-          }
-        }
-      }
-    `, vars),
-
-    // Time series: group by date, up to 91 rows (max range is 90d)
+  // All 4 queries are independent — run in parallel.
+  // Totals are derived from the time series (sum of per-day rows) to avoid the
+  // limit: 1 / no-dimensions footgun where CF returns an arbitrary single bucket
+  // instead of a true aggregate, causing shorter ranges to show higher counts.
+  const [tsData, pathData, countryData, deviceData] = await Promise.all([
+    // Time series: group by date, up to 91 rows (max range is 90d).
+    // Also fetches sum.visits so we can derive total visitors without a separate query.
     cfQuery<TsShape>(apiToken, `
       query($accountTag: String!) {
         viewer {
@@ -103,6 +91,7 @@ async function queryCfAnalytics(
               orderBy: [date_ASC]
             ) {
               count
+              sum { visits }
               dimensions { date }
             }
           }
@@ -165,12 +154,13 @@ async function queryCfAnalytics(
     `, vars),
   ]);
 
-  const totalsRow = totalsData?.viewer?.accounts?.[0]?.rows?.[0];
-  const pageViews = totalsRow?.count ?? 0;
-  const visitors = totalsRow?.sum?.visits ?? 0;
-
+  // Derive totals by summing per-day rows — avoids the limit:1 / no-dimensions bug.
+  let pageViews = 0;
+  let visitors = 0;
   const dayMap = new Map<string, number>();
   for (const row of tsData?.viewer?.accounts?.[0]?.rows ?? []) {
+    pageViews += row.count;
+    visitors += row.sum?.visits ?? 0;
     const d = row.dimensions.date;
     dayMap.set(d, (dayMap.get(d) ?? 0) + row.count);
   }
@@ -259,7 +249,7 @@ export async function GET(
 
     return Response.json(
       { status: "success", data },
-      { headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=600" } },
+      { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     return handleRouteError(error);

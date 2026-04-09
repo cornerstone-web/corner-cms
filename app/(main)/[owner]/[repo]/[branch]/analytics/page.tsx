@@ -63,16 +63,17 @@ function BarChartViz({ data }: { data: Array<{ date: string; pageViews: number }
   const max = Math.max(...data.map((d) => d.pageViews), 1);
   // Show at most 30 bars to avoid crowding
   const visible = data.length > 30 ? data.slice(-30) : data;
+  const isSingle = visible.length === 1;
 
   return (
     <div className="mt-4">
-      <div className="flex items-end gap-[2px] h-32">
+      <div className={`flex gap-[2px] h-32${isSingle ? " justify-center" : ""}`}>
         {visible.map((d) => {
           const pct = (d.pageViews / max) * 100;
           return (
             <div
               key={d.date}
-              className="flex-1 flex flex-col items-center justify-end group relative"
+              className={`${isSingle ? "w-16" : "flex-1"} h-full flex flex-col items-center justify-end group relative`}
               title={`${formatDate(d.date)}: ${d.pageViews.toLocaleString()} views`}
             >
               <div
