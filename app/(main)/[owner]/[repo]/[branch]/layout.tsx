@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { getToken, getInstallationToken } from "@/lib/token";
+import { NoAccessScreen } from "@/components/no-access-screen";
+import { db } from "@/db";
+import { userChurchRolesTable, usersTable } from "@/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 // NOTE: getToken + getInstallationToken will be simplified in Step 3
 import { configVersion, parseConfig, normalizeConfig } from "@/lib/config";
 import { getConfig, saveConfig, updateConfig } from "@/lib/utils/config";
@@ -28,6 +32,28 @@ export default async function Layout(
 
   const { user } = await getAuth();
   if (!user) return redirect("/auth/login");
+
+  // Non-admin users with no scopes see the "contact your admin" screen
+  if (
+    user.churchAssignment &&
+    !user.isSuperAdmin &&
+    !user.churchAssignment.isAdmin &&
+    user.churchAssignment.scopes.length === 0
+  ) {
+    const adminRows = await db
+      .select({ email: usersTable.email })
+      .from(userChurchRolesTable)
+      .innerJoin(usersTable, eq(userChurchRolesTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(userChurchRolesTable.churchId, user.churchAssignment.churchId),
+          eq(userChurchRolesTable.isAdmin, true),
+          isNull(userChurchRolesTable.deletedAt),
+          isNull(usersTable.deletedAt)
+        )
+      );
+    return <NoAccessScreen adminEmails={adminRows.map(r => r.email)} />;
+  }
 
   const token = await getToken(user, owner, repo);
   if (!token) throw new Error("Token not found");
