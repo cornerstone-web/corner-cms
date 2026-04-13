@@ -4,7 +4,8 @@ export interface ChurchAssignment {
   slug: string;
   displayName: string;
   cfPagesUrl: string | null;
-  role: "church_admin" | "editor";
+  isAdmin: boolean;
+  scopes: string[];
 }
 
 export interface User {
