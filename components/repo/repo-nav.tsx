@@ -59,6 +59,15 @@ const RepoNav = ({
         if (item.name === "pages" || item.name === "templates") return true;
         return features[item.name] !== false;
       })
+      .filter((item: any) => {
+        // Super admins and church admins see everything
+        if (user?.isSuperAdmin || user?.churchAssignment?.isAdmin) return true;
+        const scopes = user?.churchAssignment?.scopes ?? [];
+        // Show a collection if the user has the collection scope OR any entry scope within it
+        return scopes.some(
+          (s: string) => s === `collection:${item.name}` || s.startsWith(`entry:${item.name}:`)
+        );
+      })
       .map((item: any) => ({
         key: item.name,
         icon: item.type === "collection"
@@ -86,7 +95,7 @@ const RepoNav = ({
       : null;
 
     const usersItem =
-      user?.isSuperAdmin || user?.churchAssignment?.role === "church_admin"
+      user?.isSuperAdmin || user?.churchAssignment?.isAdmin
         ? {
             key: "users",
             icon: <Users className="h-5 w-5 mr-2" />,

@@ -20,7 +20,7 @@ import {
   generatePasswordTicket,
   sendInviteEmail,
   createOrRestoreDbUser,
-  assignChurchRole,
+  assignChurchMembership,
 } from "@/lib/utils/user-helpers";
 
 export type ProvisionState =
@@ -86,7 +86,7 @@ export async function provisionChurch(
     // 3. Insert user + role into DB
     if (auth0UserId) {
       const dbUserId = await createOrRestoreDbUser(auth0UserId, adminEmail, adminName);
-      await assignChurchRole(dbUserId, church.id, "church_admin");
+      await assignChurchMembership(dbUserId, church.id, true);
     }
 
     return { status: "success", churchId: church.id, adminInviteUrl, emailSent, adminEmail };
