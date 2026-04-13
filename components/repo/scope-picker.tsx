@@ -11,6 +11,12 @@ type EntryScope = {
   label: string;
 };
 
+type CollectionItem = {
+  type: "file" | "dir";
+  name: string;
+  fields?: { title?: string; name?: string };
+};
+
 type CollectionEntriesState =
   | { status: "idle" }
   | { status: "loading" }
@@ -80,6 +86,8 @@ export function ScopePicker({
       return;
     }
 
+    if (collectionEntries[collectionName]?.status === "loading") return;
+
     setExpandedCollections(prev => new Set([...prev, collectionName]));
 
     if (collectionEntries[collectionName]) return; // already loaded
@@ -92,8 +100,8 @@ export function ScopePicker({
       if (!res.ok) throw new Error("fetch failed");
       const data = await res.json();
       const entries: EntryScope[] = (data.data?.contents ?? [])
-        .filter((c: any) => c.type === "file")
-        .map((c: any) => ({
+        .filter((c: CollectionItem) => c.type === "file")
+        .map((c: CollectionItem) => ({
           scope: `entry:${collectionName}:${c.name.replace(/\.[^.]+$/, "")}`,
           label: c.fields?.title ?? c.fields?.name ?? c.name,
         }));
@@ -142,6 +150,7 @@ export function ScopePicker({
                           onClick={() => expandCollection(collectionName)}
                           disabled={disabled}
                           title={isExpanded ? "Collapse entries" : "Expand individual entries"}
+                          aria-expanded={isExpanded}
                         >
                           {isExpanded
                             ? <ChevronDown className="h-3.5 w-3.5" />
