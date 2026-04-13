@@ -76,7 +76,7 @@ export const userChurchScopesTable = pgTable("user_church_scopes", {
   scope: text("scope").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, table => ({
-  idx_user_church_scopes_user_church: index("idx_user_church_scopes_user_church").on(table.userId, table.churchId),
+  idx_user_church_scopes_unique: uniqueIndex("idx_user_church_scopes_unique").on(table.userId, table.churchId, table.scope),
 }));
 
 export const churchWizardStepsTable = pgTable("church_wizard_steps", {

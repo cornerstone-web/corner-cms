@@ -849,8 +849,8 @@
         }
       },
       "indexes": {
-        "idx_user_church_scopes_user_church": {
-          "name": "idx_user_church_scopes_user_church",
+        "idx_user_church_scopes_unique": {
+          "name": "idx_user_church_scopes_unique",
           "columns": [
             {
               "expression": "user_id",
@@ -863,9 +863,15 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
+            },
+            {
+              "expression": "scope",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
