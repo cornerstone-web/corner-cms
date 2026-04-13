@@ -160,6 +160,10 @@ export async function updateUserAdmin(
           isNull(userChurchRolesTable.deletedAt),
         )
       );
+    if (isAdmin) {
+      await db.delete(userChurchScopesTable)
+        .where(and(eq(userChurchScopesTable.userId, userId), eq(userChurchScopesTable.churchId, churchId)));
+    }
     return { ok: true };
   } catch (err: unknown) {
     return { ok: false, error: err instanceof Error ? err.message : "Update failed." };

@@ -73,7 +73,7 @@ function scopeSummary(scopes: string[]): string {
   if (collections > 0) parts.push(`${collections} collection${collections > 1 ? "s" : ""}`);
   if (config > 0) parts.push(`${config} config section${config > 1 ? "s" : ""}`);
   if (media > 0) parts.push(`${media} media type${media > 1 ? "s" : ""}`);
-  return parts.join(", ");
+  return parts.length > 0 ? parts.join(", ") : "No access";
 }
 
 export function UsersPanel({
@@ -153,8 +153,8 @@ export function UsersPanel({
 
   function handleSaveAccess() {
     if (!editingUser) return;
+    setActionError(null);
     startTransition(async () => {
-      setActionError(null);
       if (editIsAdmin !== editingUser.isAdmin) {
         const r = await updateUserAdmin(churchId, editingUser.userId, editIsAdmin);
         if (!r.ok) { setActionError(r.error ?? "Update failed."); return; }
@@ -230,6 +230,9 @@ export function UsersPanel({
             <p className="text-sm text-destructive">{inviteState.message}</p>
           )}
 
+          {!inviteIsAdmin && inviteScopes.length === 0 && (
+            <p className="text-xs text-amber-600">Select at least one scope or enable Admin access.</p>
+          )}
           <div className="flex gap-2">
             <InviteSubmitButton />
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowInvite(false)}>
