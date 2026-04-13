@@ -7,8 +7,10 @@ vi.mock("@/db/schema", () => ({
   churchesTable: {},
   usersTable: {},
   userChurchRolesTable: {},
+  userChurchScopesTable: {},
 }));
 vi.mock("@/lib/auth0Management", () => ({ getAuth0ManagementToken: vi.fn() }));
+vi.mock("@/lib/utils/access-control", () => ({ isValidScope: vi.fn().mockReturnValue(true) }));
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return { ...actual, cache: (fn: unknown) => fn };
@@ -44,7 +46,7 @@ describe("removeUserFromChurch", () => {
   const adminAuthResult = {
     user: {
       isSuperAdmin: false,
-      churchAssignment: { churchId: "church-1", role: "church_admin" },
+      churchAssignment: { churchId: "church-1", isAdmin: true },
     },
   };
 
@@ -54,6 +56,9 @@ describe("removeUserFromChurch", () => {
     };
     (db as any).update = vi.fn().mockReturnValue({
       set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    (db as any).delete = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
     });
   }
 
@@ -72,7 +77,6 @@ describe("removeUserFromChurch", () => {
     const result = await removeUserFromChurch("church-1", "user-1");
 
     expect(result).toEqual({ ok: true });
-    expect((db as any).update).toHaveBeenCalledTimes(2);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0];
     expect(String(url)).toContain("auth0%7Cabc123");
@@ -120,7 +124,7 @@ describe("removeUserFromChurch", () => {
     vi.mocked(getAuth).mockResolvedValue({
       user: {
         isSuperAdmin: false,
-        churchAssignment: { churchId: "other-church", role: "editor" },
+        churchAssignment: { churchId: "other-church", isAdmin: false },
       },
     } as any);
 

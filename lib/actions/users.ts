@@ -3,15 +3,16 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
+import { churchesTable, usersTable, userChurchRolesTable, userChurchScopesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 import { resolveInviteEmailStatus } from "@/lib/utils/invite";
+import { isValidScope } from "@/lib/utils/access-control";
 import {
   createOrResolveAuth0User,
   generatePasswordTicket,
   sendInviteEmail,
   createOrRestoreDbUser,
-  assignChurchRole,
+  assignChurchMembership,
 } from "@/lib/utils/user-helpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ async function assertCanManageUsers(churchId: string) {
   if (user.isSuperAdmin) return user;
   if (
     user.churchAssignment?.churchId === churchId &&
-    user.churchAssignment.role === "church_admin"
+    user.churchAssignment.isAdmin
   )
     return user;
   throw new Error("You do not have permission to manage users for this site.");
@@ -44,12 +45,23 @@ export async function inviteUser(
   const churchId = (formData.get("churchId") as string | null)?.trim() ?? "";
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   const email = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
-  const role = (formData.get("role") as string | null) ?? "editor";
+  const isAdmin = formData.get("isAdmin") === "true";
+  const scopesRaw = (formData.get("scopes") as string | null) ?? "[]";
 
   if (!churchId || !name || !email)
     return { status: "error", message: "All fields are required." };
-  if (!["church_admin", "editor"].includes(role))
-    return { status: "error", message: "Invalid role." };
+
+  let scopes: string[] = [];
+  if (!isAdmin) {
+    try {
+      scopes = JSON.parse(scopesRaw);
+    } catch {
+      return { status: "error", message: "Invalid scopes format." };
+    }
+    const invalid = scopes.filter(s => !isValidScope(s));
+    if (invalid.length > 0)
+      return { status: "error", message: `Invalid scopes: ${invalid.join(", ")}` };
+  }
 
   try {
     await assertCanManageUsers(churchId);
@@ -58,9 +70,22 @@ export async function inviteUser(
     const auth0UserId = await createOrResolveAuth0User(email, name, mgmtToken);
     const resetUrl = await generatePasswordTicket(auth0UserId, mgmtToken);
 
-    // Create DB records first — if these fail, no email is sent and nothing is orphaned
     const dbUserId = await createOrRestoreDbUser(auth0UserId, email, name);
-    await assignChurchRole(dbUserId, churchId, role as "church_admin" | "editor");
+    await assignChurchMembership(dbUserId, churchId, isAdmin);
+
+    if (!isAdmin && scopes.length > 0) {
+      await db
+        .delete(userChurchScopesTable)
+        .where(
+          and(
+            eq(userChurchScopesTable.userId, dbUserId),
+            eq(userChurchScopesTable.churchId, churchId)
+          )
+        );
+      await db.insert(userChurchScopesTable).values(
+        scopes.map(scope => ({ userId: dbUserId, churchId, scope }))
+      );
+    }
 
     const church = await db.query.churchesTable.findFirst({
       where: eq(churchesTable.id, churchId),
@@ -116,18 +141,18 @@ export async function resendInvite(
   }
 }
 
-// ─── updateUserRole ───────────────────────────────────────────────────────────
+// ─── updateUserAdmin ──────────────────────────────────────────────────────────
 
-export async function updateUserRole(
+export async function updateUserAdmin(
   churchId: string,
   userId: string,
-  role: "church_admin" | "editor"
+  isAdmin: boolean
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await assertCanManageUsers(churchId);
     await db
       .update(userChurchRolesTable)
-      .set({ role })
+      .set({ isAdmin })
       .where(
         and(
           eq(userChurchRolesTable.churchId, churchId),
@@ -135,6 +160,41 @@ export async function updateUserRole(
           isNull(userChurchRolesTable.deletedAt),
         )
       );
+    return { ok: true };
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : "Update failed." };
+  }
+}
+
+// ─── updateUserScopes ─────────────────────────────────────────────────────────
+
+export async function updateUserScopes(
+  churchId: string,
+  userId: string,
+  scopes: string[]
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertCanManageUsers(churchId);
+
+    const invalid = scopes.filter(s => !isValidScope(s));
+    if (invalid.length > 0)
+      throw new Error(`Invalid scopes: ${invalid.join(", ")}`);
+
+    await db
+      .delete(userChurchScopesTable)
+      .where(
+        and(
+          eq(userChurchScopesTable.userId, userId),
+          eq(userChurchScopesTable.churchId, churchId)
+        )
+      );
+
+    if (scopes.length > 0) {
+      await db.insert(userChurchScopesTable).values(
+        scopes.map(scope => ({ userId, churchId, scope }))
+      );
+    }
+
     return { ok: true };
   } catch (err: unknown) {
     return { ok: false, error: err instanceof Error ? err.message : "Update failed." };
@@ -168,6 +228,16 @@ export async function removeUserFromChurch(
         )
       );
 
+    // Delete all scopes for this user in this church
+    await db
+      .delete(userChurchScopesTable)
+      .where(
+        and(
+          eq(userChurchScopesTable.userId, userId),
+          eq(userChurchScopesTable.churchId, churchId)
+        )
+      );
+
     await db
       .update(usersTable)
       .set({ deletedAt: now })
@@ -178,7 +248,6 @@ export async function removeUserFromChurch(
       `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${encodeURIComponent(dbUser.auth0Id)}`,
       { method: "DELETE", headers: { Authorization: `Bearer ${mgmtToken}` } }
     );
-    // 204 = deleted, 404 = already gone — both are fine
     if (!deleteRes.ok && deleteRes.status !== 404) {
       throw new Error(`Auth0 user deletion failed (${deleteRes.status}): ${await deleteRes.text()}`);
     }

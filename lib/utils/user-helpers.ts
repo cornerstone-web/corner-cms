@@ -149,14 +149,15 @@ export async function createOrRestoreDbUser(
 }
 
 /**
- * Assign (or restore) a church role for the given user.
+ * Assign (or restore) a church membership for the given user.
+ * isAdmin=true makes the user a church admin; false makes them a scoped user.
  * Throws if the user already has an active role at a different church.
- * Upserts to handle re-invites (restores soft-deleted role rows).
+ * Upserts to handle re-invites (restores soft-deleted rows).
  */
-export async function assignChurchRole(
+export async function assignChurchMembership(
   dbUserId: string,
   churchId: string,
-  role: "church_admin" | "editor",
+  isAdmin: boolean,
 ): Promise<void> {
   const activeElsewhere = await db.query.userChurchRolesTable.findFirst({
     where: and(
@@ -178,9 +179,9 @@ export async function assignChurchRole(
   if (existingRole) {
     await db
       .update(userChurchRolesTable)
-      .set({ role, deletedAt: null })
+      .set({ isAdmin, deletedAt: null })
       .where(eq(userChurchRolesTable.id, existingRole.id));
   } else {
-    await db.insert(userChurchRolesTable).values({ userId: dbUserId, churchId, role });
+    await db.insert(userChurchRolesTable).values({ userId: dbUserId, churchId, isAdmin });
   }
 }
