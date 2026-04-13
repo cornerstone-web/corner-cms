@@ -32,7 +32,7 @@ export function SiteConfigEditor() {
   const { config } = useConfig();
   const { user } = useUser();
   const { previewUrl } = useSiteFeaturesContext();
-  const isAdmin = user?.isSuperAdmin || user?.churchAssignment?.role === "church_admin";
+  const isAdmin = user?.isSuperAdmin || user?.churchAssignment?.isAdmin === true;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sha, setSha] = useState<string | null>(null);

@@ -33,7 +33,7 @@ type Church = {
 
 type RoleRow = {
   userId: string;
-  role: "church_admin" | "editor";
+  isAdmin: boolean;
   name: string;
   email: string;
   auth0Id: string;
@@ -193,7 +193,7 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-sm truncate">{u.name || "—"}</span>
                     <Badge variant="secondary" className="capitalize shrink-0 text-xs">
-                      {u.role.replace("_", " ")}
+                      {u.isAdmin ? "church admin" : "editor"}
                     </Badge>
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5 truncate">{u.email}</div>
@@ -217,7 +217,7 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
                       <TableCell className="text-muted-foreground">{u.email}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="capitalize">
-                          {u.role.replace("_", " ")}
+                          {u.isAdmin ? "church admin" : "editor"}
                         </Badge>
                       </TableCell>
                     </TableRow>

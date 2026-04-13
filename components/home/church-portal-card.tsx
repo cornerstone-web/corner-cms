@@ -89,7 +89,7 @@ export function ChurchPortalCard({
                 {assignment.displayName}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {assignment.role === "church_admin" ? "Church Admin" : "Editor"}
+                {assignment.isAdmin ? "Church Admin" : "Editor"}
               </p>
             </div>
           </div>

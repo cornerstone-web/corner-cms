@@ -37,7 +37,8 @@ export default async function ChurchPortalPage(props: { params: Promise<{ id: st
     slug: church.slug,
     displayName: church.displayName,
     cfPagesUrl: church.cfPagesUrl,
-    role: "church_admin" as const,
+    isAdmin: true,
+    scopes: [] as string[],
   };
 
   return (
