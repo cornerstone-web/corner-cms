@@ -4,11 +4,13 @@ import type { User } from "@/types/user";
 // Collections are intentionally excluded — they come from each church's .pages.yml.
 // Only site-config sections and media types are platform-level constants.
 
+// Documents the platform's supported site-config sections (must stay in sync with STATIC_SCOPES).
 const SITE_CONFIG_SECTIONS = [
   "identity", "branding", "contact", "navigation",
   "footer", "service-times", "theme", "integrations", "features",
 ] as const;
 
+// Documents the platform's supported media types (must stay in sync with STATIC_SCOPES).
 const MEDIA_TYPES = [
   "images", "files", "bulletins", "video", "audio",
 ] as const;
