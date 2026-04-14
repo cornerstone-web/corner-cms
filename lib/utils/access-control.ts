@@ -1,11 +1,8 @@
 import type { User } from "@/types/user";
 
-// ─── Scope constants ──────────────────────────────────────────────────────────
-
-const COLLECTION_NAMES = [
-  "pages", "sermons", "series", "events",
-  "articles", "ministries", "staff", "templates",
-] as const;
+// ─── Platform-level scope constants ───────────────────────────────────────────
+// Collections are intentionally excluded — they come from each church's .pages.yml.
+// Only site-config sections and media types are platform-level constants.
 
 const SITE_CONFIG_SECTIONS = [
   "identity", "branding", "contact", "navigation",
@@ -19,19 +16,10 @@ const MEDIA_TYPES = [
 export type StaticScope = {
   scope: string;
   label: string;
-  group: "collection" | "site-config" | "media";
+  group: "site-config" | "media";
 };
 
 export const STATIC_SCOPES: StaticScope[] = [
-  // Collections
-  { scope: "collection:pages",       label: "Manage all pages",            group: "collection" },
-  { scope: "collection:sermons",     label: "Manage all sermons",          group: "collection" },
-  { scope: "collection:series",      label: "Manage all sermon series",    group: "collection" },
-  { scope: "collection:events",      label: "Manage all events",           group: "collection" },
-  { scope: "collection:articles",    label: "Manage all articles",         group: "collection" },
-  { scope: "collection:ministries",  label: "Manage all ministries",       group: "collection" },
-  { scope: "collection:staff",       label: "Manage all staff",            group: "collection" },
-  { scope: "collection:templates",   label: "Manage block templates",      group: "collection" },
   // Site Config
   { scope: "site-config:identity",      label: "Edit church name & identity",    group: "site-config" },
   { scope: "site-config:branding",      label: "Edit logo & favicon",            group: "site-config" },
@@ -55,22 +43,41 @@ const STATIC_SCOPE_SET = new Set(STATIC_SCOPES.map(s => s.scope));
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 /**
- * Returns true if the scope string is valid.
- * - Static scopes (collection:*, site-config:*, media:*) must match the allowlist.
- * - Entry scopes (entry:{collection}:{slug}) require a known collection and non-empty slug.
+ * Returns true if the scope string is valid given the church's current collection names.
+ *
+ * collectionNames should be derived from the church's .pages.yml config at call time
+ * (e.g. config.object.content.filter(i => i.type === "collection").map(i => i.name)).
+ *
+ * - Static scopes (site-config:*, media:*) are validated against a platform allowlist.
+ * - collection:{name} requires the collection to exist in collectionNames.
+ * - entry:{collection}:{slug} requires the collection to exist and a non-empty slug.
  */
-export function isValidScope(scope: string): boolean {
+export function isValidScope(scope: string, collectionNames: string[]): boolean {
   if (STATIC_SCOPE_SET.has(scope)) return true;
+
+  if (scope.startsWith("collection:")) {
+    const name = scope.replace("collection:", "");
+    return name.length > 0 && collectionNames.includes(name);
+  }
 
   if (scope.startsWith("entry:")) {
     const parts = scope.split(":");
-    // entry:collection:slug — must have exactly 3 parts, valid collection, non-empty slug
     if (parts.length !== 3) return false;
     const [, collection, slug] = parts;
-    return (COLLECTION_NAMES as readonly string[]).includes(collection) && slug.length > 0;
+    return collectionNames.includes(collection) && slug.length > 0;
   }
 
   return false;
+}
+
+/**
+ * Filters a user's stored scopes down to only those that are currently valid
+ * for the church's config. Use this count (not the raw stored count) to determine
+ * whether a user has any active access — stored scopes can become stale when a
+ * collection is removed from .pages.yml.
+ */
+export function filterValidScopes(stored: string[], collectionNames: string[]): string[] {
+  return stored.filter(s => isValidScope(s, collectionNames));
 }
 
 // ─── Access check ─────────────────────────────────────────────────────────────
@@ -81,6 +88,9 @@ export function isValidScope(scope: string): boolean {
  * - Super admins and church admins (isAdmin=true) have all scopes.
  * - collection:X grants access to all entry:X:* entries.
  * - All other matches are exact.
+ *
+ * Note: `user.churchAssignment.scopes` should already be filtered to valid scopes
+ * before this is called (see filterValidScopes).
  */
 export function hasScope(user: User, scope: string): boolean {
   if (user.isSuperAdmin) return true;
