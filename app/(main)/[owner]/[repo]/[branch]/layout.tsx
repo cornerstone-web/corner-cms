@@ -7,6 +7,7 @@ import { userChurchRolesTable, usersTable } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 // NOTE: getToken + getInstallationToken will be simplified in Step 3
 import { configVersion, parseConfig, normalizeConfig } from "@/lib/config";
+import { filterValidScopes } from "@/lib/utils/access-control";
 import { getConfig, saveConfig, updateConfig } from "@/lib/utils/config";
 import { ConfigProvider } from "@/contexts/config-context";
 import { RepoLayout } from "@/components/repo/repo-layout";
@@ -32,28 +33,6 @@ export default async function Layout(
 
   const { user } = await getAuth();
   if (!user) return redirect("/auth/login");
-
-  // Non-admin users with no scopes see the "contact your admin" screen
-  if (
-    user.churchAssignment &&
-    !user.isSuperAdmin &&
-    !user.churchAssignment.isAdmin &&
-    user.churchAssignment.scopes.length === 0
-  ) {
-    const adminRows = await db
-      .select({ email: usersTable.email })
-      .from(userChurchRolesTable)
-      .innerJoin(usersTable, eq(userChurchRolesTable.userId, usersTable.id))
-      .where(
-        and(
-          eq(userChurchRolesTable.churchId, user.churchAssignment.churchId),
-          eq(userChurchRolesTable.isAdmin, true),
-          isNull(userChurchRolesTable.deletedAt),
-          isNull(usersTable.deletedAt)
-        )
-      );
-    return <NoAccessScreen adminEmails={adminRows.map(r => r.email)} />;
-  }
 
   const token = await getToken(user, owner, repo);
   if (!token) throw new Error("Token not found");
@@ -159,6 +138,37 @@ export default async function Layout(
       await saveConfig(config);
     } else {
       await updateConfig(config);
+    }
+  }
+
+  // For non-admin users, check that they have at least one scope that is still
+  // valid for the current config. Stored scopes can become stale when a collection
+  // is removed from .pages.yml — filter against the live config before gating.
+  if (
+    user.churchAssignment &&
+    !user.isSuperAdmin &&
+    !user.churchAssignment.isAdmin
+  ) {
+    const configCollections = ((config.object.content as any[]) ?? [])
+      .filter((item: any) => item.type === "collection")
+      .map((item: any) => item.name as string);
+
+    const validScopes = filterValidScopes(user.churchAssignment.scopes, configCollections);
+
+    if (validScopes.length === 0) {
+      const adminRows = await db
+        .select({ email: usersTable.email })
+        .from(userChurchRolesTable)
+        .innerJoin(usersTable, eq(userChurchRolesTable.userId, usersTable.id))
+        .where(
+          and(
+            eq(userChurchRolesTable.churchId, user.churchAssignment.churchId),
+            eq(userChurchRolesTable.isAdmin, true),
+            isNull(userChurchRolesTable.deletedAt),
+            isNull(usersTable.deletedAt)
+          )
+        );
+      return <NoAccessScreen adminEmails={adminRows.map(r => r.email)} />;
     }
   }
 
