@@ -5,12 +5,13 @@ import { useEffect, useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   inviteUser,
-  updateUserAdmin,
-  updateUserScopes,
+  updateUserAccess,
   removeUserFromChurch,
   resendInvite,
   type InviteState,
 } from "@/lib/actions/users";
+import { useConfig } from "@/contexts/config-context";
+import type { ConfigCollection } from "@/components/repo/scope-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,11 +67,19 @@ function InviteSubmitButton() {
 
 function scopeSummary(scopes: string[]): string {
   if (scopes.length === 0) return "No access";
-  const collections = scopes.filter(s => s.startsWith("collection:") || s.startsWith("entry:")).length;
+  const collectionNames = new Set(
+    scopes
+      .filter(s => s.startsWith("collection:") || s.startsWith("entry:"))
+      .map(s => {
+        if (s.startsWith("collection:")) return s.replace("collection:", "");
+        return s.split(":")[1]; // entry:{collection}:{slug}
+      })
+  );
   const config = scopes.filter(s => s.startsWith("site-config:")).length;
   const media = scopes.filter(s => s.startsWith("media:")).length;
   const parts: string[] = [];
-  if (collections > 0) parts.push(`${collections} collection${collections > 1 ? "s" : ""}`);
+  if (collectionNames.size > 0)
+    parts.push(`${collectionNames.size} collection${collectionNames.size > 1 ? "s" : ""}`);
   if (config > 0) parts.push(`${config} config section${config > 1 ? "s" : ""}`);
   if (media > 0) parts.push(`${media} media type${media > 1 ? "s" : ""}`);
   return parts.length > 0 ? parts.join(", ") : "No access";
@@ -90,6 +99,11 @@ export function UsersPanel({
   initialUsers: UserRow[];
 }) {
   const router = useRouter();
+  const { config } = useConfig();
+  const collections: ConfigCollection[] = ((config?.object?.content as any[]) ?? [])
+    .filter((item: any) => item.type === "collection")
+    .map((item: any) => ({ name: item.name as string, label: (item.label || item.name) as string }));
+  const collectionNames = collections.map(c => c.name);
   const [isPending, startTransition] = useTransition();
   const [showInvite, setShowInvite] = useState(false);
   const [inviteIsAdmin, setInviteIsAdmin] = useState(false);
@@ -155,14 +169,14 @@ export function UsersPanel({
     if (!editingUser) return;
     setActionError(null);
     startTransition(async () => {
-      if (editIsAdmin !== editingUser.isAdmin) {
-        const r = await updateUserAdmin(churchId, editingUser.userId, editIsAdmin);
-        if (!r.ok) { setActionError(r.error ?? "Update failed."); return; }
-      }
-      if (!editIsAdmin) {
-        const r = await updateUserScopes(churchId, editingUser.userId, editScopes);
-        if (!r.ok) { setActionError(r.error ?? "Update failed."); return; }
-      }
+      const result = await updateUserAccess(
+        churchId,
+        editingUser.userId,
+        editIsAdmin,
+        editIsAdmin ? [] : editScopes,
+        collectionNames
+      );
+      if (!result.ok) { setActionError(result.error ?? "Update failed."); return; }
       setEditingUser(null);
       router.refresh();
     });
@@ -187,6 +201,7 @@ export function UsersPanel({
           <input type="hidden" name="churchId" value={churchId} />
           <input type="hidden" name="isAdmin" value={String(inviteIsAdmin)} />
           <input type="hidden" name="scopes" value={JSON.stringify(inviteScopes)} />
+          <input type="hidden" name="collectionNames" value={JSON.stringify(collectionNames)} />
           <p className="text-sm font-medium">Invite a new user</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -219,6 +234,7 @@ export function UsersPanel({
                   owner={owner}
                   repo={repo}
                   branch={branch}
+                  collections={collections}
                   selectedScopes={inviteScopes}
                   onChange={setInviteScopes}
                 />
@@ -345,6 +361,7 @@ export function UsersPanel({
                   owner={owner}
                   repo={repo}
                   branch={branch}
+                  collections={collections}
                   selectedScopes={editScopes}
                   onChange={setEditScopes}
                   disabled={isPending}
