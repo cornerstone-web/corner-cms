@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { churchesTable, usersTable, userChurchRolesTable, userChurchScopesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 import { resolveInviteEmailStatus } from "@/lib/utils/invite";
-import { isValidScope, filterValidScopes } from "@/lib/utils/access-control";
+import { isValidScope } from "@/lib/utils/access-control";
 import {
   createOrResolveAuth0User,
   generatePasswordTicket,
