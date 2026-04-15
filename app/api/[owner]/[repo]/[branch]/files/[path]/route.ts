@@ -11,6 +11,7 @@ import { updateFileCache } from "@/lib/githubCache";
 import mergeWith from "lodash.mergewith";
 import { handleRouteError } from "@/lib/utils/apiError";
 import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
+import { hasScope, isAdminUser } from "@/lib/utils/access-control";
 
 /**
  * Create, update and delete individual files in a GitHub repository.
@@ -54,6 +55,16 @@ export async function POST(
 
         if (schema.subfolders === false && getParentPath(normalizedPath) !== schema.path) {
           throw new Error(`Subfolders are not allowed for collection "${data.name}".`);
+        }
+
+        {
+          // Scope enforcement for content writes.
+          // Creating or folder ops require full collection scope.
+          // Updating an existing entry also allows the specific entry scope.
+          const slug = getFileName(normalizedPath).replace(/\.[^.]+$/, "");
+          const hasFullAccess = hasScope(user, `collection:${data.name}`);
+          const hasEntryAccess = data.sha && hasScope(user, `entry:${data.name}:${slug}`);
+          if (!hasFullAccess && !hasEntryAccess) return new Response(null, { status: 403 });
         }
 
         if (getFileName(normalizedPath) === ".gitkeep") {
@@ -149,6 +160,10 @@ export async function POST(
         break;
       case "media":
         if (!data.name) throw new Error(`"name" is required for media.`);
+
+        if (!isAdminUser(user) && !(user.churchAssignment?.scopes ?? []).includes(`media:${data.name}`)) {
+          return new Response(null, { status: 403 });
+        }
 
         schema = getSchemaByName(config?.object, data.name, "media");
         if (!schema) throw new Error(`Media schema not found for ${data.name}.`);
@@ -345,17 +360,28 @@ export async function DELETE(
 
         schema = getSchemaByName(config.object, name);
         if (!schema) throw new Error(`Content schema not found for ${name}.`);
-        
+
         if (!normalizedPath.startsWith(schema.path)) throw new Error(`Invalid path "${params.path}" for ${type} "${name}".`);
-        
+
         if (schema.subfolders === false && getParentPath(normalizedPath) !== schema.path) {
           throw new Error(`Subfolders are not allowed for collection "${name}".`);
         }
-        
+
         if (getFileExtension(normalizedPath) !== schema.extension) throw new Error(`Invalid extension "${getFileExtension(normalizedPath)}" for ${type} "${name}".`);
+
+        {
+          const slug = getFileName(normalizedPath).replace(/\.[^.]+$/, "");
+          if (!hasScope(user, `collection:${name}`) && !hasScope(user, `entry:${name}:${slug}`)) {
+            return new Response(null, { status: 403 });
+          }
+        }
         break;
       case "media":
         if (!name) throw new Error(`"name" is required for media.`);
+
+        if (!isAdminUser(user) && !(user.churchAssignment?.scopes ?? []).includes(`media:${name}`)) {
+          return new Response(null, { status: 403 });
+        }
 
         schema = getSchemaByName(config.object, name, "media");
         if (!schema) throw new Error(`Media schema not found for ${name}.`);

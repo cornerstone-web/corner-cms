@@ -10,6 +10,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { getCollectionCache } from "@/lib/githubCache";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { hasCollectionAccess, isAdminUser } from "@/lib/utils/access-control";
 
 /**
  * Fetches and parses collection contents from GitHub repositories
@@ -29,6 +30,7 @@ export async function GET(
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });
+    if (!hasCollectionAccess(user, params.name)) return new Response(null, { status: 403 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -41,7 +43,7 @@ export async function GET(
     if (!schema) throw new Error(`Schema not found for ${params.name}.`);
 
     const searchParams = request.nextUrl.searchParams;
-    const path = searchParams.get("path") || "";
+    const path = searchParams.get("path") ?? schema.path;
     const type = searchParams.get("type");
     const query = searchParams.get("query") || "";
     const fields = searchParams.get("fields")?.split(",") || ["name"];

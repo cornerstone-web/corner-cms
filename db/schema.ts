@@ -19,11 +19,6 @@ export const churchStatusEnum = pgEnum("church_status", [
   "suspended",
 ]);
 
-export const churchRoleEnum = pgEnum("church_role", [
-  "church_admin",
-  "editor",
-]);
-
 // ─── Multi-tenant tables ──────────────────────────────────────────────────────
 
 export const churchesTable = pgTable("churches", {
@@ -65,13 +60,23 @@ export const userChurchRolesTable = pgTable("user_church_roles", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => usersTable.id),
   churchId: uuid("church_id").notNull().references(() => churchesTable.id),
-  role: churchRoleEnum("role").notNull(),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   deletedAt: timestamp("deleted_at"),
 }, table => ({
   idx_user_church_roles_user_id: index("idx_user_church_roles_user_id").on(table.userId),
   idx_user_church_roles_church_id: index("idx_user_church_roles_church_id").on(table.churchId),
   idx_user_church_roles_user_church: uniqueIndex("idx_user_church_roles_user_church").on(table.userId, table.churchId),
+}));
+
+export const userChurchScopesTable = pgTable("user_church_scopes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  churchId: uuid("church_id").notNull().references(() => churchesTable.id),
+  scope: text("scope").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, table => ({
+  idx_user_church_scopes_unique: uniqueIndex("idx_user_church_scopes_unique").on(table.userId, table.churchId, table.scope),
 }));
 
 export const churchWizardStepsTable = pgTable("church_wizard_steps", {

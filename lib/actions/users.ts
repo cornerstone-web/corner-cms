@@ -1,18 +1,52 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
+import { churchesTable, configTable, usersTable, userChurchRolesTable, userChurchScopesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 import { resolveInviteEmailStatus } from "@/lib/utils/invite";
+import { isValidScope } from "@/lib/utils/access-control";
 import {
   createOrResolveAuth0User,
   generatePasswordTicket,
   sendInviteEmail,
   createOrRestoreDbUser,
-  assignChurchRole,
+  assignChurchMembership,
 } from "@/lib/utils/user-helpers";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Derives the list of valid collection names for a church by reading its
+ * cached .pages.yml config from the DB. Falls back to [] if the config hasn't
+ * been loaded yet. Never trusts caller-supplied collection names.
+ */
+async function getCollectionNamesForChurch(churchId: string): Promise<string[]> {
+  const church = await db.query.churchesTable.findFirst({
+    where: eq(churchesTable.id, churchId),
+    columns: { githubRepoName: true },
+  });
+  if (!church) return [];
+
+  const slashIndex = church.githubRepoName.indexOf("/");
+  if (slashIndex === -1) return [];
+  const owner = church.githubRepoName.slice(0, slashIndex);
+  const repo = church.githubRepoName.slice(slashIndex + 1);
+
+  const config = await db.query.configTable.findFirst({
+    where: and(
+      sql`lower(${configTable.owner}) = lower(${owner})`,
+      sql`lower(${configTable.repo}) = lower(${repo})`,
+    ),
+    columns: { object: true },
+  });
+  if (!config) return [];
+
+  const parsed = JSON.parse(config.object) as Record<string, any>;
+  const content: any[] = Array.isArray(parsed.content) ? parsed.content : [];
+  return content.filter((item: any) => item.type === "collection").map((item: any) => item.name as string);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +63,7 @@ async function assertCanManageUsers(churchId: string) {
   if (user.isSuperAdmin) return user;
   if (
     user.churchAssignment?.churchId === churchId &&
-    user.churchAssignment.role === "church_admin"
+    user.churchAssignment.isAdmin
   )
     return user;
   throw new Error("You do not have permission to manage users for this site.");
@@ -44,23 +78,50 @@ export async function inviteUser(
   const churchId = (formData.get("churchId") as string | null)?.trim() ?? "";
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   const email = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
-  const role = (formData.get("role") as string | null) ?? "editor";
+  const isAdmin = formData.get("isAdmin") === "true";
+  const scopesRaw = (formData.get("scopes") as string | null) ?? "[]";
 
   if (!churchId || !name || !email)
     return { status: "error", message: "All fields are required." };
-  if (!["church_admin", "editor"].includes(role))
-    return { status: "error", message: "Invalid role." };
 
   try {
     await assertCanManageUsers(churchId);
+
+    let scopes: string[] = [];
+    if (!isAdmin) {
+      try {
+        scopes = JSON.parse(scopesRaw);
+      } catch {
+        return { status: "error", message: "Invalid scopes format." };
+      }
+      const collectionNames = await getCollectionNamesForChurch(churchId);
+      const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
+      if (invalid.length > 0)
+        return { status: "error", message: `Invalid scopes: ${invalid.join(", ")}` };
+      if (scopes.length === 0)
+        return { status: "error", message: "Non-admin users must have at least one scope." };
+    }
 
     const mgmtToken = await getAuth0ManagementToken();
     const auth0UserId = await createOrResolveAuth0User(email, name, mgmtToken);
     const resetUrl = await generatePasswordTicket(auth0UserId, mgmtToken);
 
-    // Create DB records first — if these fail, no email is sent and nothing is orphaned
     const dbUserId = await createOrRestoreDbUser(auth0UserId, email, name);
-    await assignChurchRole(dbUserId, churchId, role as "church_admin" | "editor");
+    await assignChurchMembership(dbUserId, churchId, isAdmin);
+
+    if (!isAdmin) {
+      await db
+        .delete(userChurchScopesTable)
+        .where(
+          and(
+            eq(userChurchScopesTable.userId, dbUserId),
+            eq(userChurchScopesTable.churchId, churchId)
+          )
+        );
+      await db.insert(userChurchScopesTable).values(
+        scopes.map(scope => ({ userId: dbUserId, churchId, scope }))
+      );
+    }
 
     const church = await db.query.churchesTable.findFirst({
       where: eq(churchesTable.id, churchId),
@@ -116,25 +177,63 @@ export async function resendInvite(
   }
 }
 
-// ─── updateUserRole ───────────────────────────────────────────────────────────
+// ─── updateUserAccess ─────────────────────────────────────────────────────────
 
-export async function updateUserRole(
+export async function updateUserAccess(
   churchId: string,
   userId: string,
-  role: "church_admin" | "editor"
+  isAdmin: boolean,
+  scopes: string[],
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await assertCanManageUsers(churchId);
+
+    // Verify the target user is an active member of this church
+    const membership = await db.query.userChurchRolesTable.findFirst({
+      where: and(
+        eq(userChurchRolesTable.churchId, churchId),
+        eq(userChurchRolesTable.userId, userId),
+        isNull(userChurchRolesTable.deletedAt)
+      ),
+    });
+    if (!membership) throw new Error("User is not a member of this church.");
+
+    if (!isAdmin) {
+      const collectionNames = await getCollectionNamesForChurch(churchId);
+      const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
+      if (invalid.length > 0)
+        throw new Error(`Invalid scopes: ${invalid.join(", ")}`);
+      if (scopes.length === 0)
+        throw new Error("Non-admin users must have at least one scope.");
+    }
+
     await db
       .update(userChurchRolesTable)
-      .set({ role })
+      .set({ isAdmin })
       .where(
         and(
           eq(userChurchRolesTable.churchId, churchId),
           eq(userChurchRolesTable.userId, userId),
-          isNull(userChurchRolesTable.deletedAt),
+          isNull(userChurchRolesTable.deletedAt)
         )
       );
+
+    // Always reconcile scopes: clear existing, then insert new (skip insert for admins)
+    await db
+      .delete(userChurchScopesTable)
+      .where(
+        and(
+          eq(userChurchScopesTable.userId, userId),
+          eq(userChurchScopesTable.churchId, churchId)
+        )
+      );
+
+    if (!isAdmin && scopes.length > 0) {
+      await db.insert(userChurchScopesTable).values(
+        scopes.map(scope => ({ userId, churchId, scope }))
+      );
+    }
+
     return { ok: true };
   } catch (err: unknown) {
     return { ok: false, error: err instanceof Error ? err.message : "Update failed." };
@@ -168,6 +267,16 @@ export async function removeUserFromChurch(
         )
       );
 
+    // Delete all scopes for this user in this church
+    await db
+      .delete(userChurchScopesTable)
+      .where(
+        and(
+          eq(userChurchScopesTable.userId, userId),
+          eq(userChurchScopesTable.churchId, churchId)
+        )
+      );
+
     await db
       .update(usersTable)
       .set({ deletedAt: now })
@@ -178,7 +287,6 @@ export async function removeUserFromChurch(
       `https://${process.env.AUTH0_DOMAIN}/api/v2/users/${encodeURIComponent(dbUser.auth0Id)}`,
       { method: "DELETE", headers: { Authorization: `Bearer ${mgmtToken}` } }
     );
-    // 204 = deleted, 404 = already gone — both are fine
     if (!deleteRes.ok && deleteRes.status !== 404) {
       throw new Error(`Auth0 user deletion failed (${deleteRes.status}): ${await deleteRes.text()}`);
     }

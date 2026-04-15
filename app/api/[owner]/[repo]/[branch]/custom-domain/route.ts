@@ -102,7 +102,7 @@ export async function POST(
       }
       if (
         user.churchAssignment.githubRepoName !== githubRepoName ||
-        user.churchAssignment.role !== "church_admin"
+        !user.churchAssignment.isAdmin
       ) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }
@@ -213,7 +213,7 @@ export async function DELETE(
       }
       if (
         user.churchAssignment.githubRepoName !== githubRepoName ||
-        user.churchAssignment.role !== "church_admin"
+        !user.churchAssignment.isAdmin
       ) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }

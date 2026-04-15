@@ -3,6 +3,7 @@ import { getToken } from "@/lib/token";
 
 import { generateListToken } from "@/lib/utils/r2-token";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { isAdminUser } from "@/lib/utils/access-control";
 
 /**
  * List R2 media files for a specific category.
@@ -33,6 +34,10 @@ export async function GET(
         { status: 'error', message: 'Missing or invalid category' },
         { status: 400 }
       );
+    }
+
+    if (!isAdminUser(user) && !(user.churchAssignment?.scopes ?? []).includes(`media:${category}`)) {
+      return new Response(null, { status: 403 });
     }
 
     const secret = process.env.CORNER_MEDIA_SECRET;

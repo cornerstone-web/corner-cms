@@ -1,5 +1,8 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getAuth } from "@/lib/auth";
+import { isAdminUser, hasMediaAccess } from "@/lib/utils/access-control";
 import { MediaView } from "@/components/media/media-view";
 import { getFileWithSha, getDirectoryFileNames } from "@/lib/github/wizard";
 import YAML from "yaml";
@@ -35,18 +38,27 @@ export default async function Page(
     searchParams: Promise<{ category?: string }>;
   }
 ) {
-  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
+  const [params, searchParams, { user }] = await Promise.all([props.params, props.searchParams, getAuth()]);
+
+  if (!user) return redirect("/auth/login");
+  if (!hasMediaAccess(user)) {
+    redirect(`/${params.owner}/${params.repo}/${encodeURIComponent(params.branch)}`);
+  }
+
   const showBulletins = await shouldShowBulletins(params.repo);
 
-  const visibleCategories: MediaCategory[] = showBulletins
-    ? [...VALID_CATEGORIES]
-    : VALID_CATEGORIES.filter((c): c is Exclude<MediaCategory, "bulletins"> => c !== "bulletins");
+  const visibleCategories: MediaCategory[] = (showBulletins ? [...VALID_CATEGORIES] : VALID_CATEGORIES.filter(c => c !== "bulletins"))
+    .filter(c => isAdminUser(user) || (user.churchAssignment?.scopes ?? []).includes(`media:${c}`));
 
-  const category: MediaCategory = visibleCategories.includes(
-    searchParams.category as MediaCategory
-  )
-    ? (searchParams.category as MediaCategory)
-    : "images";
+  // If no allowed categories remain, redirect (shouldn't happen — page guard above already checks)
+  if (visibleCategories.length === 0) {
+    redirect(`/${params.owner}/${params.repo}/${encodeURIComponent(params.branch)}`);
+  }
+
+  const requestedCategory = searchParams.category as MediaCategory;
+  const category: MediaCategory = visibleCategories.includes(requestedCategory)
+    ? requestedCategory
+    : visibleCategories[0];
 
   return (
     <div className="max-w-screen-xl mx-auto flex-1 flex flex-col h-full">

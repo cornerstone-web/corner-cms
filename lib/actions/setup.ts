@@ -180,7 +180,7 @@ async function assertChurchAdmin(churchId: string) {
   if (user.isSuperAdmin) return user;
   if (
     user.churchAssignment?.churchId === churchId &&
-    user.churchAssignment.role === "church_admin"
+    user.churchAssignment.isAdmin
   )
     return user;
   throw new Error("Unauthorized.");

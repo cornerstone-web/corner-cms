@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const isAuthorized =
       user.isSuperAdmin ||
       (user.churchAssignment?.churchId === churchId &&
-        user.churchAssignment?.role === "church_admin");
+        user.churchAssignment?.isAdmin === true);
     if (!isAuthorized) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }

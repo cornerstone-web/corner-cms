@@ -5,6 +5,7 @@ import YAML from "yaml";
 import { siteConfigSchema } from "@/components/site-config/schema";
 import { handleRouteError } from "@/lib/utils/apiError";
 import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
+import { hasSiteConfigAccess } from "@/lib/utils/access-control";
 
 const SITE_CONFIG_PATH = "src/config/site.config.yaml";
 
@@ -23,6 +24,7 @@ export async function GET(
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });
+    if (!hasSiteConfigAccess(user)) return new Response(null, { status: 403 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -63,6 +65,7 @@ export async function POST(
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });
+    if (!hasSiteConfigAccess(user)) return new Response(null, { status: 403 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");

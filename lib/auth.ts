@@ -1,14 +1,14 @@
 /**
  * Auth helper functions using @auth0/nextjs-auth0.
  *
- * getAuth() resolves the Auth0 session → DB user → church assignment.
+ * getAuth() resolves the Auth0 session → DB user → church assignment (with scopes).
  * Use this in server components / route handlers that need the authenticated user.
  */
 
 import { cache } from "react";
 import { auth0 } from "@/lib/auth0";
 import { db } from "@/db";
-import { usersTable, userChurchRolesTable, churchesTable } from "@/db/schema";
+import { usersTable, userChurchRolesTable, churchesTable, userChurchScopesTable } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { User } from "@/types/user";
 
@@ -28,11 +28,11 @@ export const getAuth = cache(
 
     if (!dbUser) return { user: null };
 
-    // Resolve church assignment (one church per user for MVP)
+    // Resolve church assignment
     const roleRow = await db
       .select({
         churchId: userChurchRolesTable.churchId,
-        role: userChurchRolesTable.role,
+        isAdmin: userChurchRolesTable.isAdmin,
         githubRepoName: churchesTable.githubRepoName,
         slug: churchesTable.slug,
         displayName: churchesTable.displayName,
@@ -50,6 +50,20 @@ export const getAuth = cache(
       .limit(1)
       .then(rows => rows[0] ?? null);
 
+    let scopes: string[] = [];
+    if (roleRow && !roleRow.isAdmin) {
+      const scopeRows = await db
+        .select({ scope: userChurchScopesTable.scope })
+        .from(userChurchScopesTable)
+        .where(
+          and(
+            eq(userChurchScopesTable.userId, dbUser.id),
+            eq(userChurchScopesTable.churchId, roleRow.churchId)
+          )
+        );
+      scopes = scopeRows.map(r => r.scope);
+    }
+
     const user: User = {
       id: dbUser.id,
       auth0Id: dbUser.auth0Id,
@@ -63,7 +77,8 @@ export const getAuth = cache(
             slug: roleRow.slug,
             displayName: roleRow.displayName,
             cfPagesUrl: roleRow.cfPagesUrl,
-            role: roleRow.role,
+            isAdmin: roleRow.isAdmin,
+            scopes,
           }
         : null,
     };

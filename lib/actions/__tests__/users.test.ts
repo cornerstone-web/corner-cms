@@ -5,18 +5,25 @@ vi.mock("@/lib/auth", () => ({ getAuth: vi.fn() }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/db/schema", () => ({
   churchesTable: {},
+  configTable: {},
   usersTable: {},
   userChurchRolesTable: {},
+  userChurchScopesTable: {},
 }));
 vi.mock("@/lib/auth0Management", () => ({ getAuth0ManagementToken: vi.fn() }));
+vi.mock("@/lib/utils/access-control", () => ({
+  isValidScope: vi.fn().mockReturnValue(true),
+  filterValidScopes: vi.fn((scopes: string[]) => scopes),
+}));
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return { ...actual, cache: (fn: unknown) => fn };
 });
 
 import { resolveInviteEmailStatus } from "@/lib/utils/invite";
-import { removeUserFromChurch } from "@/lib/actions/users";
+import { removeUserFromChurch, updateUserAccess, inviteUser } from "@/lib/actions/users";
 import { getAuth } from "@/lib/auth";
+import { isValidScope } from "@/lib/utils/access-control";
 import { db } from "@/db";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 
@@ -44,16 +51,20 @@ describe("removeUserFromChurch", () => {
   const adminAuthResult = {
     user: {
       isSuperAdmin: false,
-      churchAssignment: { churchId: "church-1", role: "church_admin" },
+      churchAssignment: { churchId: "church-1", isAdmin: true },
     },
   };
 
   function setupDbMocks(findFirstResult: typeof mockUser | null) {
     (db as any).query = {
       usersTable: { findFirst: vi.fn().mockResolvedValue(findFirstResult) },
+      userChurchRolesTable: { findFirst: vi.fn().mockResolvedValue({ id: "role-1" }) },
     };
     (db as any).update = vi.fn().mockReturnValue({
       set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    (db as any).delete = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
     });
   }
 
@@ -72,7 +83,6 @@ describe("removeUserFromChurch", () => {
     const result = await removeUserFromChurch("church-1", "user-1");
 
     expect(result).toEqual({ ok: true });
-    expect((db as any).update).toHaveBeenCalledTimes(2);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0];
     expect(String(url)).toContain("auth0%7Cabc123");
@@ -120,7 +130,7 @@ describe("removeUserFromChurch", () => {
     vi.mocked(getAuth).mockResolvedValue({
       user: {
         isSuperAdmin: false,
-        churchAssignment: { churchId: "other-church", role: "editor" },
+        churchAssignment: { churchId: "other-church", isAdmin: false },
       },
     } as any);
 
@@ -128,5 +138,117 @@ describe("removeUserFromChurch", () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/permission/i);
+  });
+});
+
+describe("updateUserAccess", () => {
+  const adminAuthResult = {
+    user: {
+      isSuperAdmin: false,
+      churchAssignment: { churchId: "church-1", isAdmin: true },
+    },
+  };
+
+  function setupDbMocks() {
+    (db as any).update = vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    (db as any).delete = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    (db as any).insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockResolvedValue(undefined),
+    });
+    (db as any).query = {
+      churchesTable: {
+        findFirst: vi.fn().mockResolvedValue({ githubRepoName: "org/repo" }),
+      },
+      configTable: {
+        findFirst: vi.fn().mockResolvedValue({
+          object: JSON.stringify({ content: [{ type: "collection", name: "sermons" }] }),
+        }),
+      },
+      userChurchRolesTable: {
+        findFirst: vi.fn().mockResolvedValue({ id: "role-1" }),
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.mocked(getAuth).mockResolvedValue(adminAuthResult as any);
+    vi.mocked(isValidScope).mockReturnValue(true);
+    setupDbMocks();
+  });
+
+  it("returns error when caller does not have permission", async () => {
+    vi.mocked(getAuth).mockResolvedValueOnce({
+      user: {
+        isSuperAdmin: false,
+        churchAssignment: { churchId: "other-church", isAdmin: false },
+      },
+    } as any);
+    const result = await updateUserAccess("church-1", "user-1", false, ["collection:sermons"]);
+    expect(result).toEqual({ ok: false, error: expect.stringMatching(/permission/i) });
+  });
+
+  it("returns error when userId is not a member of churchId", async () => {
+    (db as any).query.userChurchRolesTable.findFirst = vi.fn().mockResolvedValue(null);
+    const result = await updateUserAccess("church-1", "user-99", false, ["collection:sermons"]);
+    expect(result).toEqual({ ok: false, error: expect.stringMatching(/not a member/i) });
+  });
+
+  it("returns error for invalid scopes", async () => {
+    vi.mocked(isValidScope).mockReturnValueOnce(false);
+    const result = await updateUserAccess("church-1", "user-1", false, ["invalid:scope"]);
+    expect(result).toEqual({ ok: false, error: expect.stringMatching(/invalid scopes/i) });
+  });
+
+  it("returns error for non-admin with empty scopes", async () => {
+    const result = await updateUserAccess("church-1", "user-1", false, []);
+    expect(result).toEqual({ ok: false, error: expect.stringMatching(/at least one scope/i) });
+  });
+
+  it("returns ok and clears scopes when promoting to admin", async () => {
+    const result = await updateUserAccess("church-1", "user-1", true, []);
+    expect(result).toEqual({ ok: true });
+    expect((db as any).delete).toHaveBeenCalled();
+    expect((db as any).insert).not.toHaveBeenCalled();
+  });
+
+  it("returns ok and upserts scopes for non-admin", async () => {
+    const result = await updateUserAccess("church-1", "user-1", false, ["collection:sermons"]);
+    expect(result).toEqual({ ok: true });
+    expect((db as any).insert).toHaveBeenCalled();
+  });
+});
+
+describe("inviteUser – empty scopes guard", () => {
+  beforeEach(() => {
+    vi.mocked(getAuth).mockResolvedValue({
+      user: { isSuperAdmin: true, churchAssignment: null },
+    } as any);
+    (db as any).query = {
+      churchesTable: {
+        findFirst: vi.fn().mockResolvedValue({ githubRepoName: "org/repo" }),
+      },
+      configTable: {
+        findFirst: vi.fn().mockResolvedValue({
+          object: JSON.stringify({ content: [{ type: "collection", name: "sermons" }, { type: "collection", name: "pages" }] }),
+        }),
+      },
+    };
+  });
+
+  it("returns error when non-admin invite has no scopes", async () => {
+    const formData = new FormData();
+    formData.set("churchId", "church-1");
+    formData.set("name", "Jane");
+    formData.set("email", "jane@test.com");
+    formData.set("isAdmin", "false");
+    formData.set("scopes", "[]");
+
+    const result = await inviteUser({ status: "idle" }, formData);
+    expect(result.status).toBe("error");
+    expect((result as any).message).toMatch(/at least one scope/i);
   });
 });

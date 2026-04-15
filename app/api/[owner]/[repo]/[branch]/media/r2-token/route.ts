@@ -4,6 +4,7 @@ import { getToken } from "@/lib/token";
 
 import { generateUploadToken } from "@/lib/utils/r2-token";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { isAdminUser } from "@/lib/utils/access-control";
 
 /**
  * Generate a short-lived HMAC upload token for corner-media.
@@ -39,6 +40,10 @@ export async function POST(
     }
     if (!category || !['video', 'audio'].includes(category)) {
       return Response.json({ status: 'error', message: 'Missing or invalid category (must be "video" or "audio")' }, { status: 400 });
+    }
+
+    if (!isAdminUser(user) && !(user.churchAssignment?.scopes ?? []).includes(`media:${category}`)) {
+      return new Response(null, { status: 403 });
     }
 
     // Sanitize filename — no path traversal, no special characters

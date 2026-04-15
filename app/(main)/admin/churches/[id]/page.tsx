@@ -20,7 +20,7 @@ export default async function ChurchPage(props: { params: Promise<{ id: string }
   const roleRows = await db
     .select({
       userId: userChurchRolesTable.userId,
-      role: userChurchRolesTable.role,
+      isAdmin: userChurchRolesTable.isAdmin,
       name: usersTable.name,
       email: usersTable.email,
       auth0Id: usersTable.auth0Id,

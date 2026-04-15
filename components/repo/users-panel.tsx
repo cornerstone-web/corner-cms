@@ -1,15 +1,18 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useTransition, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { useActionState, useEffect, useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   inviteUser,
-  updateUserRole,
+  updateUserAccess,
   removeUserFromChurch,
   resendInvite,
   type InviteState,
 } from "@/lib/actions/users";
+import { useConfig } from "@/contexts/config-context";
+import { useSiteFeatures } from "@/hooks/use-site-features";
+import type { ConfigCollection } from "@/components/repo/scope-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,13 +26,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -40,13 +36,23 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Check, Copy, Loader2, Mail, MailX, RefreshCw, Trash2, UserPlus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Check, Copy, Loader2, Mail, MailX, RefreshCw, Settings2, Trash2, UserPlus } from "lucide-react";
+import { ScopePicker } from "@/components/repo/scope-picker";
+import { Switch } from "@/components/ui/switch";
 
 type UserRow = {
   userId: string;
   name: string;
   email: string;
-  role: "church_admin" | "editor";
+  isAdmin: boolean;
+  scopes: string[];
 };
 
 const initialState: InviteState = { status: "idle" };
@@ -60,16 +66,70 @@ function InviteSubmitButton() {
   );
 }
 
+function singularize(word: string, count: number): string {
+  if (count !== 1) return word;
+  if (word.endsWith("ies")) return word.slice(0, -3) + "y"; // ministries → ministry
+  if (word.endsWith("s") && !word.endsWith("ss") && word !== "series") return word.slice(0, -1);
+  return word;
+}
+
+function scopeSummary(scopes: string[], collections: ConfigCollection[]): string {
+  if (scopes.length === 0) return "No access";
+
+  const collectionMap = new Map(collections.map(c => [c.name, c.label]));
+
+  const involvedCollections = new Set([
+    ...scopes.filter(s => s.startsWith("collection:")).map(s => s.replace("collection:", "")),
+    ...scopes.filter(s => s.startsWith("entry:")).map(s => s.split(":")[1]).filter(Boolean),
+  ]);
+
+  const parts: string[] = [];
+
+  for (const name of involvedCollections) {
+    const label = (collectionMap.get(name) ?? name).toLowerCase();
+    const hasFullAccess = scopes.includes(`collection:${name}`);
+    if (hasFullAccess) {
+      // Full collection access — show label capitalised (e.g. "Pages")
+      parts.push(label.charAt(0).toUpperCase() + label.slice(1));
+    } else {
+      const count = scopes.filter(s => s.startsWith(`entry:${name}:`)).length;
+      parts.push(`${count} ${singularize(label, count)}`);
+    }
+  }
+
+  const config = scopes.filter(s => s.startsWith("site-config:")).length;
+  const media = scopes.filter(s => s.startsWith("media:")).length;
+  if (config > 0) parts.push(`${config} config section${config > 1 ? "s" : ""}`);
+  if (media > 0) parts.push(`${media} media type${media > 1 ? "s" : ""}`);
+
+  return parts.length > 0 ? parts.join(", ") : "No access";
+}
+
 export function UsersPanel({
   churchId,
+  owner,
+  repo,
+  branch,
   initialUsers,
 }: {
   churchId: string;
+  owner: string;
+  repo: string;
+  branch: string;
   initialUsers: UserRow[];
 }) {
   const router = useRouter();
+  const { config } = useConfig();
+  const { features } = useSiteFeatures();
+  const collections: ConfigCollection[] = ((config?.object?.content as any[]) ?? [])
+    .filter((item: any) => item.type === "collection")
+    .filter((item: any) => item.name === "pages" || item.name === "templates" || features[item.name] !== false)
+    .map((item: any) => ({ name: item.name as string, label: (item.label || item.name) as string }));
+  const collectionNames = collections.map(c => c.name);
   const [isPending, startTransition] = useTransition();
   const [showInvite, setShowInvite] = useState(false);
+  const [inviteIsAdmin, setInviteIsAdmin] = useState(false);
+  const [inviteScopes, setInviteScopes] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [resendResult, setResendResult] = useState<{
     userId: string;
@@ -77,6 +137,9 @@ export function UsersPanel({
     emailSent: boolean;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editScopes, setEditScopes] = useState<string[]>([]);
+  const [editIsAdmin, setEditIsAdmin] = useState(false);
 
   function handleCopy(url: string) {
     navigator.clipboard.writeText(url).then(() => {
@@ -98,24 +161,16 @@ export function UsersPanel({
     });
   }
 
-  const [inviteState, inviteAction] = useFormState(inviteUser, initialState);
+  const [inviteState, inviteAction] = useActionState(inviteUser, initialState);
 
-  // Refresh after successful invite
   useEffect(() => {
     if (inviteState.status === "success") {
       router.refresh();
       setShowInvite(false);
+      setInviteIsAdmin(false);
+      setInviteScopes([]);
     }
   }, [inviteState.status, router]);
-
-  function handleRoleChange(userId: string, role: "church_admin" | "editor") {
-    setActionError(null);
-    startTransition(async () => {
-      const result = await updateUserRole(churchId, userId, role);
-      if (!result.ok) setActionError(result.error ?? "Update failed.");
-      else router.refresh();
-    });
-  }
 
   function handleRemove(userId: string) {
     setActionError(null);
@@ -123,6 +178,28 @@ export function UsersPanel({
       const result = await removeUserFromChurch(churchId, userId);
       if (!result.ok) setActionError(result.error ?? "Remove failed.");
       else router.refresh();
+    });
+  }
+
+  function openEditAccess(user: UserRow) {
+    setEditingUser(user);
+    setEditIsAdmin(user.isAdmin);
+    setEditScopes(user.scopes);
+  }
+
+  function handleSaveAccess() {
+    if (!editingUser) return;
+    setActionError(null);
+    startTransition(async () => {
+      const result = await updateUserAccess(
+        churchId,
+        editingUser.userId,
+        editIsAdmin,
+        editIsAdmin ? [] : editScopes,
+      );
+      if (!result.ok) { setActionError(result.error ?? "Update failed."); return; }
+      setEditingUser(null);
+      router.refresh();
     });
   }
 
@@ -143,6 +220,8 @@ export function UsersPanel({
           className="rounded-lg border p-4 space-y-4 bg-muted/30"
         >
           <input type="hidden" name="churchId" value={churchId} />
+          <input type="hidden" name="isAdmin" value={String(inviteIsAdmin)} />
+          <input type="hidden" name="scopes" value={JSON.stringify(inviteScopes)} />
           <p className="text-sm font-medium">Invite a new user</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -152,50 +231,54 @@ export function UsersPanel({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                name="email"
-                type="email"
-                placeholder="jane@church.com"
-                required
-              />
+              <Input id="invite-email" name="email" type="email" placeholder="jane@church.com" required />
             </div>
           </div>
 
-          <div className="space-y-1.5 max-w-xs">
-            <Label htmlFor="invite-role">Role</Label>
-            <select
-              id="invite-role"
-              name="role"
-              defaultValue="editor"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <option value="editor">Editor</option>
-              <option value="church_admin">Church Admin</option>
-            </select>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="invite-is-admin"
+                checked={inviteIsAdmin}
+                onCheckedChange={setInviteIsAdmin}
+              />
+              <Label htmlFor="invite-is-admin" className="cursor-pointer">
+                Admin — full access to everything
+              </Label>
+            </div>
+
+            {!inviteIsAdmin && (
+              <div className="rounded-lg border p-4 bg-background">
+                <p className="text-xs font-medium text-muted-foreground mb-3">Custom access</p>
+                <ScopePicker
+                  owner={owner}
+                  repo={repo}
+                  branch={branch}
+                  collections={collections}
+                  selectedScopes={inviteScopes}
+                  onChange={setInviteScopes}
+                />
+              </div>
+            )}
           </div>
 
           {inviteState.status === "error" && (
             <p className="text-sm text-destructive">{inviteState.message}</p>
           )}
 
+          {!inviteIsAdmin && inviteScopes.length === 0 && (
+            <p className="text-xs text-amber-600">Select at least one scope or enable Admin access.</p>
+          )}
           <div className="flex gap-2">
             <InviteSubmitButton />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowInvite(false)}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowInvite(false)}>
               Cancel
             </Button>
           </div>
         </form>
       )}
 
-      {actionError && (
-        <p className="text-sm text-destructive">{actionError}</p>
-      )}
+      {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
       {/* Users table */}
       {initialUsers.length === 0 ? (
@@ -207,8 +290,8 @@ export function UsersPanel({
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="w-20" />
+                <TableHead>Access</TableHead>
+                <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -217,54 +300,53 @@ export function UsersPanel({
                   <TableCell className="font-medium">{u.name || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell>
-                    <Select
-                      defaultValue={u.role}
-                      onValueChange={(val) =>
-                        handleRoleChange(u.userId, val as "church_admin" | "editor")
-                      }
-                      disabled={isPending}
-                    >
-                      <SelectTrigger className="h-8 w-36">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="editor">Editor</SelectItem>
-                        <SelectItem value="church_admin">Church Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {u.isAdmin ? (
+                      <Badge variant="secondary">Admin</Badge>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{scopeSummary(u.scopes, collections)}</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled={isPending}
-                      onClick={() => handleResend(u.userId)}
-                      title="Resend invite"
-                    >
-                      <RefreshCw className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon-sm" disabled={isPending}>
-                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove user?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {u.name || u.email} will lose access to this site. This can be undone by re-inviting them.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleRemove(u.userId)}>
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={isPending}
+                        onClick={() => openEditAccess(u)}
+                        title="Edit access"
+                      >
+                        <Settings2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={isPending}
+                        onClick={() => handleResend(u.userId)}
+                        title="Resend invite"
+                      >
+                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon-sm" disabled={isPending}>
+                            <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove user?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {u.name || u.email} will lose access to this site. This can be undone by re-inviting them.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRemove(u.userId)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -273,6 +355,48 @@ export function UsersPanel({
           </Table>
         </div>
       )}
+
+      {/* Edit access dialog */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => { if (!open) setEditingUser(null); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit access — {editingUser?.name || editingUser?.email}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="edit-is-admin"
+                checked={editIsAdmin}
+                onCheckedChange={setEditIsAdmin}
+                disabled={isPending}
+              />
+              <Label htmlFor="edit-is-admin" className="cursor-pointer">
+                Admin — full access to everything
+              </Label>
+            </div>
+            {!editIsAdmin && (
+              <div className="rounded-lg border p-4">
+                <p className="text-xs font-medium text-muted-foreground mb-3">Custom access</p>
+                <ScopePicker
+                  owner={owner}
+                  repo={repo}
+                  branch={branch}
+                  collections={collections}
+                  selectedScopes={editScopes}
+                  onChange={setEditScopes}
+                  disabled={isPending}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingUser(null)} disabled={isPending}>Cancel</Button>
+            <Button onClick={handleSaveAccess} disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Resend invite result */}
       {resendResult && (
@@ -306,9 +430,7 @@ export function UsersPanel({
               </Button>
             </div>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setResendResult(null)}>
-            Dismiss
-          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setResendResult(null)}>Dismiss</Button>
         </div>
       )}
     </div>

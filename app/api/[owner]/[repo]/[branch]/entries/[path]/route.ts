@@ -8,6 +8,7 @@ import { getFileExtension, normalizePath } from "@/lib/utils/file";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { hasCollectionAccess } from "@/lib/utils/access-control";
 
 /**
  * Fetches and parses individual file contents from GitHub repositories
@@ -33,6 +34,10 @@ export async function GET(
 
     const searchParams = request.nextUrl.searchParams;
     const name = searchParams.get("name");
+
+    // Scope check: if this is a collection entry (name provided), verify the
+    // user has at least read access to that collection.
+    if (name && !hasCollectionAccess(user, name)) return new Response(null, { status: 403 });
     
     const normalizedPath = normalizePath(params.path);
 
