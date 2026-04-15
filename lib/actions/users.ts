@@ -52,24 +52,24 @@ export async function inviteUser(
   if (!churchId || !name || !email)
     return { status: "error", message: "All fields are required." };
 
-  let scopes: string[] = [];
-  let collectionNames: string[] = [];
-  if (!isAdmin) {
-    try {
-      scopes = JSON.parse(scopesRaw);
-      collectionNames = JSON.parse(collectionNamesRaw);
-    } catch {
-      return { status: "error", message: "Invalid scopes format." };
-    }
-    const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
-    if (invalid.length > 0)
-      return { status: "error", message: `Invalid scopes: ${invalid.join(", ")}` };
-    if (scopes.length === 0)
-      return { status: "error", message: "Non-admin users must have at least one scope." };
-  }
-
   try {
     await assertCanManageUsers(churchId);
+
+    let scopes: string[] = [];
+    let collectionNames: string[] = [];
+    if (!isAdmin) {
+      try {
+        scopes = JSON.parse(scopesRaw);
+        collectionNames = JSON.parse(collectionNamesRaw);
+      } catch {
+        return { status: "error", message: "Invalid scopes format." };
+      }
+      const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
+      if (invalid.length > 0)
+        return { status: "error", message: `Invalid scopes: ${invalid.join(", ")}` };
+      if (scopes.length === 0)
+        return { status: "error", message: "Non-admin users must have at least one scope." };
+    }
 
     const mgmtToken = await getAuth0ManagementToken();
     const auth0UserId = await createOrResolveAuth0User(email, name, mgmtToken);
@@ -78,7 +78,7 @@ export async function inviteUser(
     const dbUserId = await createOrRestoreDbUser(auth0UserId, email, name);
     await assignChurchMembership(dbUserId, churchId, isAdmin);
 
-    if (!isAdmin && scopes.length > 0) {
+    if (!isAdmin) {
       await db
         .delete(userChurchScopesTable)
         .where(

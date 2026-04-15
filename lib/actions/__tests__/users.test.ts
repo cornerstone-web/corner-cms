@@ -171,6 +171,17 @@ describe("updateUserAccess", () => {
     setupDbMocks();
   });
 
+  it("returns error when caller does not have permission", async () => {
+    vi.mocked(getAuth).mockResolvedValueOnce({
+      user: {
+        isSuperAdmin: false,
+        churchAssignment: { churchId: "other-church", isAdmin: false },
+      },
+    } as any);
+    const result = await updateUserAccess("church-1", "user-1", false, ["collection:sermons"], ["sermons"]);
+    expect(result).toEqual({ ok: false, error: expect.stringMatching(/permission/i) });
+  });
+
   it("returns error when userId is not a member of churchId", async () => {
     (db as any).query.userChurchRolesTable.findFirst = vi.fn().mockResolvedValue(null);
     const result = await updateUserAccess("church-1", "user-99", false, ["collection:sermons"], ["sermons"]);
