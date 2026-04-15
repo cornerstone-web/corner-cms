@@ -584,18 +584,22 @@ export function CollectionView({
               </Button>
             </FolderCreate>
           )}
-          <Link
-            className={cn(buttonVariants({size: "sm"}), "hidden sm:flex")}
-            href={`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/new${schema.view?.layout !== 'tree' && path && path !== schema.path ? `?parent=${encodeURIComponent(path)}` : ""}`}
-          >
-              Add an entry
-          </Link>
-          <Link
-            className={cn(buttonVariants({size: "icon-sm"}), "sm:hidden shrink-0")}
-            href={`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/new${schema.view?.layout !== 'tree' && path && path !== schema.path ? `?parent=${encodeURIComponent(path)}` : ""}`}
-          >
-              <Plus className="h-4 w-4"/>
-          </Link>
+          {(!user || hasScope(user, `collection:${name}`)) && (
+            <>
+              <Link
+                className={cn(buttonVariants({size: "sm"}), "hidden sm:flex")}
+                href={`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/new${schema.view?.layout !== 'tree' && path && path !== schema.path ? `?parent=${encodeURIComponent(path)}` : ""}`}
+              >
+                Add an entry
+              </Link>
+              <Link
+                className={cn(buttonVariants({size: "icon-sm"}), "sm:hidden shrink-0")}
+                href={`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/new${schema.view?.layout !== 'tree' && path && path !== schema.path ? `?parent=${encodeURIComponent(path)}` : ""}`}
+              >
+                <Plus className="h-4 w-4"/>
+              </Link>
+            </>
+          )}
         </header>
         {isLoading
           ? loadingSkeleton

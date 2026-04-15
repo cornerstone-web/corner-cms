@@ -7,7 +7,7 @@ import { Loader, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
-import { isAdminUser } from "@/lib/utils/access-control";
+import { hasScope } from "@/lib/utils/access-control";
 import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -46,14 +46,14 @@ export function SiteConfigEditor() {
   const { config } = useConfig();
   const { user } = useUser();
   const { previewUrl } = useSiteFeaturesContext();
-  const isAdmin = !!user && isAdminUser(user);
-
-  const userScopes = user?.churchAssignment?.scopes ?? [];
-  const allowedTabs: string[] = isAdmin
+  const allowedTabs: string[] = !user
     ? [...Object.keys(TAB_SCOPES), "domain"]
-    : Object.keys(TAB_SCOPES).filter(tab =>
-        TAB_SCOPES[tab].some(scope => userScopes.includes(scope))
-      );
+    : [
+        ...Object.keys(TAB_SCOPES).filter(tab =>
+          TAB_SCOPES[tab].some(scope => hasScope(user, scope))
+        ),
+        ...(hasScope(user, "site-config:domain") ? ["domain"] : []),
+      ];
   const defaultTab = allowedTabs[0] ?? "identity";
 
   function canSeeTab(tab: string) {

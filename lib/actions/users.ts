@@ -1,9 +1,9 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, usersTable, userChurchRolesTable, userChurchScopesTable } from "@/db/schema";
+import { churchesTable, configTable, usersTable, userChurchRolesTable, userChurchScopesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 import { resolveInviteEmailStatus } from "@/lib/utils/invite";
 import { isValidScope } from "@/lib/utils/access-control";
@@ -14,6 +14,39 @@ import {
   createOrRestoreDbUser,
   assignChurchMembership,
 } from "@/lib/utils/user-helpers";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Derives the list of valid collection names for a church by reading its
+ * cached .pages.yml config from the DB. Falls back to [] if the config hasn't
+ * been loaded yet. Never trusts caller-supplied collection names.
+ */
+async function getCollectionNamesForChurch(churchId: string): Promise<string[]> {
+  const church = await db.query.churchesTable.findFirst({
+    where: eq(churchesTable.id, churchId),
+    columns: { githubRepoName: true },
+  });
+  if (!church) return [];
+
+  const slashIndex = church.githubRepoName.indexOf("/");
+  if (slashIndex === -1) return [];
+  const owner = church.githubRepoName.slice(0, slashIndex);
+  const repo = church.githubRepoName.slice(slashIndex + 1);
+
+  const config = await db.query.configTable.findFirst({
+    where: and(
+      sql`lower(${configTable.owner}) = lower(${owner})`,
+      sql`lower(${configTable.repo}) = lower(${repo})`,
+    ),
+    columns: { object: true },
+  });
+  if (!config) return [];
+
+  const parsed = JSON.parse(config.object) as Record<string, any>;
+  const content: any[] = Array.isArray(parsed.content) ? parsed.content : [];
+  return content.filter((item: any) => item.type === "collection").map((item: any) => item.name as string);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,7 +80,6 @@ export async function inviteUser(
   const email = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
   const isAdmin = formData.get("isAdmin") === "true";
   const scopesRaw = (formData.get("scopes") as string | null) ?? "[]";
-  const collectionNamesRaw = (formData.get("collectionNames") as string | null) ?? "[]";
 
   if (!churchId || !name || !email)
     return { status: "error", message: "All fields are required." };
@@ -56,14 +88,13 @@ export async function inviteUser(
     await assertCanManageUsers(churchId);
 
     let scopes: string[] = [];
-    let collectionNames: string[] = [];
     if (!isAdmin) {
       try {
         scopes = JSON.parse(scopesRaw);
-        collectionNames = JSON.parse(collectionNamesRaw);
       } catch {
         return { status: "error", message: "Invalid scopes format." };
       }
+      const collectionNames = await getCollectionNamesForChurch(churchId);
       const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
       if (invalid.length > 0)
         return { status: "error", message: `Invalid scopes: ${invalid.join(", ")}` };
@@ -153,7 +184,6 @@ export async function updateUserAccess(
   userId: string,
   isAdmin: boolean,
   scopes: string[],
-  collectionNames: string[]
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await assertCanManageUsers(churchId);
@@ -169,6 +199,7 @@ export async function updateUserAccess(
     if (!membership) throw new Error("User is not a member of this church.");
 
     if (!isAdmin) {
+      const collectionNames = await getCollectionNamesForChurch(churchId);
       const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
       if (invalid.length > 0)
         throw new Error(`Invalid scopes: ${invalid.join(", ")}`);

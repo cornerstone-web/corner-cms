@@ -5,6 +5,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { getMediaCache } from "@/lib/githubCache";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { hasMediaAccess } from "@/lib/utils/access-control";
 
 // Add docs
 
@@ -24,6 +25,7 @@ export async function GET(
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });
+    if (!hasMediaAccess(user)) return new Response(null, { status: 403 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");

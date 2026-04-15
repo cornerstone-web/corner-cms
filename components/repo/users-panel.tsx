@@ -196,7 +196,6 @@ export function UsersPanel({
         editingUser.userId,
         editIsAdmin,
         editIsAdmin ? [] : editScopes,
-        collectionNames
       );
       if (!result.ok) { setActionError(result.error ?? "Update failed."); return; }
       setEditingUser(null);
@@ -223,7 +222,6 @@ export function UsersPanel({
           <input type="hidden" name="churchId" value={churchId} />
           <input type="hidden" name="isAdmin" value={String(inviteIsAdmin)} />
           <input type="hidden" name="scopes" value={JSON.stringify(inviteScopes)} />
-          <input type="hidden" name="collectionNames" value={JSON.stringify(collectionNames)} />
           <p className="text-sm font-medium">Invite a new user</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

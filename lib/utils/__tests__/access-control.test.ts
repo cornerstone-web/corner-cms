@@ -75,6 +75,14 @@ describe("hasScope", () => {
     const user = makeUser({ churchAssignment: makeAssignment(false, ["entry:pages:youth-ministry"]) });
     expect(hasScope(user, "collection:pages")).toBe(false);
   });
+
+  it("malformed stored entry scope (missing slug) does not grant access to any entry", () => {
+    // "entry:pages" is 2-part — invalid — but might exist in the DB from a bug or migration.
+    // It should not match a well-formed entry scope check.
+    const user = makeUser({ churchAssignment: makeAssignment(false, ["entry:pages"]) });
+    expect(hasScope(user, "entry:pages:about")).toBe(false);
+    expect(hasScope(user, "entry:pages:youth-ministry")).toBe(false);
+  });
 });
 
 describe("isValidScope", () => {

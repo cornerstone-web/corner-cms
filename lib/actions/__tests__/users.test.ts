@@ -5,6 +5,7 @@ vi.mock("@/lib/auth", () => ({ getAuth: vi.fn() }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/db/schema", () => ({
   churchesTable: {},
+  configTable: {},
   usersTable: {},
   userChurchRolesTable: {},
   userChurchScopesTable: {},
@@ -159,6 +160,14 @@ describe("updateUserAccess", () => {
       values: vi.fn().mockResolvedValue(undefined),
     });
     (db as any).query = {
+      churchesTable: {
+        findFirst: vi.fn().mockResolvedValue({ githubRepoName: "org/repo" }),
+      },
+      configTable: {
+        findFirst: vi.fn().mockResolvedValue({
+          object: JSON.stringify({ content: [{ type: "collection", name: "sermons" }] }),
+        }),
+      },
       userChurchRolesTable: {
         findFirst: vi.fn().mockResolvedValue({ id: "role-1" }),
       },
@@ -178,36 +187,36 @@ describe("updateUserAccess", () => {
         churchAssignment: { churchId: "other-church", isAdmin: false },
       },
     } as any);
-    const result = await updateUserAccess("church-1", "user-1", false, ["collection:sermons"], ["sermons"]);
+    const result = await updateUserAccess("church-1", "user-1", false, ["collection:sermons"]);
     expect(result).toEqual({ ok: false, error: expect.stringMatching(/permission/i) });
   });
 
   it("returns error when userId is not a member of churchId", async () => {
     (db as any).query.userChurchRolesTable.findFirst = vi.fn().mockResolvedValue(null);
-    const result = await updateUserAccess("church-1", "user-99", false, ["collection:sermons"], ["sermons"]);
+    const result = await updateUserAccess("church-1", "user-99", false, ["collection:sermons"]);
     expect(result).toEqual({ ok: false, error: expect.stringMatching(/not a member/i) });
   });
 
   it("returns error for invalid scopes", async () => {
     vi.mocked(isValidScope).mockReturnValueOnce(false);
-    const result = await updateUserAccess("church-1", "user-1", false, ["invalid:scope"], ["sermons"]);
+    const result = await updateUserAccess("church-1", "user-1", false, ["invalid:scope"]);
     expect(result).toEqual({ ok: false, error: expect.stringMatching(/invalid scopes/i) });
   });
 
   it("returns error for non-admin with empty scopes", async () => {
-    const result = await updateUserAccess("church-1", "user-1", false, [], ["sermons"]);
+    const result = await updateUserAccess("church-1", "user-1", false, []);
     expect(result).toEqual({ ok: false, error: expect.stringMatching(/at least one scope/i) });
   });
 
   it("returns ok and clears scopes when promoting to admin", async () => {
-    const result = await updateUserAccess("church-1", "user-1", true, [], ["sermons"]);
+    const result = await updateUserAccess("church-1", "user-1", true, []);
     expect(result).toEqual({ ok: true });
     expect((db as any).delete).toHaveBeenCalled();
     expect((db as any).insert).not.toHaveBeenCalled();
   });
 
   it("returns ok and upserts scopes for non-admin", async () => {
-    const result = await updateUserAccess("church-1", "user-1", false, ["collection:sermons"], ["sermons"]);
+    const result = await updateUserAccess("church-1", "user-1", false, ["collection:sermons"]);
     expect(result).toEqual({ ok: true });
     expect((db as any).insert).toHaveBeenCalled();
   });
@@ -218,6 +227,16 @@ describe("inviteUser – empty scopes guard", () => {
     vi.mocked(getAuth).mockResolvedValue({
       user: { isSuperAdmin: true, churchAssignment: null },
     } as any);
+    (db as any).query = {
+      churchesTable: {
+        findFirst: vi.fn().mockResolvedValue({ githubRepoName: "org/repo" }),
+      },
+      configTable: {
+        findFirst: vi.fn().mockResolvedValue({
+          object: JSON.stringify({ content: [{ type: "collection", name: "sermons" }, { type: "collection", name: "pages" }] }),
+        }),
+      },
+    };
   });
 
   it("returns error when non-admin invite has no scopes", async () => {
@@ -227,7 +246,6 @@ describe("inviteUser – empty scopes guard", () => {
     formData.set("email", "jane@test.com");
     formData.set("isAdmin", "false");
     formData.set("scopes", "[]");
-    formData.set("collectionNames", '["sermons","pages"]');
 
     const result = await inviteUser({ status: "idle" }, formData);
     expect(result.status).toBe("error");
