@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { hasScope, isValidScope, STATIC_SCOPES } from "@/lib/utils/access-control";
+import { hasScope, isValidScope, filterValidScopes, STATIC_SCOPES } from "@/lib/utils/access-control";
 import type { User } from "@/types/user";
+
+const COLLECTIONS = ["pages", "sermons", "events"];
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
@@ -76,56 +78,82 @@ describe("hasScope", () => {
 });
 
 describe("isValidScope", () => {
-  it("valid collection scopes pass", () => {
-    expect(isValidScope("collection:sermons")).toBe(true);
-    expect(isValidScope("collection:pages")).toBe(true);
+  it("valid collection scope passes when collection exists in config", () => {
+    expect(isValidScope("collection:sermons", COLLECTIONS)).toBe(true);
+    expect(isValidScope("collection:pages", COLLECTIONS)).toBe(true);
+  });
+
+  it("collection scope fails when collection is NOT in config", () => {
+    expect(isValidScope("collection:staff", COLLECTIONS)).toBe(false);
+    expect(isValidScope("collection:unknown", COLLECTIONS)).toBe(false);
   });
 
   it("valid site-config scopes pass", () => {
-    expect(isValidScope("site-config:navigation")).toBe(true);
-    expect(isValidScope("site-config:theme")).toBe(true);
+    expect(isValidScope("site-config:navigation", COLLECTIONS)).toBe(true);
+    expect(isValidScope("site-config:theme", COLLECTIONS)).toBe(true);
+  });
+
+  it("invalid site-config section fails", () => {
+    expect(isValidScope("site-config:unknown-section", COLLECTIONS)).toBe(false);
   });
 
   it("valid media scopes pass", () => {
-    expect(isValidScope("media:images")).toBe(true);
-    expect(isValidScope("media:video")).toBe(true);
+    expect(isValidScope("media:images", COLLECTIONS)).toBe(true);
+    expect(isValidScope("media:video", COLLECTIONS)).toBe(true);
   });
 
-  it("valid entry scopes pass format check", () => {
-    expect(isValidScope("entry:pages:youth-ministry")).toBe(true);
+  it("invalid media type fails", () => {
+    expect(isValidScope("media:unknown-type", COLLECTIONS)).toBe(false);
   });
 
-  it("invalid prefix fails", () => {
-    expect(isValidScope("admin:everything")).toBe(false);
+  it("valid entry scope passes when collection exists in config", () => {
+    expect(isValidScope("entry:pages:youth-ministry", COLLECTIONS)).toBe(true);
   });
 
-  it("unknown collection name fails", () => {
-    expect(isValidScope("collection:unknown-thing")).toBe(false);
-  });
-
-  it("unknown site-config section fails", () => {
-    expect(isValidScope("site-config:unknown-section")).toBe(false);
-  });
-
-  it("unknown media type fails", () => {
-    expect(isValidScope("media:unknown-type")).toBe(false);
-  });
-
-  it("entry scope with invalid collection fails", () => {
-    expect(isValidScope("entry:unknown-collection:slug")).toBe(false);
+  it("entry scope with collection NOT in config fails", () => {
+    expect(isValidScope("entry:staff:john-doe", COLLECTIONS)).toBe(false);
   });
 
   it("entry scope missing slug fails", () => {
-    expect(isValidScope("entry:pages:")).toBe(false);
-    expect(isValidScope("entry:pages")).toBe(false);
+    expect(isValidScope("entry:pages:", COLLECTIONS)).toBe(false);
+    expect(isValidScope("entry:pages", COLLECTIONS)).toBe(false);
+  });
+
+  it("invalid prefix fails", () => {
+    expect(isValidScope("admin:everything", COLLECTIONS)).toBe(false);
+  });
+});
+
+describe("filterValidScopes", () => {
+  it("keeps scopes that match the current config", () => {
+    const stored = ["collection:sermons", "site-config:theme", "media:images"];
+    expect(filterValidScopes(stored, COLLECTIONS)).toEqual(stored);
+  });
+
+  it("drops collection scopes for collections no longer in config", () => {
+    const stored = ["collection:sermons", "collection:staff"];
+    expect(filterValidScopes(stored, COLLECTIONS)).toEqual(["collection:sermons"]);
+  });
+
+  it("drops entry scopes for collections no longer in config", () => {
+    const stored = ["entry:pages:about", "entry:staff:john-doe"];
+    expect(filterValidScopes(stored, COLLECTIONS)).toEqual(["entry:pages:about"]);
+  });
+
+  it("returns empty array when all stored scopes are stale", () => {
+    const stored = ["collection:staff", "collection:ministries"];
+    expect(filterValidScopes(stored, COLLECTIONS)).toEqual([]);
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(filterValidScopes([], COLLECTIONS)).toEqual([]);
   });
 });
 
 describe("STATIC_SCOPES", () => {
-  it("has all expected collection scopes", () => {
+  it("contains no collection scopes (those are config-driven)", () => {
     const collectionScopes = STATIC_SCOPES.filter(s => s.scope.startsWith("collection:"));
-    expect(collectionScopes.map(s => s.scope)).toContain("collection:sermons");
-    expect(collectionScopes.map(s => s.scope)).toContain("collection:pages");
+    expect(collectionScopes).toHaveLength(0);
   });
 
   it("has all expected site-config scopes", () => {
