@@ -53,13 +53,14 @@ const RepoNav = ({
   const items = useMemo(() => {
     if (!config || !config.object) return [];
     const configObject: any = config.object;
+    type ContentItem = { type: string; name: string };
     const contentItems = configObject.content
       ?.filter((item: any) => {
         if (item.type !== "collection") return true;
         if (item.name === "pages" || item.name === "templates") return true;
         return features[item.name] !== false;
       })
-      .filter((item: any) => {
+      .filter((item: ContentItem) => {
         // Super admins and church admins see everything
         if (user?.isSuperAdmin || user?.churchAssignment?.isAdmin) return true;
         const scopes = user?.churchAssignment?.scopes ?? [];
