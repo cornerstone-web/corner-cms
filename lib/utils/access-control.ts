@@ -82,7 +82,37 @@ export function filterValidScopes(stored: string[], collectionNames: string[]): 
   return stored.filter(s => isValidScope(s, collectionNames));
 }
 
-// ─── Access check ─────────────────────────────────────────────────────────────
+// ─── Access helpers ───────────────────────────────────────────────────────────
+
+/** Returns true if the user is a super admin or a church admin. */
+export function isAdminUser(user: User): boolean {
+  return user.isSuperAdmin || !!user.churchAssignment?.isAdmin;
+}
+
+/**
+ * Returns true if the user has any route-level access to a collection —
+ * i.e. they hold `collection:{name}` OR at least one `entry:{name}:*` scope.
+ * Use this to decide whether to show the collection in the nav or allow the list route.
+ */
+export function hasCollectionAccess(user: User, collectionName: string): boolean {
+  if (isAdminUser(user)) return true;
+  const scopes = user.churchAssignment?.scopes ?? [];
+  return scopes.some(
+    s => s === `collection:${collectionName}` || s.startsWith(`entry:${collectionName}:`)
+  );
+}
+
+/** Returns true if the user can access any media section. */
+export function hasMediaAccess(user: User): boolean {
+  if (isAdminUser(user)) return true;
+  return (user.churchAssignment?.scopes ?? []).some(s => s.startsWith("media:"));
+}
+
+/** Returns true if the user can access any site-config section. */
+export function hasSiteConfigAccess(user: User): boolean {
+  if (isAdminUser(user)) return true;
+  return (user.churchAssignment?.scopes ?? []).some(s => s.startsWith("site-config:"));
+}
 
 /**
  * Returns true if the user has access to the given scope.
@@ -95,8 +125,7 @@ export function filterValidScopes(stored: string[], collectionNames: string[]): 
  * before this is called (see filterValidScopes).
  */
 export function hasScope(user: User, scope: string): boolean {
-  if (user.isSuperAdmin) return true;
-  if (user.churchAssignment?.isAdmin) return true;
+  if (isAdminUser(user)) return true;
 
   const scopes = user.churchAssignment?.scopes ?? [];
   if (scopes.includes(scope)) return true;

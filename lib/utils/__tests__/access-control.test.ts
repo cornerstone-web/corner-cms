@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hasScope, isValidScope, filterValidScopes, STATIC_SCOPES } from "@/lib/utils/access-control";
+import { hasScope, isValidScope, filterValidScopes, STATIC_SCOPES, isAdminUser, hasCollectionAccess, hasMediaAccess, hasSiteConfigAccess } from "@/lib/utils/access-control";
 import type { User } from "@/types/user";
 
 const COLLECTIONS = ["pages", "sermons", "events"];
@@ -167,5 +167,81 @@ describe("STATIC_SCOPES", () => {
     expect(mediaScopes.map(s => s.scope)).toContain("media:images");
     expect(mediaScopes.map(s => s.scope)).toContain("media:video");
     expect(mediaScopes.map(s => s.scope)).toContain("media:audio");
+  });
+});
+
+describe("isAdminUser", () => {
+  it("returns true for super admin", () => {
+    expect(isAdminUser(makeUser({ isSuperAdmin: true }))).toBe(true);
+  });
+
+  it("returns true for church admin", () => {
+    expect(isAdminUser(makeUser({ churchAssignment: makeAssignment(true) }))).toBe(true);
+  });
+
+  it("returns false for scoped editor", () => {
+    expect(isAdminUser(makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) }))).toBe(false);
+  });
+
+  it("returns false for user with no assignment", () => {
+    expect(isAdminUser(makeUser())).toBe(false);
+  });
+});
+
+describe("hasCollectionAccess", () => {
+  it("admin always has access", () => {
+    expect(hasCollectionAccess(makeUser({ isSuperAdmin: true }), "pages")).toBe(true);
+    expect(hasCollectionAccess(makeUser({ churchAssignment: makeAssignment(true) }), "pages")).toBe(true);
+  });
+
+  it("returns true for full collection scope", () => {
+    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) });
+    expect(hasCollectionAccess(user, "pages")).toBe(true);
+  });
+
+  it("returns true when user has any entry scope in the collection", () => {
+    const user = makeUser({ churchAssignment: makeAssignment(false, ["entry:pages:about"]) });
+    expect(hasCollectionAccess(user, "pages")).toBe(true);
+  });
+
+  it("returns false for scope in a different collection", () => {
+    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:sermons"]) });
+    expect(hasCollectionAccess(user, "pages")).toBe(false);
+  });
+
+  it("returns false for user with no scopes", () => {
+    expect(hasCollectionAccess(makeUser(), "pages")).toBe(false);
+  });
+});
+
+describe("hasMediaAccess", () => {
+  it("admin always has access", () => {
+    expect(hasMediaAccess(makeUser({ isSuperAdmin: true }))).toBe(true);
+  });
+
+  it("returns true when user has any media scope", () => {
+    const user = makeUser({ churchAssignment: makeAssignment(false, ["media:images"]) });
+    expect(hasMediaAccess(user)).toBe(true);
+  });
+
+  it("returns false with no media scopes", () => {
+    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) });
+    expect(hasMediaAccess(user)).toBe(false);
+  });
+});
+
+describe("hasSiteConfigAccess", () => {
+  it("admin always has access", () => {
+    expect(hasSiteConfigAccess(makeUser({ isSuperAdmin: true }))).toBe(true);
+  });
+
+  it("returns true when user has any site-config scope", () => {
+    const user = makeUser({ churchAssignment: makeAssignment(false, ["site-config:navigation"]) });
+    expect(hasSiteConfigAccess(user)).toBe(true);
+  });
+
+  it("returns false with no site-config scopes", () => {
+    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) });
+    expect(hasSiteConfigAccess(user)).toBe(false);
   });
 });

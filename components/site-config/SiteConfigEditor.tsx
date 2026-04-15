@@ -7,6 +7,7 @@ import { Loader, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
+import { isAdminUser } from "@/lib/utils/access-control";
 import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -28,11 +29,36 @@ import { IntegrationsSection } from "./sections/IntegrationsSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
 import { DomainSettings } from "@/components/settings/DomainSettings";
 
+// Maps each tab value to the site-config scope(s) that unlock it.
+// The identity tab merges identity + branding — visible if either scope is present.
+const TAB_SCOPES: Record<string, string[]> = {
+  identity:       ["site-config:identity", "site-config:branding"],
+  contact:        ["site-config:contact"],
+  "service-times":["site-config:service-times"],
+  theme:          ["site-config:theme"],
+  navigation:     ["site-config:navigation"],
+  footer:         ["site-config:footer"],
+  integrations:   ["site-config:integrations"],
+  features:       ["site-config:features"],
+};
+
 export function SiteConfigEditor() {
   const { config } = useConfig();
   const { user } = useUser();
   const { previewUrl } = useSiteFeaturesContext();
-  const isAdmin = user?.isSuperAdmin || user?.churchAssignment?.isAdmin === true;
+  const isAdmin = !!user && isAdminUser(user);
+
+  const userScopes = user?.churchAssignment?.scopes ?? [];
+  const allowedTabs: string[] = isAdmin
+    ? [...Object.keys(TAB_SCOPES), "domain"]
+    : Object.keys(TAB_SCOPES).filter(tab =>
+        TAB_SCOPES[tab].some(scope => userScopes.includes(scope))
+      );
+  const defaultTab = allowedTabs[0] ?? "identity";
+
+  function canSeeTab(tab: string) {
+    return allowedTabs.includes(tab);
+  }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sha, setSha] = useState<string | null>(null);
@@ -214,55 +240,71 @@ export function SiteConfigEditor() {
         <div className="w-full lg:w-1/2 overflow-y-auto p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
-              <Tabs defaultValue="identity">
+              <Tabs defaultValue={defaultTab}>
                 <TabsList className="w-full flex flex-wrap h-auto gap-1">
-                  <TabsTrigger value="identity">Identity</TabsTrigger>
-                  <TabsTrigger value="contact">Contact</TabsTrigger>
-                  <TabsTrigger value="service-times">Service Times</TabsTrigger>
-                  <TabsTrigger value="theme">Theme</TabsTrigger>
-                  <TabsTrigger value="navigation">Navigation</TabsTrigger>
-                  <TabsTrigger value="footer">Footer</TabsTrigger>
-                  <TabsTrigger value="integrations">Integrations</TabsTrigger>
-                  <TabsTrigger value="features">Features</TabsTrigger>
-                  {isAdmin && <TabsTrigger value="domain">Domain</TabsTrigger>}
+                  {canSeeTab("identity")      && <TabsTrigger value="identity">Identity</TabsTrigger>}
+                  {canSeeTab("contact")       && <TabsTrigger value="contact">Contact</TabsTrigger>}
+                  {canSeeTab("service-times") && <TabsTrigger value="service-times">Service Times</TabsTrigger>}
+                  {canSeeTab("theme")         && <TabsTrigger value="theme">Theme</TabsTrigger>}
+                  {canSeeTab("navigation")    && <TabsTrigger value="navigation">Navigation</TabsTrigger>}
+                  {canSeeTab("footer")        && <TabsTrigger value="footer">Footer</TabsTrigger>}
+                  {canSeeTab("integrations")  && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
+                  {canSeeTab("features")      && <TabsTrigger value="features">Features</TabsTrigger>}
+                  {canSeeTab("domain")        && <TabsTrigger value="domain">Domain</TabsTrigger>}
                 </TabsList>
 
-                <TabsContent value="identity" className="mt-6">
-                  <div className="space-y-8">
-                    <IdentitySection control={form.control} />
-                    <div>
-                      <h3 className="text-sm font-medium mb-4">Branding</h3>
-                      <BrandingSection />
+                {canSeeTab("identity") && (
+                  <TabsContent value="identity" className="mt-6">
+                    <div className="space-y-8">
+                      <IdentitySection control={form.control} />
+                      <div>
+                        <h3 className="text-sm font-medium mb-4">Branding</h3>
+                        <BrandingSection />
+                      </div>
                     </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="contact" className="mt-6">
-                  <ContactSection
-                    control={form.control}
-                    initialFormEmail={initialFormEmail}
-                    onFormEmailMutated={fetchConfig}
-                    repoSlug={config?.repo}
-                  />
-                </TabsContent>
-                <TabsContent value="service-times" className="mt-6">
-                  <ServiceTimesSection control={form.control} />
-                </TabsContent>
-                <TabsContent value="theme" className="mt-6">
-                  <ThemeSection control={form.control} />
-                </TabsContent>
-                <TabsContent value="navigation" className="mt-6">
-                  <NavigationSection control={form.control} />
-                </TabsContent>
-                <TabsContent value="footer" className="mt-6">
-                  <FooterSection control={form.control} />
-                </TabsContent>
-                <TabsContent value="integrations" className="mt-6">
-                  <IntegrationsSection control={form.control} />
-                </TabsContent>
-                <TabsContent value="features" className="mt-6">
-                  <FeaturesSection control={form.control} onSaveAndReload={saveAndReload} />
-                </TabsContent>
-                {isAdmin && (
+                  </TabsContent>
+                )}
+                {canSeeTab("contact") && (
+                  <TabsContent value="contact" className="mt-6">
+                    <ContactSection
+                      control={form.control}
+                      initialFormEmail={initialFormEmail}
+                      onFormEmailMutated={fetchConfig}
+                      repoSlug={config?.repo}
+                    />
+                  </TabsContent>
+                )}
+                {canSeeTab("service-times") && (
+                  <TabsContent value="service-times" className="mt-6">
+                    <ServiceTimesSection control={form.control} />
+                  </TabsContent>
+                )}
+                {canSeeTab("theme") && (
+                  <TabsContent value="theme" className="mt-6">
+                    <ThemeSection control={form.control} />
+                  </TabsContent>
+                )}
+                {canSeeTab("navigation") && (
+                  <TabsContent value="navigation" className="mt-6">
+                    <NavigationSection control={form.control} />
+                  </TabsContent>
+                )}
+                {canSeeTab("footer") && (
+                  <TabsContent value="footer" className="mt-6">
+                    <FooterSection control={form.control} />
+                  </TabsContent>
+                )}
+                {canSeeTab("integrations") && (
+                  <TabsContent value="integrations" className="mt-6">
+                    <IntegrationsSection control={form.control} />
+                  </TabsContent>
+                )}
+                {canSeeTab("features") && (
+                  <TabsContent value="features" className="mt-6">
+                    <FeaturesSection control={form.control} onSaveAndReload={saveAndReload} />
+                  </TabsContent>
+                )}
+                {canSeeTab("domain") && (
                   <TabsContent value="domain" className="mt-6">
                     <DomainSettings />
                   </TabsContent>

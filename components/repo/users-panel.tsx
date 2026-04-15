@@ -1,7 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useTransition, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { useActionState, useEffect, useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   inviteUser,
@@ -11,6 +11,7 @@ import {
   type InviteState,
 } from "@/lib/actions/users";
 import { useConfig } from "@/contexts/config-context";
+import { useSiteFeatures } from "@/hooks/use-site-features";
 import type { ConfigCollection } from "@/components/repo/scope-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,23 +66,42 @@ function InviteSubmitButton() {
   );
 }
 
-function scopeSummary(scopes: string[]): string {
+function singularize(word: string, count: number): string {
+  if (count !== 1) return word;
+  if (word.endsWith("ies")) return word.slice(0, -3) + "y"; // ministries → ministry
+  if (word.endsWith("s") && !word.endsWith("ss") && word !== "series") return word.slice(0, -1);
+  return word;
+}
+
+function scopeSummary(scopes: string[], collections: ConfigCollection[]): string {
   if (scopes.length === 0) return "No access";
-  const collectionNames = new Set(
-    scopes
-      .filter(s => s.startsWith("collection:") || s.startsWith("entry:"))
-      .map(s => {
-        if (s.startsWith("collection:")) return s.replace("collection:", "");
-        return s.split(":")[1]; // entry:{collection}:{slug}
-      })
-  );
+
+  const collectionMap = new Map(collections.map(c => [c.name, c.label]));
+
+  const involvedCollections = new Set([
+    ...scopes.filter(s => s.startsWith("collection:")).map(s => s.replace("collection:", "")),
+    ...scopes.filter(s => s.startsWith("entry:")).map(s => s.split(":")[1]).filter(Boolean),
+  ]);
+
+  const parts: string[] = [];
+
+  for (const name of involvedCollections) {
+    const label = (collectionMap.get(name) ?? name).toLowerCase();
+    const hasFullAccess = scopes.includes(`collection:${name}`);
+    if (hasFullAccess) {
+      // Full collection access — show label capitalised (e.g. "Pages")
+      parts.push(label.charAt(0).toUpperCase() + label.slice(1));
+    } else {
+      const count = scopes.filter(s => s.startsWith(`entry:${name}:`)).length;
+      parts.push(`${count} ${singularize(label, count)}`);
+    }
+  }
+
   const config = scopes.filter(s => s.startsWith("site-config:")).length;
   const media = scopes.filter(s => s.startsWith("media:")).length;
-  const parts: string[] = [];
-  if (collectionNames.size > 0)
-    parts.push(`${collectionNames.size} collection${collectionNames.size > 1 ? "s" : ""}`);
   if (config > 0) parts.push(`${config} config section${config > 1 ? "s" : ""}`);
   if (media > 0) parts.push(`${media} media type${media > 1 ? "s" : ""}`);
+
   return parts.length > 0 ? parts.join(", ") : "No access";
 }
 
@@ -100,8 +120,10 @@ export function UsersPanel({
 }) {
   const router = useRouter();
   const { config } = useConfig();
+  const { features } = useSiteFeatures();
   const collections: ConfigCollection[] = ((config?.object?.content as any[]) ?? [])
     .filter((item: any) => item.type === "collection")
+    .filter((item: any) => item.name === "pages" || item.name === "templates" || features[item.name] !== false)
     .map((item: any) => ({ name: item.name as string, label: (item.label || item.name) as string }));
   const collectionNames = collections.map(c => c.name);
   const [isPending, startTransition] = useTransition();
@@ -139,7 +161,7 @@ export function UsersPanel({
     });
   }
 
-  const [inviteState, inviteAction] = useFormState(inviteUser, initialState);
+  const [inviteState, inviteAction] = useActionState(inviteUser, initialState);
 
   useEffect(() => {
     if (inviteState.status === "success") {
@@ -283,7 +305,7 @@ export function UsersPanel({
                     {u.isAdmin ? (
                       <Badge variant="secondary">Admin</Badge>
                     ) : (
-                      <span className="text-sm text-muted-foreground">{scopeSummary(u.scopes)}</span>
+                      <span className="text-sm text-muted-foreground">{scopeSummary(u.scopes, collections)}</span>
                     )}
                   </TableCell>
                   <TableCell>

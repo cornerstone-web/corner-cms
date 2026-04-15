@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { BarChart3, FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
 import { useSiteFeatures } from "@/hooks/use-site-features";
 import { checkNavigationGuard } from "@/lib/navigation-guard";
+import { isAdminUser, hasCollectionAccess, hasMediaAccess, hasSiteConfigAccess } from "@/lib/utils/access-control";
 
 const RepoNavItem = ({
   children,
@@ -60,15 +61,7 @@ const RepoNav = ({
         if (item.name === "pages" || item.name === "templates") return true;
         return features[item.name] !== false;
       })
-      .filter((item: ContentItem) => {
-        // Super admins and church admins see everything
-        if (user?.isSuperAdmin || user?.churchAssignment?.isAdmin) return true;
-        const scopes = user?.churchAssignment?.scopes ?? [];
-        // Show a collection if the user has the collection scope OR any entry scope within it
-        return scopes.some(
-          (s: string) => s === `collection:${item.name}` || s.startsWith(`entry:${item.name}:`)
-        );
-      })
+      .filter((item: ContentItem) => !user || hasCollectionAccess(user, item.name))
       .map((item: any) => ({
         key: item.name,
         icon: item.type === "collection"
@@ -79,14 +72,17 @@ const RepoNav = ({
         label: item.label || item.name,
       })) || [];
 
-    const mediaItems = [{
+    const hasMediaScope = !user || hasMediaAccess(user);
+    const hasConfigScope = !user || hasSiteConfigAccess(user);
+
+    const mediaItems = hasMediaScope ? [{
       key: "media",
       icon: <FolderOpen className="h-5 w-5 mr-2" />,
       href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/media`,
       label: "Media"
-    }];
+    }] : [];
 
-    const settingsItem = !configObject.settings?.hide
+    const settingsItem = !configObject.settings?.hide && hasConfigScope
       ? {
         key: "settings",
         icon: <Settings className="h-5 w-5 mr-2" />,
@@ -96,7 +92,7 @@ const RepoNav = ({
       : null;
 
     const usersItem =
-      user?.isSuperAdmin || user?.churchAssignment?.isAdmin
+      user && isAdminUser(user)
         ? {
             key: "users",
             icon: <Users className="h-5 w-5 mr-2" />,

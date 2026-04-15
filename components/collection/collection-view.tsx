@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
+import { useUser } from "@/contexts/user-context";
+import { hasCollectionAccess, hasScope } from "@/lib/utils/access-control";
 import {
   getParentPath,
   getFileName,
@@ -62,6 +64,8 @@ export function CollectionView({
 
   const { config } = useConfig();
   if (!config) throw new Error(`Configuration not found.`);
+
+  const { user } = useUser();
 
   const schema = useMemo(() => getSchemaByName(config?.object, name), [config, name]);
   if (!schema) throw new Error(`Schema not found for "${name}".`);
@@ -266,6 +270,20 @@ export function CollectionView({
       console.error(error);
     }
   }, [config.owner, config.repo, config.branch, name, router]);
+
+  // For scoped (non-admin) users, filter entries to only those they have explicit entry scopes for.
+  // Users with collection:{name} scope see everything; entry:{name}:{slug} scopes restrict to specific files.
+  const filteredData = useMemo(() => {
+    if (!user) return data;
+    // Admins and users with full collection access see everything
+    if (hasScope(user, `collection:${name}`)) return data;
+    // Entry-scoped users see only their explicitly permitted entries
+    return data.filter(item => {
+      if (item.type === "dir") return false;
+      const slug = item.name.replace(/\.[^.]+$/, "");
+      return hasScope(user, `entry:${name}:${slug}`);
+    });
+  }, [data, user, name]);
 
   const columns = useMemo(() => {
     let tableColumns: any;
@@ -583,7 +601,7 @@ export function CollectionView({
           ? loadingSkeleton
           : <CollectionTable
               columns={columns}
-              data={data}
+              data={filteredData}
               search={search}
               setSearch={setSearch}
               initialState={initialState}

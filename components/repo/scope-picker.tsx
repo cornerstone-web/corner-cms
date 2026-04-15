@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { STATIC_SCOPES } from "@/lib/utils/access-control";
@@ -46,8 +46,46 @@ export function ScopePicker({
   onChange,
   disabled,
 }: ScopePickerProps) {
-  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
+  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    for (const scope of selectedScopes) {
+      if (scope.startsWith("entry:")) {
+        const name = scope.split(":")[1];
+        if (name) initial.add(name);
+      }
+    }
+    return initial;
+  });
   const [collectionEntries, setCollectionEntries] = useState<Record<string, CollectionEntriesState>>({});
+
+  // On mount, fetch entries for any collections that are pre-expanded due to existing entry scopes
+  useEffect(() => {
+    const toFetch = new Set<string>();
+    for (const scope of selectedScopes) {
+      if (scope.startsWith("entry:")) {
+        const name = scope.split(":")[1];
+        if (name) toFetch.add(name);
+      }
+    }
+    for (const collectionName of toFetch) {
+      setCollectionEntries(prev => ({ ...prev, [collectionName]: { status: "loading" } }));
+      fetch(`/api/${owner}/${repo}/${encodeURIComponent(branch)}/collections/${collectionName}`)
+        .then(res => res.ok ? res.json() : Promise.reject(new Error("fetch failed")))
+        .then(data => {
+          const entries: EntryScope[] = (data.data?.contents ?? [])
+            .filter((c: { type: string }) => c.type === "file")
+            .map((c: { type: string; name: string; fields?: { title?: string; name?: string } }) => ({
+              scope: `entry:${collectionName}:${c.name.replace(/\.[^.]+$/, "")}`,
+              label: c.fields?.title ?? c.fields?.name ?? c.name,
+            }));
+          setCollectionEntries(prev => ({ ...prev, [collectionName]: { status: "loaded", entries } }));
+        })
+        .catch(() => {
+          setCollectionEntries(prev => ({ ...prev, [collectionName]: { status: "error" } }));
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selected = new Set(selectedScopes);
 
