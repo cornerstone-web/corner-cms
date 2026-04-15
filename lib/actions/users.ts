@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { churchesTable, usersTable, userChurchRolesTable, userChurchScopesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 import { resolveInviteEmailStatus } from "@/lib/utils/invite";
-import { isValidScope } from "@/lib/utils/access-control";
+import { isValidScope, filterValidScopes } from "@/lib/utils/access-control";
 import {
   createOrResolveAuth0User,
   generatePasswordTicket,
@@ -47,20 +47,25 @@ export async function inviteUser(
   const email = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
   const isAdmin = formData.get("isAdmin") === "true";
   const scopesRaw = (formData.get("scopes") as string | null) ?? "[]";
+  const collectionNamesRaw = (formData.get("collectionNames") as string | null) ?? "[]";
 
   if (!churchId || !name || !email)
     return { status: "error", message: "All fields are required." };
 
   let scopes: string[] = [];
+  let collectionNames: string[] = [];
   if (!isAdmin) {
     try {
       scopes = JSON.parse(scopesRaw);
+      collectionNames = JSON.parse(collectionNamesRaw);
     } catch {
       return { status: "error", message: "Invalid scopes format." };
     }
-    const invalid = scopes.filter(s => !isValidScope(s));
+    const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
     if (invalid.length > 0)
       return { status: "error", message: `Invalid scopes: ${invalid.join(", ")}` };
+    if (scopes.length === 0)
+      return { status: "error", message: "Non-admin users must have at least one scope." };
   }
 
   try {
@@ -141,15 +146,36 @@ export async function resendInvite(
   }
 }
 
-// ─── updateUserAdmin ──────────────────────────────────────────────────────────
+// ─── updateUserAccess ─────────────────────────────────────────────────────────
 
-export async function updateUserAdmin(
+export async function updateUserAccess(
   churchId: string,
   userId: string,
-  isAdmin: boolean
+  isAdmin: boolean,
+  scopes: string[],
+  collectionNames: string[]
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await assertCanManageUsers(churchId);
+
+    // Verify the target user is an active member of this church
+    const membership = await db.query.userChurchRolesTable.findFirst({
+      where: and(
+        eq(userChurchRolesTable.churchId, churchId),
+        eq(userChurchRolesTable.userId, userId),
+        isNull(userChurchRolesTable.deletedAt)
+      ),
+    });
+    if (!membership) throw new Error("User is not a member of this church.");
+
+    if (!isAdmin) {
+      const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
+      if (invalid.length > 0)
+        throw new Error(`Invalid scopes: ${invalid.join(", ")}`);
+      if (scopes.length === 0)
+        throw new Error("Non-admin users must have at least one scope.");
+    }
+
     await db
       .update(userChurchRolesTable)
       .set({ isAdmin })
@@ -157,33 +183,11 @@ export async function updateUserAdmin(
         and(
           eq(userChurchRolesTable.churchId, churchId),
           eq(userChurchRolesTable.userId, userId),
-          isNull(userChurchRolesTable.deletedAt),
+          isNull(userChurchRolesTable.deletedAt)
         )
       );
-    if (isAdmin) {
-      await db.delete(userChurchScopesTable)
-        .where(and(eq(userChurchScopesTable.userId, userId), eq(userChurchScopesTable.churchId, churchId)));
-    }
-    return { ok: true };
-  } catch (err: unknown) {
-    return { ok: false, error: err instanceof Error ? err.message : "Update failed." };
-  }
-}
 
-// ─── updateUserScopes ─────────────────────────────────────────────────────────
-
-export async function updateUserScopes(
-  churchId: string,
-  userId: string,
-  scopes: string[]
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await assertCanManageUsers(churchId);
-
-    const invalid = scopes.filter(s => !isValidScope(s));
-    if (invalid.length > 0)
-      throw new Error(`Invalid scopes: ${invalid.join(", ")}`);
-
+    // Always reconcile scopes: clear existing, then insert new (skip insert for admins)
     await db
       .delete(userChurchScopesTable)
       .where(
@@ -193,7 +197,7 @@ export async function updateUserScopes(
         )
       );
 
-    if (scopes.length > 0) {
+    if (!isAdmin && scopes.length > 0) {
       await db.insert(userChurchScopesTable).values(
         scopes.map(scope => ({ userId, churchId, scope }))
       );
