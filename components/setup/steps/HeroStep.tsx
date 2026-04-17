@@ -7,12 +7,12 @@ import { saveHero } from "@/lib/actions/setup-steps";
 import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialHeroUrl?: string;
 }
 
-export default function HeroStep({ church, onComplete, initialHeroUrl }: StepProps) {
+export default function HeroStep({ site, onComplete, initialHeroUrl }: StepProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(initialHeroUrl ?? null);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,10 +35,10 @@ export default function HeroStep({ church, onComplete, initialHeroUrl }: StepPro
       if (file) {
         const compressed = await compressImage(file, "hero");
         const base64 = await fileToBase64(compressed);
-        await saveHero(church.id, church.slug, { imageBase64: base64 });
+        await saveHero(site.id, site.slug, { imageBase64: base64 });
       } else {
         // Re-completing with existing image — just mark step complete
-        await saveHero(church.id, church.slug, {});
+        await saveHero(site.id, site.slug, {});
       }
       onComplete();
     } catch (err) {
@@ -54,7 +54,7 @@ export default function HeroStep({ church, onComplete, initialHeroUrl }: StepPro
         <p className="text-muted-foreground text-sm">
           Choose a hero image to display prominently on your home page. This
           will be the first thing visitors see, so make it engaging and
-          representative of your church. We recommend using a high-quality image
+          representative of {site.displayName}. We recommend using a high-quality image
           that is at least 1200px wide for the best results.
         </p>
       </div>

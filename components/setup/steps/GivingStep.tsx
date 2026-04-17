@@ -8,13 +8,13 @@ import { saveGiving } from "@/lib/actions/setup-steps";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialGivingUrl?: string;
 }
 
 export default function GivingStep({
-  church,
+  site,
   onComplete,
   initialGivingUrl,
 }: StepProps) {
@@ -38,8 +38,8 @@ export default function GivingStep({
     setError(null);
     try {
       await saveGiving(
-        church.id,
-        church.slug,
+        site.id,
+        site.slug,
         hasGiving ? givingUrl.trim() : "",
       );
       onComplete();
@@ -54,7 +54,7 @@ export default function GivingStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Online Giving</h2>
         <p className="text-muted-foreground text-sm">
-          Does your congregation accept online donations?
+          Does {site.displayName} accept online donations?
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">

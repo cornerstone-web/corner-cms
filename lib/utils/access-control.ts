@@ -1,7 +1,7 @@
 import type { User } from "@/types/user";
 
 // ─── Platform-level scope constants ───────────────────────────────────────────
-// Collections are intentionally excluded — they come from each church's .pages.yml.
+// Collections are intentionally excluded — they come from each site's .pages.yml.
 // Only site-config sections and media types are platform-level constants.
 
 // Documents the platform's supported site-config sections (must stay in sync with STATIC_SCOPES).
@@ -23,7 +23,7 @@ export type StaticScope = {
 
 export const STATIC_SCOPES: StaticScope[] = [
   // Site Config
-  { scope: "site-config:identity",      label: "Edit church name & identity",    group: "site-config" },
+  { scope: "site-config:identity",      label: "Edit site name & identity",      group: "site-config" },
   { scope: "site-config:branding",      label: "Edit logo & favicon",            group: "site-config" },
   { scope: "site-config:contact",       label: "Edit contact information",       group: "site-config" },
   { scope: "site-config:navigation",    label: "Edit site navigation",           group: "site-config" },
@@ -45,9 +45,9 @@ const STATIC_SCOPE_SET = new Set(STATIC_SCOPES.map(s => s.scope));
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 /**
- * Returns true if the scope string is valid given the church's current collection names.
+ * Returns true if the scope string is valid given the site's current collection names.
  *
- * collectionNames should be derived from the church's .pages.yml config at call time
+ * collectionNames should be derived from the site's .pages.yml config at call time
  * (e.g. config.object.content.filter(i => i.type === "collection").map(i => i.name)).
  *
  * - Static scopes (site-config:*, media:*) are validated against a platform allowlist.
@@ -74,7 +74,7 @@ export function isValidScope(scope: string, collectionNames: string[]): boolean 
 
 /**
  * Filters a user's stored scopes down to only those that are currently valid
- * for the church's config. Use this count (not the raw stored count) to determine
+ * for the site's config. Use this count (not the raw stored count) to determine
  * whether a user has any active access — stored scopes can become stale when a
  * collection is removed from .pages.yml.
  */
@@ -84,9 +84,9 @@ export function filterValidScopes(stored: string[], collectionNames: string[]): 
 
 // ─── Access helpers ───────────────────────────────────────────────────────────
 
-/** Returns true if the user is a super admin or a church admin. */
+/** Returns true if the user is a super admin or a site admin. */
 export function isAdminUser(user: User): boolean {
-  return user.isSuperAdmin || !!user.churchAssignment?.isAdmin;
+  return user.isSuperAdmin || !!user.siteAssignment?.isAdmin;
 }
 
 /**
@@ -96,7 +96,7 @@ export function isAdminUser(user: User): boolean {
  */
 export function hasCollectionAccess(user: User, collectionName: string): boolean {
   if (isAdminUser(user)) return true;
-  const scopes = user.churchAssignment?.scopes ?? [];
+  const scopes = user.siteAssignment?.scopes ?? [];
   return scopes.some(
     s => s === `collection:${collectionName}` || s.startsWith(`entry:${collectionName}:`)
   );
@@ -105,29 +105,29 @@ export function hasCollectionAccess(user: User, collectionName: string): boolean
 /** Returns true if the user can access any media section. */
 export function hasMediaAccess(user: User): boolean {
   if (isAdminUser(user)) return true;
-  return (user.churchAssignment?.scopes ?? []).some(s => s.startsWith("media:"));
+  return (user.siteAssignment?.scopes ?? []).some(s => s.startsWith("media:"));
 }
 
 /** Returns true if the user can access any site-config section. */
 export function hasSiteConfigAccess(user: User): boolean {
   if (isAdminUser(user)) return true;
-  return (user.churchAssignment?.scopes ?? []).some(s => s.startsWith("site-config:"));
+  return (user.siteAssignment?.scopes ?? []).some(s => s.startsWith("site-config:"));
 }
 
 /**
  * Returns true if the user has access to the given scope.
  *
- * - Super admins and church admins (isAdmin=true) have all scopes.
+ * - Super admins and site admins (isAdmin=true) have all scopes.
  * - collection:X grants access to all entry:X:* entries.
  * - All other matches are exact.
  *
- * Note: `user.churchAssignment.scopes` should already be filtered to valid scopes
+ * Note: `user.siteAssignment.scopes` should already be filtered to valid scopes
  * before this is called (see filterValidScopes).
  */
 export function hasScope(user: User, scope: string): boolean {
   if (isAdminUser(user)) return true;
 
-  const scopes = user.churchAssignment?.scopes ?? [];
+  const scopes = user.siteAssignment?.scopes ?? [];
   if (scopes.includes(scope)) return true;
 
   // collection:pages covers entry:pages:* entries

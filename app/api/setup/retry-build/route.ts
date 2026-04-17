@@ -1,15 +1,15 @@
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable } from "@/db/schema";
+import { sitesTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 /**
- * Retries the most recent Cloudflare Pages deployment for a church.
+ * Retries the most recent Cloudflare Pages deployment for a site.
  *
  * POST /api/setup/retry-build
- * Body: { churchId: string } | { repo: "owner/repo" }
+ * Body: { siteId: string } | { repo: "owner/repo" }
  *
- * Auth: super admin or church_admin for the queried church.
+ * Auth: super admin or site_admin for the queried site.
  */
 
 type CfDeployment = { id?: string; latest_stage?: { status: string } };
@@ -19,56 +19,56 @@ export async function POST(request: Request) {
   const { user } = await getAuth();
   if (!user) return new Response(null, { status: 401 });
 
-  let body: { churchId?: string; repo?: string };
+  let body: { siteId?: string; repo?: string };
   try {
     body = await request.json();
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { churchId, repo } = body;
+  const { siteId, repo } = body;
 
-  if (!churchId && !repo) {
-    return Response.json({ error: "Missing churchId or repo" }, { status: 400 });
+  if (!siteId && !repo) {
+    return Response.json({ error: "Missing siteId or repo" }, { status: 400 });
   }
 
-  let church: { cfPagesProjectName: string | null } | undefined;
+  let site: { cfPagesProjectName: string | null } | undefined;
 
-  if (churchId) {
+  if (siteId) {
     const isAuthorized =
       user.isSuperAdmin ||
-      (user.churchAssignment?.churchId === churchId &&
-        user.churchAssignment?.isAdmin === true);
+      (user.siteAssignment?.siteId === siteId &&
+        user.siteAssignment?.isAdmin === true);
     if (!isAuthorized) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
-    church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.id, churchId),
+    site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.id, siteId),
       columns: { cfPagesProjectName: true },
     });
   } else {
     const isAuthorized =
-      user.isSuperAdmin || user.churchAssignment?.githubRepoName === repo;
+      user.isSuperAdmin || user.siteAssignment?.githubRepoName === repo;
     if (!isAuthorized) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
-    church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.githubRepoName, repo!),
+    site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.githubRepoName, repo!),
       columns: { cfPagesProjectName: true },
     });
   }
 
-  if (!church) {
-    return Response.json({ error: "Church not found" }, { status: 404 });
+  if (!site) {
+    return Response.json({ error: "Site not found" }, { status: 404 });
   }
 
   const accountId = process.env.CF_ACCOUNT_ID;
   const apiToken = process.env.CF_API_TOKEN;
-  const projectName = church.cfPagesProjectName;
+  const projectName = site.cfPagesProjectName;
 
   if (!accountId || !apiToken || !projectName) {
     return Response.json(
-      { error: "Cloudflare Pages not configured for this church" },
+      { error: "Cloudflare Pages not configured for this site" },
       { status: 502 },
     );
   }

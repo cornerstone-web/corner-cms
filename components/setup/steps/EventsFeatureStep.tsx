@@ -7,12 +7,12 @@ import { completeStep } from "@/lib/actions/setup";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: (enabled: boolean) => void;
   initialEnabled?: boolean;
 }
 
-export default function EventsFeatureStep({ church, onComplete, initialEnabled }: StepProps) {
+export default function EventsFeatureStep({ site, onComplete, initialEnabled }: StepProps) {
   const [selection, setSelection] = useState<boolean | null>(initialEnabled ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +26,9 @@ export default function EventsFeatureStep({ church, onComplete, initialEnabled }
     setError(null);
     try {
       if (selection) {
-        await saveFeature(church.id, church.slug, "events", true);
+        await saveFeature(site.id, site.slug, "events", true);
       } else {
-        const result = await completeStep(church.id, "events");
+        const result = await completeStep(site.id, "events");
         if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
       }
       onComplete(!!selection);
@@ -46,7 +46,7 @@ export default function EventsFeatureStep({ church, onComplete, initialEnabled }
           Do you want an events calendar on your site?
         </p>
         <p className="text-muted-foreground text-sm">
-          An events section lets you post upcoming services, special events, and activities for your congregation.
+          An events section lets you post upcoming services, special events, and activities for {site.displayName}.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">

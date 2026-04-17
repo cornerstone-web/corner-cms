@@ -17,10 +17,10 @@ import { sendSupportMessage } from "@/lib/actions/support";
 
 const MAX_RETRY_ATTEMPTS = 3;
 
-export function BuildStatusBar({ churchId }: { churchId?: string }) {
+export function BuildStatusBar({ siteId }: { siteId?: string }) {
   const { user } = useUser();
   const { buildStatus, consecutiveFailures, triggerRebuildWatch, retryPayload } =
-    useBuildStatus(churchId);
+    useBuildStatus(siteId);
 
   const [retrying, setRetrying] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -55,7 +55,7 @@ export function BuildStatusBar({ churchId }: { churchId?: string }) {
       message: supportMessage.trim(),
       fromEmail: user?.email ?? undefined,
       fromName: user?.name ?? undefined,
-      churchName: user?.churchAssignment?.displayName ?? undefined,
+      siteName: user?.siteAssignment?.displayName ?? undefined,
     });
     setSupportSending(false);
     if (result.ok) {

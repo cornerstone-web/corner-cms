@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateChurchStatus } from "@/lib/actions/provision";
+import { updateSiteStatus } from "@/lib/actions/provision";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { ArrowLeft, Building2, ExternalLink, Pencil } from "lucide-react";
 
-type Church = {
+type Site = {
   id: string;
   displayName: string;
   slug: string;
@@ -39,22 +39,22 @@ type RoleRow = {
   auth0Id: string;
 };
 
-const statusVariant: Record<Church["status"], "default" | "secondary" | "destructive"> = {
+const statusVariant: Record<Site["status"], "default" | "secondary" | "destructive"> = {
   active: "default",
   provisioning: "secondary",
   suspended: "destructive",
 };
 
-export function ChurchManagement({ church, users }: { church: Church; users: RoleRow[] }) {
+export function SiteManagement({ site, users }: { site: Site; users: RoleRow[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [owner, repo] = church.githubRepoName.split("/");
+  const [owner, repo] = site.githubRepoName.split("/");
 
   function handleStatusChange(status: "active" | "suspended" | "provisioning") {
     setError(null);
     startTransition(async () => {
-      const result = await updateChurchStatus(church.id, status);
+      const result = await updateSiteStatus(site.id, status);
       if (!result.ok) {
         setError(result.error ?? "Update failed.");
       } else {
@@ -72,9 +72,9 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
           </Link>
         </Button>
         <Building2 className="h-5 w-5 text-muted-foreground" />
-        <h1 className="font-semibold text-lg md:text-2xl tracking-tight">{church.displayName}</h1>
-        <Badge variant={statusVariant[church.status]} className="capitalize ml-1">
-          {church.status}
+        <h1 className="font-semibold text-lg md:text-2xl tracking-tight">{site.displayName}</h1>
+        <Badge variant={statusVariant[site.status]} className="capitalize ml-1">
+          {site.status}
         </Badge>
       </div>
 
@@ -82,18 +82,18 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
       <div className="rounded-lg border divide-y text-sm">
         <Row label="GitHub Repo">
           <a
-            href={`https://github.com/${church.githubRepoName}`}
+            href={`https://github.com/${site.githubRepoName}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 hover:underline text-muted-foreground"
           >
-            {church.githubRepoName}
+            {site.githubRepoName}
             <ExternalLink className="h-3 w-3 shrink-0" />
           </a>
         </Row>
         <Row label="Live Site">
-          {(church.customDomain || church.cfPagesUrl) ? (() => {
-            const url = church.customDomain ?? church.cfPagesUrl!;
+          {(site.customDomain || site.cfPagesUrl) ? (() => {
+            const url = site.customDomain ?? site.cfPagesUrl!;
             return (
               <a
                 href={url}
@@ -110,24 +110,24 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
           )}
         </Row>
         <Row label="Plan">
-          <span className="text-muted-foreground capitalize">{church.plan}</span>
+          <span className="text-muted-foreground capitalize">{site.plan}</span>
         </Row>
         <Row label="Created">
           <span className="text-muted-foreground">
-            {new Date(church.createdAt).toLocaleDateString()}
+            {new Date(site.createdAt).toLocaleDateString()}
           </span>
         </Row>
         <Row label="Last CMS Edit">
           <span className="text-muted-foreground">
-            {church.lastCmsEditAt
-              ? new Date(church.lastCmsEditAt).toLocaleDateString()
+            {site.lastCmsEditAt
+              ? new Date(site.lastCmsEditAt).toLocaleDateString()
               : "Never"}
           </span>
         </Row>
         <Row label="Record Updated">
           <div className="text-right">
             <span className="text-muted-foreground">
-              {new Date(church.updatedAt).toLocaleDateString()}
+              {new Date(site.updatedAt).toLocaleDateString()}
             </span>
             <p className="text-xs text-muted-foreground/60 mt-0.5">
               Changes on: status, CF Pages project, analytics tag, or custom domain
@@ -145,7 +145,7 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
           </Link>
         </Button>
 
-        {church.status !== "active" && (
+        {site.status !== "active" && (
           <Button
             size="sm"
             variant="outline"
@@ -155,7 +155,7 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
             Activate
           </Button>
         )}
-        {church.status === "active" && (
+        {site.status === "active" && (
           <Button
             size="sm"
             variant="destructive"
@@ -165,7 +165,7 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
             Suspend
           </Button>
         )}
-        {church.status === "suspended" && (
+        {site.status === "suspended" && (
           <Button
             size="sm"
             variant="outline"
@@ -193,7 +193,7 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-sm truncate">{u.name || "—"}</span>
                     <Badge variant="secondary" className="capitalize shrink-0 text-xs">
-                      {u.isAdmin ? "church admin" : "editor"}
+                      {u.isAdmin ? "site admin" : "editor"}
                     </Badge>
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5 truncate">{u.email}</div>
@@ -217,7 +217,7 @@ export function ChurchManagement({ church, users }: { church: Church; users: Rol
                       <TableCell className="text-muted-foreground">{u.email}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="capitalize">
-                          {u.isAdmin ? "church admin" : "editor"}
+                          {u.isAdmin ? "site admin" : "editor"}
                         </Badge>
                       </TableCell>
                     </TableRow>

@@ -48,7 +48,7 @@ export default async function Page(
   const showBulletins = await shouldShowBulletins(params.repo);
 
   const visibleCategories: MediaCategory[] = (showBulletins ? [...VALID_CATEGORIES] : VALID_CATEGORIES.filter(c => c !== "bulletins"))
-    .filter(c => isAdminUser(user) || (user.churchAssignment?.scopes ?? []).includes(`media:${c}`));
+    .filter(c => isAdminUser(user) || (user.siteAssignment?.scopes ?? []).includes(`media:${c}`));
 
   // If no allowed categories remain, redirect (shouldn't happen — page guard above already checks)
   if (visibleCategories.length === 0) {

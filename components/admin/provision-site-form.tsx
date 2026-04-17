@@ -3,7 +3,7 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { provisionChurch, type ProvisionState } from "@/lib/actions/provision";
+import { provisionSite, type ProvisionState } from "@/lib/actions/provision";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,8 +45,8 @@ function SubmitButton() {
   );
 }
 
-export function ProvisionChurchForm() {
-  const [state, formAction] = useFormState(provisionChurch, initialState);
+export function ProvisionSiteForm() {
+  const [state, formAction] = useFormState(provisionSite, initialState);
   const [copied, setCopied] = useState(false);
   const slugRef = useRef<HTMLInputElement>(null);
   const slugManuallyEdited = useRef(false);

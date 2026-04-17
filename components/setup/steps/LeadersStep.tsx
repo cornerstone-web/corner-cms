@@ -8,7 +8,7 @@ import { saveLeaders } from "@/lib/actions/setup-steps";
 import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialLeaders?: { name: string; role: string; photoUrl?: string; existingPhotoPath?: string }[];
 }
@@ -70,7 +70,7 @@ function initGroups(initialLeaders?: StepProps["initialLeaders"]): Group[] {
   return [makeGroup("Elder"), makeGroup("Deacon")];
 }
 
-export default function LeadersStep({ church, onComplete, initialLeaders }: StepProps) {
+export default function LeadersStep({ site, onComplete, initialLeaders }: StepProps) {
   const [groups, setGroups] = useState<Group[]>(() => initGroups(initialLeaders));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +137,7 @@ export default function LeadersStep({ church, onComplete, initialLeaders }: Step
           ...(p.existingPhotoPath ? { existingPhotoPath: p.existingPhotoPath } : {}),
         }))
       );
-      await saveLeaders(church.id, church.slug, flat);
+      await saveLeaders(site.id, site.slug, flat);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -150,7 +150,7 @@ export default function LeadersStep({ church, onComplete, initialLeaders }: Step
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Church Leadership</h2>
         <p className="text-muted-foreground text-sm">
-          Introduce your elders, deacons, and other leaders to the congregation.
+          Introduce your elders, deacons, and other leaders to {site.displayName}.
         </p>
       </div>
 

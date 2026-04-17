@@ -51,13 +51,13 @@ const PRESET_PLATFORMS = [
 const PRESET_KEYS = new Set(PRESET_PLATFORMS.map((p) => p.key));
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialLinks?: SocialLink[];
 }
 
 export default function SocialStep({
-  church,
+  site,
   onComplete,
   initialLinks = [],
 }: StepProps) {
@@ -121,7 +121,7 @@ export default function SocialStep({
             icon: l.icon || undefined,
           })),
       ];
-      await saveSocialLinks(church.id, church.slug, links);
+      await saveSocialLinks(site.id, site.slug, links);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -134,7 +134,7 @@ export default function SocialStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Social Media</h2>
         <p className="text-muted-foreground text-sm">
-          Add links to your congregation&apos;s social profiles. All fields are
+          Add links to {site.displayName}&apos;s social profiles. All fields are
           optional.
         </p>
       </div>

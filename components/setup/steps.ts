@@ -28,18 +28,18 @@ export interface StepGroup {
 
 export const STEP_GROUPS: StepGroup[] = [
   {
-    key: "congregation",
-    label: "Your Congregation",
+    key: "site",
+    label: "Your Site",
     steps: [
-      { key: "welcome", label: "Welcome", group: "congregation" },
-      { key: "identity", label: "Identity", group: "congregation" },
-      { key: "logo", label: "Logo", group: "congregation" },
-      { key: "favicon", label: "Favicon", group: "congregation" },
-      { key: "theme", label: "Theme & Colors", group: "congregation" },
-      { key: "contact", label: "Contact Info", group: "congregation" },
-      { key: "contact-form", label: "Contact Form", group: "congregation" },
-      { key: "location", label: "Location", group: "congregation" },
-      { key: "services", label: "Service Times", group: "congregation" },
+      { key: "welcome", label: "Welcome", group: "site" },
+      { key: "identity", label: "Identity", group: "site" },
+      { key: "logo", label: "Logo", group: "site" },
+      { key: "favicon", label: "Favicon", group: "site" },
+      { key: "theme", label: "Theme & Colors", group: "site" },
+      { key: "contact", label: "Contact Info", group: "site" },
+      { key: "contact-form", label: "Contact Form", group: "site" },
+      { key: "location", label: "Location", group: "site" },
+      { key: "services", label: "Service Times", group: "site" },
     ],
   },
   {

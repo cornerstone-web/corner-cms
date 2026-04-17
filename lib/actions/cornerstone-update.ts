@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable } from "@/db/schema";
+import { sitesTable } from "@/db/schema";
 import { getFileWithSha, commitFile } from "@/lib/github/wizard";
 import {
   getLatestCornerstoneVersion,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/cornerstone-version";
 
 export interface VersionStatus {
-  /** The version range in the church's package.json, e.g. "^0.1.16" */
+  /** The version range in the site's package.json, e.g. "^0.1.16" */
   current: string | null;
   /** The latest published version, e.g. "0.1.21" */
   latest: string | null;
@@ -20,29 +20,29 @@ export interface VersionStatus {
   needsUpdate: boolean;
 }
 
-async function assertAccess(churchId: string) {
+async function assertAccess(siteId: string) {
   const { user } = await getAuth();
   if (!user) throw new Error("Not authenticated.");
   if (user.isSuperAdmin) return;
-  if (user.churchAssignment?.churchId !== churchId) throw new Error("Access denied.");
+  if (user.siteAssignment?.siteId !== siteId) throw new Error("Access denied.");
 }
 
-async function getSlug(churchId: string): Promise<string> {
-  const church = await db.query.churchesTable.findFirst({
-    where: eq(churchesTable.id, churchId),
+async function getSlug(siteId: string): Promise<string> {
+  const site = await db.query.sitesTable.findFirst({
+    where: eq(sitesTable.id, siteId),
     columns: { slug: true },
   });
-  if (!church) throw new Error("Church not found.");
-  return church.slug;
+  if (!site) throw new Error("Site not found.");
+  return site.slug;
 }
 
 /**
- * Returns the current version range from the church repo's package.json
+ * Returns the current version range from the site repo's package.json
  * alongside the latest published version, and whether an update is available.
  */
-export async function getVersionStatus(churchId: string): Promise<VersionStatus> {
-  await assertAccess(churchId);
-  const slug = await getSlug(churchId);
+export async function getVersionStatus(siteId: string): Promise<VersionStatus> {
+  await assertAccess(siteId);
+  const slug = await getSlug(siteId);
 
   const [latest, current] = await Promise.all([
     getLatestCornerstoneVersion(),
@@ -62,17 +62,17 @@ export async function getVersionStatus(churchId: string): Promise<VersionStatus>
 }
 
 /**
- * Updates the church repo's package.json to use ^{latest} for @cornerstone-web/core,
+ * Updates the site repo's package.json to use ^{latest} for @cornerstone-web/core,
  * triggering a CF Pages rebuild. Safe to call multiple times (idempotent).
  *
  * Used as a server action from the homepage update prompt.
  */
 export async function applyLatestVersion(
-  churchId: string,
+  siteId: string,
 ): Promise<{ ok: boolean; version?: string; error?: string }> {
   try {
-    await assertAccess(churchId);
-    const slug = await getSlug(churchId);
+    await assertAccess(siteId);
+    const slug = await getSlug(siteId);
     return await applyLatestVersionToRepo(slug);
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Update failed." };
@@ -81,7 +81,7 @@ export async function applyLatestVersion(
 
 /**
  * Internal helper — updates package.json in a repo by slug.
- * Not a server action; call from other server actions (e.g. launchChurch).
+ * Not a server action; call from other server actions (e.g. launchSite).
  */
 export async function applyLatestVersionToRepo(
   slug: string,

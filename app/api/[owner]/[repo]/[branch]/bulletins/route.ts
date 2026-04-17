@@ -25,10 +25,10 @@ export async function POST(
 
     // Access check: super admins can upload to any repo; others must own it
     if (!user.isSuperAdmin) {
-      if (!user.churchAssignment) {
+      if (!user.siteAssignment) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }
-      const assignedRepo = user.churchAssignment.githubRepoName.split("/")[1];
+      const assignedRepo = user.siteAssignment.githubRepoName.split("/")[1];
       if (assignedRepo !== params.repo) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }

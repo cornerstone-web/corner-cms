@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChurchAssignment } from "@/types/user";
+import { SiteAssignment } from "@/types/user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,14 +19,14 @@ import { applyLatestVersion } from "@/lib/actions/cornerstone-update";
 import { BulletinUploadCard } from "@/components/home/bulletin-upload-card";
 import { useBuildStatus } from "@/hooks/use-build-status";
 
-export function ChurchPortalCard({
+export function SitePortalCard({
   assignment,
   status,
   versionStatus,
   bulletinsEnabled,
   customDomain,
 }: {
-  assignment: ChurchAssignment;
+  assignment: SiteAssignment;
   status?: string;
   versionStatus?: VersionStatus;
   bulletinsEnabled?: boolean;
@@ -43,9 +43,9 @@ export function ChurchPortalCard({
       : `https://${customDomain}`
     : (assignment.cfPagesUrl ?? null);
 
-  const churchId =
-    !isProvisioning && !!assignment.cfPagesUrl ? assignment.churchId : undefined;
-  const { buildStatus, triggerRebuildWatch } = useBuildStatus(churchId);
+  const siteId =
+    !isProvisioning && !!assignment.cfPagesUrl ? assignment.siteId : undefined;
+  const { buildStatus, triggerRebuildWatch } = useBuildStatus(siteId);
 
   const [updateState, setUpdateState] = useState<
     "idle" | "updating" | "done" | "error"
@@ -57,7 +57,7 @@ export function ChurchPortalCard({
   async function handleUpdate() {
     setUpdateState("updating");
     try {
-      const result = await applyLatestVersion(assignment.churchId);
+      const result = await applyLatestVersion(assignment.siteId);
       if (result.ok) {
         setUpdateState("done");
         triggerRebuildWatch();
@@ -89,7 +89,7 @@ export function ChurchPortalCard({
                 {assignment.displayName}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {assignment.isAdmin ? "Church Admin" : "Editor"}
+                {assignment.isAdmin ? "Site Admin" : "Editor"}
               </p>
             </div>
           </div>

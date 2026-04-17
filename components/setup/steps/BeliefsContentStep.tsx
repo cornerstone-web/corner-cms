@@ -31,12 +31,12 @@ We worship through:
 - **Preaching** - Teaching God's Word (2 Timothy 4:2)`;
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialProseContent?: string;
 }
 
-export default function BeliefsContentStep({ church, onComplete, initialProseContent }: StepProps) {
+export default function BeliefsContentStep({ site, onComplete, initialProseContent }: StepProps) {
   const [proseContent, setProseContent] = useState(initialProseContent ?? DEFAULT_BELIEFS_PROSE);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export default function BeliefsContentStep({ church, onComplete, initialProseCon
     setIsLoading(true);
     setError(null);
     try {
-      await saveBeliefPage(church.id, church.slug, proseContent.trim());
+      await saveBeliefPage(site.id, site.slug, proseContent.trim());
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

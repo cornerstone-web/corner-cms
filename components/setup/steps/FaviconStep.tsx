@@ -6,12 +6,12 @@ import { Label } from "@/components/ui/label";
 import { saveFavicon } from "@/lib/actions/setup-steps";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialFaviconUrl?: string;
 }
 
-export default function FaviconStep({ church, onComplete, initialFaviconUrl }: StepProps) {
+export default function FaviconStep({ site, onComplete, initialFaviconUrl }: StepProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(initialFaviconUrl ?? null);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +43,7 @@ export default function FaviconStep({ church, onComplete, initialFaviconUrl }: S
         return;
       }
       const base64 = await fileToBase64(file!);
-      await saveFavicon(church.id, church.slug, base64);
+      await saveFavicon(site.id, site.slug, base64);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

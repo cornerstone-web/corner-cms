@@ -3,7 +3,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, configTable, usersTable, userChurchRolesTable, userChurchScopesTable } from "@/db/schema";
+import { sitesTable, configTable, usersTable, userSiteRolesTable, userSiteScopesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 import { resolveInviteEmailStatus } from "@/lib/utils/invite";
 import { isValidScope } from "@/lib/utils/access-control";
@@ -12,27 +12,27 @@ import {
   generatePasswordTicket,
   sendInviteEmail,
   createOrRestoreDbUser,
-  assignChurchMembership,
+  assignSiteMembership,
 } from "@/lib/utils/user-helpers";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Derives the list of valid collection names for a church by reading its
+ * Derives the list of valid collection names for a site by reading its
  * cached .pages.yml config from the DB. Falls back to [] if the config hasn't
  * been loaded yet. Never trusts caller-supplied collection names.
  */
-async function getCollectionNamesForChurch(churchId: string): Promise<string[]> {
-  const church = await db.query.churchesTable.findFirst({
-    where: eq(churchesTable.id, churchId),
+async function getCollectionNamesForSite(siteId: string): Promise<string[]> {
+  const site = await db.query.sitesTable.findFirst({
+    where: eq(sitesTable.id, siteId),
     columns: { githubRepoName: true },
   });
-  if (!church) return [];
+  if (!site) return [];
 
-  const slashIndex = church.githubRepoName.indexOf("/");
+  const slashIndex = site.githubRepoName.indexOf("/");
   if (slashIndex === -1) return [];
-  const owner = church.githubRepoName.slice(0, slashIndex);
-  const repo = church.githubRepoName.slice(slashIndex + 1);
+  const owner = site.githubRepoName.slice(0, slashIndex);
+  const repo = site.githubRepoName.slice(slashIndex + 1);
 
   const config = await db.query.configTable.findFirst({
     where: and(
@@ -57,13 +57,13 @@ export type InviteState =
 
 // ─── Access guard ─────────────────────────────────────────────────────────────
 
-async function assertCanManageUsers(churchId: string) {
+async function assertCanManageUsers(siteId: string) {
   const { user } = await getAuth();
   if (!user) throw new Error("Not authenticated.");
   if (user.isSuperAdmin) return user;
   if (
-    user.churchAssignment?.churchId === churchId &&
-    user.churchAssignment.isAdmin
+    user.siteAssignment?.siteId === siteId &&
+    user.siteAssignment.isAdmin
   )
     return user;
   throw new Error("You do not have permission to manage users for this site.");
@@ -75,17 +75,17 @@ export async function inviteUser(
   _prev: InviteState,
   formData: FormData
 ): Promise<InviteState> {
-  const churchId = (formData.get("churchId") as string | null)?.trim() ?? "";
+  const siteId = (formData.get("siteId") as string | null)?.trim() ?? "";
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   const email = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
   const isAdmin = formData.get("isAdmin") === "true";
   const scopesRaw = (formData.get("scopes") as string | null) ?? "[]";
 
-  if (!churchId || !name || !email)
+  if (!siteId || !name || !email)
     return { status: "error", message: "All fields are required." };
 
   try {
-    await assertCanManageUsers(churchId);
+    await assertCanManageUsers(siteId);
 
     let scopes: string[] = [];
     if (!isAdmin) {
@@ -94,7 +94,7 @@ export async function inviteUser(
       } catch {
         return { status: "error", message: "Invalid scopes format." };
       }
-      const collectionNames = await getCollectionNamesForChurch(churchId);
+      const collectionNames = await getCollectionNamesForSite(siteId);
       const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
       if (invalid.length > 0)
         return { status: "error", message: `Invalid scopes: ${invalid.join(", ")}` };
@@ -107,27 +107,27 @@ export async function inviteUser(
     const resetUrl = await generatePasswordTicket(auth0UserId, mgmtToken);
 
     const dbUserId = await createOrRestoreDbUser(auth0UserId, email, name);
-    await assignChurchMembership(dbUserId, churchId, isAdmin);
+    await assignSiteMembership(dbUserId, siteId, isAdmin);
 
     if (!isAdmin) {
       await db
-        .delete(userChurchScopesTable)
+        .delete(userSiteScopesTable)
         .where(
           and(
-            eq(userChurchScopesTable.userId, dbUserId),
-            eq(userChurchScopesTable.churchId, churchId)
+            eq(userSiteScopesTable.userId, dbUserId),
+            eq(userSiteScopesTable.siteId, siteId)
           )
         );
-      await db.insert(userChurchScopesTable).values(
-        scopes.map(scope => ({ userId: dbUserId, churchId, scope }))
+      await db.insert(userSiteScopesTable).values(
+        scopes.map(scope => ({ userId: dbUserId, siteId, scope }))
       );
     }
 
-    const church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.id, churchId),
+    const site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.id, siteId),
       columns: { displayName: true },
     });
-    const emailSent = await sendInviteEmail(email, name, church?.displayName ?? "your site", resetUrl);
+    const emailSent = await sendInviteEmail(email, name, site?.displayName ?? "your site", resetUrl);
 
     return resolveInviteEmailStatus(emailSent);
   } catch (err: unknown) {
@@ -141,19 +141,19 @@ export async function inviteUser(
 // ─── resendInvite ─────────────────────────────────────────────────────────────
 
 export async function resendInvite(
-  churchId: string,
+  siteId: string,
   userId: string,
 ): Promise<{ ok: boolean; inviteUrl: string | null; emailSent: boolean; error?: string }> {
   try {
-    await assertCanManageUsers(churchId);
+    await assertCanManageUsers(siteId);
 
     const dbUser = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, userId),
     });
     if (!dbUser) throw new Error("User not found.");
 
-    const church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.id, churchId),
+    const site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.id, siteId),
       columns: { displayName: true },
     });
 
@@ -162,7 +162,7 @@ export async function resendInvite(
     const emailSent = await sendInviteEmail(
       dbUser.email,
       dbUser.name,
-      church?.displayName ?? "your site",
+      site?.displayName ?? "your site",
       inviteUrl,
     );
 
@@ -180,26 +180,26 @@ export async function resendInvite(
 // ─── updateUserAccess ─────────────────────────────────────────────────────────
 
 export async function updateUserAccess(
-  churchId: string,
+  siteId: string,
   userId: string,
   isAdmin: boolean,
   scopes: string[],
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await assertCanManageUsers(churchId);
+    await assertCanManageUsers(siteId);
 
-    // Verify the target user is an active member of this church
-    const membership = await db.query.userChurchRolesTable.findFirst({
+    // Verify the target user is an active member of this site
+    const membership = await db.query.userSiteRolesTable.findFirst({
       where: and(
-        eq(userChurchRolesTable.churchId, churchId),
-        eq(userChurchRolesTable.userId, userId),
-        isNull(userChurchRolesTable.deletedAt)
+        eq(userSiteRolesTable.siteId, siteId),
+        eq(userSiteRolesTable.userId, userId),
+        isNull(userSiteRolesTable.deletedAt)
       ),
     });
-    if (!membership) throw new Error("User is not a member of this church.");
+    if (!membership) throw new Error("User is not a member of this site.");
 
     if (!isAdmin) {
-      const collectionNames = await getCollectionNamesForChurch(churchId);
+      const collectionNames = await getCollectionNamesForSite(siteId);
       const invalid = scopes.filter(s => !isValidScope(s, collectionNames));
       if (invalid.length > 0)
         throw new Error(`Invalid scopes: ${invalid.join(", ")}`);
@@ -208,29 +208,29 @@ export async function updateUserAccess(
     }
 
     await db
-      .update(userChurchRolesTable)
+      .update(userSiteRolesTable)
       .set({ isAdmin })
       .where(
         and(
-          eq(userChurchRolesTable.churchId, churchId),
-          eq(userChurchRolesTable.userId, userId),
-          isNull(userChurchRolesTable.deletedAt)
+          eq(userSiteRolesTable.siteId, siteId),
+          eq(userSiteRolesTable.userId, userId),
+          isNull(userSiteRolesTable.deletedAt)
         )
       );
 
     // Always reconcile scopes: clear existing, then insert new (skip insert for admins)
     await db
-      .delete(userChurchScopesTable)
+      .delete(userSiteScopesTable)
       .where(
         and(
-          eq(userChurchScopesTable.userId, userId),
-          eq(userChurchScopesTable.churchId, churchId)
+          eq(userSiteScopesTable.userId, userId),
+          eq(userSiteScopesTable.siteId, siteId)
         )
       );
 
     if (!isAdmin && scopes.length > 0) {
-      await db.insert(userChurchScopesTable).values(
-        scopes.map(scope => ({ userId, churchId, scope }))
+      await db.insert(userSiteScopesTable).values(
+        scopes.map(scope => ({ userId, siteId, scope }))
       );
     }
 
@@ -240,14 +240,14 @@ export async function updateUserAccess(
   }
 }
 
-// ─── removeUserFromChurch ─────────────────────────────────────────────────────
+// ─── removeUserFromSite ───────────────────────────────────────────────────────
 
-export async function removeUserFromChurch(
-  churchId: string,
+export async function removeUserFromSite(
+  siteId: string,
   userId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await assertCanManageUsers(churchId);
+    await assertCanManageUsers(siteId);
 
     const dbUser = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, userId),
@@ -257,23 +257,23 @@ export async function removeUserFromChurch(
     const now = new Date();
 
     await db
-      .update(userChurchRolesTable)
+      .update(userSiteRolesTable)
       .set({ deletedAt: now })
       .where(
         and(
-          eq(userChurchRolesTable.churchId, churchId),
-          eq(userChurchRolesTable.userId, userId),
-          isNull(userChurchRolesTable.deletedAt),
+          eq(userSiteRolesTable.siteId, siteId),
+          eq(userSiteRolesTable.userId, userId),
+          isNull(userSiteRolesTable.deletedAt),
         )
       );
 
-    // Delete all scopes for this user in this church
+    // Delete all scopes for this user in this site
     await db
-      .delete(userChurchScopesTable)
+      .delete(userSiteScopesTable)
       .where(
         and(
-          eq(userChurchScopesTable.userId, userId),
-          eq(userChurchScopesTable.churchId, churchId)
+          eq(userSiteScopesTable.userId, userId),
+          eq(userSiteScopesTable.siteId, siteId)
         )
       );
 

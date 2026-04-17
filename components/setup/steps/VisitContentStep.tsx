@@ -26,13 +26,13 @@ We have age-appropriate classes for children of all ages during our morning Bibl
 }
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialProseContent?: string;
   initialServiceTimes?: { day?: string; time?: string; name?: string; label?: string }[];
 }
 
-export default function VisitContentStep({ church, onComplete, initialProseContent, initialServiceTimes }: StepProps) {
+export default function VisitContentStep({ site, onComplete, initialProseContent, initialServiceTimes }: StepProps) {
   const [proseContent, setProseContent] = useState(
     initialProseContent ?? buildDefaultVisitContent(initialServiceTimes)
   );
@@ -43,7 +43,7 @@ export default function VisitContentStep({ church, onComplete, initialProseConte
     setIsLoading(true);
     setError(null);
     try {
-      await saveVisitPage(church.id, church.slug, proseContent.trim());
+      await saveVisitPage(site.id, site.slug, proseContent.trim());
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

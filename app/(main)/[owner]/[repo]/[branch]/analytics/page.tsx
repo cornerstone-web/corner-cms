@@ -224,7 +224,7 @@ export default function AnalyticsPage() {
           <BarChart3 className="h-8 w-8 mx-auto text-muted-foreground" />
           <p className="font-medium">Analytics not configured</p>
           <p className="text-sm text-muted-foreground">
-            Analytics is set up automatically when a church site is launched.
+            Analytics is set up automatically when a site is launched.
             For existing sites, add the <code className="text-xs bg-muted px-1 py-0.5 rounded">PUBLIC_CF_ANALYTICS_TOKEN</code> environment
             variable in the Cloudflare Pages dashboard.
           </p>

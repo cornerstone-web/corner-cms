@@ -8,7 +8,7 @@ import { saveTheme } from "@/lib/actions/setup-steps";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialTheme?: string;
   initialCustomColors?: Record<string, string>;
@@ -116,7 +116,7 @@ function resolveHex(value: string, fallback: string): string {
 
 type CustomColors = Partial<Record<CustomColorKey, string>>;
 
-export default function ThemeStep({ church, onComplete, initialTheme, initialCustomColors }: StepProps) {
+export default function ThemeStep({ site, onComplete, initialTheme, initialCustomColors }: StepProps) {
   const [selectedTheme, setSelectedTheme] = useState(initialTheme ?? "default");
   const [customColors, setCustomColors] = useState<CustomColors>(initialCustomColors ?? {});
   const [isLoading, setIsLoading] = useState(false);
@@ -140,7 +140,7 @@ export default function ThemeStep({ church, onComplete, initialTheme, initialCus
             )
           : undefined;
 
-      await saveTheme(church.id, church.slug, selectedTheme, customTheme);
+      await saveTheme(site.id, site.slug, selectedTheme, customTheme);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

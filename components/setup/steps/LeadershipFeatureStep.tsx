@@ -7,13 +7,13 @@ import { completeStep } from "@/lib/actions/setup";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: (enabled: boolean) => void;
   initialEnabled?: boolean;
 }
 
 export default function LeadershipFeatureStep({
-  church,
+  site,
   onComplete,
   initialEnabled,
 }: StepProps) {
@@ -32,9 +32,9 @@ export default function LeadershipFeatureStep({
     setError(null);
     try {
       if (selection) {
-        await saveFeature(church.id, church.slug, "leadership", true);
+        await saveFeature(site.id, site.slug, "leadership", true);
       } else {
-        const result = await completeStep(church.id, "leadership");
+        const result = await completeStep(site.id, "leadership");
         if (!result.ok)
           throw new Error(result.error ?? "Failed to complete step.");
       }
@@ -50,7 +50,7 @@ export default function LeadershipFeatureStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Shepherds &amp; Deacons</h2>
         <p className="text-muted-foreground text-sm">
-          Do you want a page listing your congregation&apos;s elders and
+          Do you want a page listing {site.displayName}&apos;s elders and
           deacons?
         </p>
         <p className="text-muted-foreground text-sm">

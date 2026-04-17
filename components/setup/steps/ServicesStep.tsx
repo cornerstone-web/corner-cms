@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { saveServices } from "@/lib/actions/setup-steps";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialServiceTimes?: {
     day: string;
@@ -39,7 +39,7 @@ function makeRow(): ServiceRow {
 }
 
 export default function ServicesStep({
-  church,
+  site,
   onComplete,
   initialServiceTimes,
 }: StepProps) {
@@ -88,7 +88,7 @@ export default function ServicesStep({
         time: r.time.trim(),
         ...(r.label.trim() ? { label: r.label.trim() } : {}),
       }));
-      await saveServices(church.id, church.slug, serviceTimes);
+      await saveServices(site.id, site.slug, serviceTimes);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -101,7 +101,7 @@ export default function ServicesStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Service Times</h2>
         <p className="text-muted-foreground text-sm">
-          When does your congregation meet?
+          When does {site.displayName} meet?
         </p>
       </div>
       <div className="space-y-3">

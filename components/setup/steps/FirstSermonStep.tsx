@@ -22,7 +22,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialTitle?: string;
   initialDate?: string;
@@ -34,7 +34,7 @@ interface StepProps {
 }
 
 export default function FirstSermonStep({
-  church,
+  site,
   onComplete,
   initialTitle,
   initialDate,
@@ -89,7 +89,7 @@ export default function FirstSermonStep({
     setIsLoading(true);
     setError(null);
     try {
-      await saveFirstSermon(church.id, church.slug, {
+      await saveFirstSermon(site.id, site.slug, {
         title: title.trim(),
         date,
         speaker: speaker.trim(),

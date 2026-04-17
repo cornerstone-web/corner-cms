@@ -3,27 +3,27 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable } from "@/db/schema";
-import { ChurchPortalCard } from "@/components/home/church-portal-card";
+import { sitesTable } from "@/db/schema";
+import { SitePortalCard } from "@/components/home/site-portal-card";
 import { getVersionStatus } from "@/lib/actions/cornerstone-update";
 import { getFileWithSha } from "@/lib/github/wizard";
 import { ChevronLeft } from "lucide-react";
 import YAML from "yaml";
 
-export default async function ChurchPortalPage(props: { params: Promise<{ id: string }> }) {
+export default async function SitePortalPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const { user } = await getAuth();
   if (!user || !user.isSuperAdmin) return redirect("/");
 
-  const church = await db.query.churchesTable.findFirst({
-    where: eq(churchesTable.id, params.id),
+  const site = await db.query.sitesTable.findFirst({
+    where: eq(sitesTable.id, params.id),
   });
 
-  if (!church || church.deletedAt) return notFound();
+  if (!site || site.deletedAt) return notFound();
 
   const [versionStatus, bulletinsEnabled] = await Promise.all([
-    getVersionStatus(church.id).catch(() => null),
-    getFileWithSha(church.slug, "src/config/site.config.yaml")
+    getVersionStatus(site.id).catch(() => null),
+    getFileWithSha(site.slug, "src/config/site.config.yaml")
       .then(({ content }) => {
         const cfg = YAML.parse(content) as { features?: Record<string, boolean> };
         return cfg.features?.bulletins === true;
@@ -32,11 +32,11 @@ export default async function ChurchPortalPage(props: { params: Promise<{ id: st
   ]);
 
   const assignment = {
-    churchId: church.id,
-    githubRepoName: church.githubRepoName,
-    slug: church.slug,
-    displayName: church.displayName,
-    cfPagesUrl: church.cfPagesUrl,
+    siteId: site.id,
+    githubRepoName: site.githubRepoName,
+    slug: site.slug,
+    displayName: site.displayName,
+    cfPagesUrl: site.cfPagesUrl,
     isAdmin: true,
     scopes: [] as string[],
   };
@@ -52,12 +52,12 @@ export default async function ChurchPortalPage(props: { params: Promise<{ id: st
           Back to Sites
         </Link>
       </div>
-      <ChurchPortalCard
+      <SitePortalCard
         assignment={assignment}
-        status={church.status}
+        status={site.status}
         versionStatus={versionStatus ?? undefined}
         bulletinsEnabled={bulletinsEnabled}
-        customDomain={church.customDomain}
+        customDomain={site.customDomain}
       />
     </>
   );

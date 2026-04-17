@@ -7,32 +7,32 @@ import { Label } from "@/components/ui/label";
 import { saveIdentity } from "@/lib/actions/setup-steps";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialName?: string;
   initialDescription?: string;
 }
 
 export default function IdentityStep({
-  church,
+  site,
   onComplete,
   initialName,
   initialDescription,
 }: StepProps) {
-  const [name, setName] = useState(initialName ?? church.displayName);
+  const [name, setName] = useState(initialName ?? site.displayName);
   const [description, setDescription] = useState(initialDescription ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
     if (!name.trim()) {
-      setError("Church name is required.");
+      setError("Congregation name is required.");
       return;
     }
     setIsLoading(true);
     setError(null);
     try {
-      await saveIdentity(church.id, church.slug, {
+      await saveIdentity(site.id, site.slug, {
         name: name.trim(),
         ...(description.trim() ? { description: description.trim() } : {}),
       });
@@ -53,9 +53,9 @@ export default function IdentityStep({
       </div>
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="church-name">Congregation name</Label>
+          <Label htmlFor="site-name">Congregation name</Label>
           <Input
-            id="church-name"
+            id="site-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Grace Community Church"

@@ -19,14 +19,14 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialDate?: string;
   initialPasswordProtected?: boolean;
   initialPassword?: string;
 }
 
-export default function FirstBulletinStep({ church, onComplete, initialDate, initialPasswordProtected, initialPassword }: StepProps) {
+export default function FirstBulletinStep({ site, onComplete, initialDate, initialPasswordProtected, initialPassword }: StepProps) {
   const [date, setDate] = useState(initialDate ?? "");
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function FirstBulletinStep({ church, onComplete, initialDate, ini
     setIsLoading(true);
     setError(null);
     try {
-      await saveFirstBulletin(church.id, church.slug, {
+      await saveFirstBulletin(site.id, site.slug, {
         date,
         pdfBase64: pdfBase64 ?? "",
         passwordProtected,

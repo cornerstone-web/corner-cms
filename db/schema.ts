@@ -13,7 +13,7 @@ import {
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export const churchStatusEnum = pgEnum("church_status", [
+export const siteStatusEnum = pgEnum("site_status", [
   "provisioning",
   "active",
   "suspended",
@@ -21,7 +21,7 @@ export const churchStatusEnum = pgEnum("church_status", [
 
 // ─── Multi-tenant tables ──────────────────────────────────────────────────────
 
-export const churchesTable = pgTable("churches", {
+export const sitesTable = pgTable("sites", {
   id: uuid("id").defaultRandom().primaryKey(),
   githubRepoName: text("github_repo_name").notNull().unique(),
   slug: text("slug").notNull().unique(),
@@ -30,7 +30,7 @@ export const churchesTable = pgTable("churches", {
   cfPagesUrl: text("cf_pages_url"),
   cfAnalyticsSiteTag: text("cf_analytics_site_tag"),
   customDomain: text("custom_domain"),
-  status: churchStatusEnum("status").notNull().default("provisioning"),
+  status: siteStatusEnum("status").notNull().default("provisioning"),
   plan: text("plan").notNull().default("free"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -38,8 +38,8 @@ export const churchesTable = pgTable("churches", {
   wizardStartedAt: timestamp("wizard_started_at"),
   deletedAt: timestamp("deleted_at"),
 }, table => ({
-  idx_churches_slug: uniqueIndex("idx_churches_slug").on(table.slug),
-  idx_churches_github_repo_name: uniqueIndex("idx_churches_github_repo_name").on(table.githubRepoName),
+  idx_sites_slug: uniqueIndex("idx_sites_slug").on(table.slug),
+  idx_sites_github_repo_name: uniqueIndex("idx_sites_github_repo_name").on(table.githubRepoName),
 }));
 
 export const usersTable = pgTable("users", {
@@ -56,38 +56,38 @@ export const usersTable = pgTable("users", {
   idx_users_email: uniqueIndex("idx_users_email").on(table.email),
 }));
 
-export const userChurchRolesTable = pgTable("user_church_roles", {
+export const userSiteRolesTable = pgTable("user_site_roles", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => usersTable.id),
-  churchId: uuid("church_id").notNull().references(() => churchesTable.id),
+  siteId: uuid("site_id").notNull().references(() => sitesTable.id),
   isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   deletedAt: timestamp("deleted_at"),
 }, table => ({
-  idx_user_church_roles_user_id: index("idx_user_church_roles_user_id").on(table.userId),
-  idx_user_church_roles_church_id: index("idx_user_church_roles_church_id").on(table.churchId),
-  idx_user_church_roles_user_church: uniqueIndex("idx_user_church_roles_user_church").on(table.userId, table.churchId),
+  idx_user_site_roles_user_id: index("idx_user_site_roles_user_id").on(table.userId),
+  idx_user_site_roles_site_id: index("idx_user_site_roles_site_id").on(table.siteId),
+  idx_user_site_roles_user_site: uniqueIndex("idx_user_site_roles_user_site").on(table.userId, table.siteId),
 }));
 
-export const userChurchScopesTable = pgTable("user_church_scopes", {
+export const userSiteScopesTable = pgTable("user_site_scopes", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => usersTable.id),
-  churchId: uuid("church_id").notNull().references(() => churchesTable.id),
+  siteId: uuid("site_id").notNull().references(() => sitesTable.id),
   scope: text("scope").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, table => ({
-  idx_user_church_scopes_unique: uniqueIndex("idx_user_church_scopes_unique").on(table.userId, table.churchId, table.scope),
+  idx_user_site_scopes_unique: uniqueIndex("idx_user_site_scopes_unique").on(table.userId, table.siteId, table.scope),
 }));
 
-export const churchWizardStepsTable = pgTable("church_wizard_steps", {
+export const siteWizardStepsTable = pgTable("site_wizard_steps", {
   id: uuid("id").defaultRandom().primaryKey(),
-  churchId: uuid("church_id").notNull().references(() => churchesTable.id),
+  siteId: uuid("site_id").notNull().references(() => sitesTable.id),
   stepKey: text("step_key").notNull(),
   completedAt: timestamp("completed_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [
-  uniqueIndex("church_wizard_steps_church_step_idx").on(t.churchId, t.stepKey),
-  index("church_wizard_steps_church_id_idx").on(t.churchId),
+  uniqueIndex("site_wizard_steps_site_step_idx").on(t.siteId, t.stepKey),
+  index("site_wizard_steps_site_id_idx").on(t.siteId),
 ]);
 
 // ─── GitHub App installation token cache ──────────────────────────────────────

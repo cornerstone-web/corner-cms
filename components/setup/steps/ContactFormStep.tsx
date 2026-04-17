@@ -8,14 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface ContactFormStepProps {
-  church: { id: string; slug: string };
+  site: { id: string; slug: string };
   onComplete: (stepKey: string) => void;
   initialEmail?: string;
 }
 
 type Status = "idle" | "checking" | "sending" | "waiting" | "verified" | "removing" | "error";
 
-export default function ContactFormStep({ church, onComplete, initialEmail }: ContactFormStepProps) {
+export default function ContactFormStep({ site, onComplete, initialEmail }: ContactFormStepProps) {
   const [formEmail, setFormEmail] = useState(initialEmail ?? "");
   const [status, setStatus] = useState<Status>(initialEmail ? "checking" : "idle");
   const [verifiedEmail, setVerifiedEmail] = useState<string | undefined>();
@@ -54,7 +54,7 @@ export default function ContactFormStep({ church, onComplete, initialEmail }: Co
     }
     setStatus("sending");
     setErrorMsg(undefined);
-    const res = await initiateContactFormVerification(church.id, church.slug, formEmail.trim());
+    const res = await initiateContactFormVerification(site.id, site.slug, formEmail.trim());
     if (!res.ok) {
       setStatus("error");
       setErrorMsg(res.error ?? "Something went wrong.");
@@ -72,7 +72,7 @@ export default function ContactFormStep({ church, onComplete, initialEmail }: Co
   function startPolling(email: string) {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
-      const check = await checkContactFormVerification(church.id, church.slug, email);
+      const check = await checkContactFormVerification(site.id, site.slug, email);
       if (check.verified) {
         clearInterval(pollRef.current!);
         pollRef.current = null;
@@ -83,14 +83,14 @@ export default function ContactFormStep({ church, onComplete, initialEmail }: Co
 
   async function handleComplete() {
     setCompleting(true);
-    await completeStep(church.id, "contact-form");
+    await completeStep(site.id, "contact-form");
     onComplete("contact-form");
   }
 
   async function handleRemove() {
     if (!verifiedEmail) return;
     setStatus("removing");
-    const res = await removeContactFormEmail(church.id, church.slug, verifiedEmail);
+    const res = await removeContactFormEmail(site.id, site.slug, verifiedEmail);
     if (!res.ok) {
       setStatus("verified");
       setErrorMsg(res.error ?? "Failed to remove email.");

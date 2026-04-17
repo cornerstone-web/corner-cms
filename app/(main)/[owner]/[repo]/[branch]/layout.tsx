@@ -3,7 +3,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken, getInstallationToken } from "@/lib/token";
 import { NoAccessScreen } from "@/components/no-access-screen";
 import { db } from "@/db";
-import { userChurchRolesTable, usersTable } from "@/db/schema";
+import { userSiteRolesTable, usersTable } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 // NOTE: getToken + getInstallationToken will be simplified in Step 3
 import { configVersion, parseConfig, normalizeConfig } from "@/lib/config";
@@ -41,10 +41,10 @@ export default async function Layout(
   const lowerOwner = owner.toLowerCase();
   const lowerRepo = repo.toLowerCase();
 
-  // Read the church repo's package-lock.json to find the exact installed version
+  // Read the site repo's package-lock.json to find the exact installed version
   // of @cornerstone-web/core. This drives which .pages.yml tag we fetch so that
   // the CMS config is always version-matched to the deployed site.
-  // Falls back to package.json for new church repos that don't have a committed lock file yet.
+  // Falls back to package.json for new site repos that don't have a committed lock file yet.
   const octokit = createOctokitInstance(token);
   let resolvedVersion: string;
   try {
@@ -62,7 +62,7 @@ export default async function Layout(
     if (!coreEntry?.version) throw new Error("@cornerstone-web/core not in lockfile");
     resolvedVersion = coreEntry.version;
   } catch {
-    // Fallback for repos that don't have a committed lock file yet (e.g. new church repos
+    // Fallback for repos that don't have a committed lock file yet (e.g. new site repos
     // created from corner-template before CF Pages has run npm install).
     const pkgResponse = await octokit.rest.repos.getContent({
       owner,
@@ -145,26 +145,26 @@ export default async function Layout(
   // valid for the current config. Stored scopes can become stale when a collection
   // is removed from .pages.yml — filter against the live config before gating.
   if (
-    user.churchAssignment &&
+    user.siteAssignment &&
     !user.isSuperAdmin &&
-    !user.churchAssignment.isAdmin
+    !user.siteAssignment.isAdmin
   ) {
     const configCollections = ((config.object.content as any[]) ?? [])
       .filter((item: any) => item.type === "collection")
       .map((item: any) => item.name as string);
 
-    const validScopes = filterValidScopes(user.churchAssignment.scopes, configCollections);
+    const validScopes = filterValidScopes(user.siteAssignment.scopes, configCollections);
 
     if (validScopes.length === 0) {
       const adminRows = await db
         .select({ email: usersTable.email })
-        .from(userChurchRolesTable)
-        .innerJoin(usersTable, eq(userChurchRolesTable.userId, usersTable.id))
+        .from(userSiteRolesTable)
+        .innerJoin(usersTable, eq(userSiteRolesTable.userId, usersTable.id))
         .where(
           and(
-            eq(userChurchRolesTable.churchId, user.churchAssignment.churchId),
-            eq(userChurchRolesTable.isAdmin, true),
-            isNull(userChurchRolesTable.deletedAt),
+            eq(userSiteRolesTable.siteId, user.siteAssignment.siteId),
+            eq(userSiteRolesTable.isAdmin, true),
+            isNull(userSiteRolesTable.deletedAt),
             isNull(usersTable.deletedAt)
           )
         );

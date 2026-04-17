@@ -1,34 +1,34 @@
 "use server";
 
 /**
- * Lightweight provision for a new church:
- * 1. Insert churches DB record (status: provisioning)
+ * Lightweight provision for a new site:
+ * 1. Insert sites DB record (status: provisioning)
  * 2. Create Auth0 user + password-change invite ticket
- * 3. Insert users + user_church_roles DB records
+ * 3. Insert users + user_site_roles DB records
  *
- * GitHub repo creation and CF Pages setup happen during the church admin's
+ * GitHub repo creation and CF Pages setup happen during the site admin's
  * onboarding wizard (triggered on first /setup load).
  */
 
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable } from "@/db/schema";
+import { sitesTable } from "@/db/schema";
 import { getAuth0ManagementToken } from "@/lib/auth0Management";
 import {
   createOrResolveAuth0User,
   generatePasswordTicket,
   sendInviteEmail,
   createOrRestoreDbUser,
-  assignChurchMembership,
+  assignSiteMembership,
 } from "@/lib/utils/user-helpers";
 
 export type ProvisionState =
   | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "success"; churchId: string; adminInviteUrl: string | null; emailSent: boolean; adminEmail: string };
+  | { status: "success"; siteId: string; adminInviteUrl: string | null; emailSent: boolean; adminEmail: string };
 
-export async function provisionChurch(
+export async function provisionSite(
   _prev: ProvisionState,
   formData: FormData,
 ): Promise<ProvisionState> {
@@ -54,23 +54,23 @@ export async function provisionChurch(
   const githubRepoName = `${org}/${slug}`;
 
   try {
-    // 1. Upsert church record — idempotent so retries after Auth0 failure work cleanly
-    let church: { id: string };
-    const existingChurch = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.slug, slug),
+    // 1. Upsert site record — idempotent so retries after Auth0 failure work cleanly
+    let site: { id: string };
+    const existingSite = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.slug, slug),
       columns: { id: true },
     });
-    if (existingChurch) {
-      church = existingChurch;
+    if (existingSite) {
+      site = existingSite;
     } else {
       const [inserted] = await db
-        .insert(churchesTable)
+        .insert(sitesTable)
         .values({ githubRepoName, slug, displayName, status: "provisioning" })
-        .returning({ id: churchesTable.id });
-      church = inserted;
+        .returning({ id: sitesTable.id });
+      site = inserted;
     }
 
-    // 2. Create Auth0 user + invite ticket (non-fatal — church record still created if this fails)
+    // 2. Create Auth0 user + invite ticket (non-fatal — site record still created if this fails)
     let auth0UserId: string | undefined;
     let adminInviteUrl: string | null = null;
     let emailSent = false;
@@ -86,19 +86,19 @@ export async function provisionChurch(
     // 3. Insert user + role into DB
     if (auth0UserId) {
       const dbUserId = await createOrRestoreDbUser(auth0UserId, adminEmail, adminName);
-      await assignChurchMembership(dbUserId, church.id, true);
+      await assignSiteMembership(dbUserId, site.id, true);
     }
 
-    return { status: "success", churchId: church.id, adminInviteUrl, emailSent, adminEmail };
+    return { status: "success", siteId: site.id, adminInviteUrl, emailSent, adminEmail };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "An unexpected error occurred.";
-    console.error("provisionChurch failed:", err);
+    console.error("provisionSite failed:", err);
     return { status: "error", message };
   }
 }
 
-export async function updateChurchStatus(
-  churchId: string,
+export async function updateSiteStatus(
+  siteId: string,
   status: "active" | "suspended" | "provisioning",
 ): Promise<{ ok: boolean; error?: string }> {
   const { user } = await getAuth();
@@ -106,9 +106,9 @@ export async function updateChurchStatus(
 
   try {
     await db
-      .update(churchesTable)
+      .update(sitesTable)
       .set({ status, updatedAt: new Date() })
-      .where(eq(churchesTable.id, churchId));
+      .where(eq(sitesTable.id, siteId));
     return { ok: true };
   } catch (err: unknown) {
     return { ok: false, error: err instanceof Error ? err.message : "Update failed." };

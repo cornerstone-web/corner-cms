@@ -1,14 +1,14 @@
 /**
  * Auth helper functions using @auth0/nextjs-auth0.
  *
- * getAuth() resolves the Auth0 session → DB user → church assignment (with scopes).
+ * getAuth() resolves the Auth0 session → DB user → site assignment (with scopes).
  * Use this in server components / route handlers that need the authenticated user.
  */
 
 import { cache } from "react";
 import { auth0 } from "@/lib/auth0";
 import { db } from "@/db";
-import { usersTable, userChurchRolesTable, churchesTable, userChurchScopesTable } from "@/db/schema";
+import { usersTable, userSiteRolesTable, sitesTable, userSiteScopesTable } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { User } from "@/types/user";
 
@@ -28,23 +28,23 @@ export const getAuth = cache(
 
     if (!dbUser) return { user: null };
 
-    // Resolve church assignment
+    // Resolve site assignment
     const roleRow = await db
       .select({
-        churchId: userChurchRolesTable.churchId,
-        isAdmin: userChurchRolesTable.isAdmin,
-        githubRepoName: churchesTable.githubRepoName,
-        slug: churchesTable.slug,
-        displayName: churchesTable.displayName,
-        cfPagesUrl: churchesTable.cfPagesUrl,
+        siteId: userSiteRolesTable.siteId,
+        isAdmin: userSiteRolesTable.isAdmin,
+        githubRepoName: sitesTable.githubRepoName,
+        slug: sitesTable.slug,
+        displayName: sitesTable.displayName,
+        cfPagesUrl: sitesTable.cfPagesUrl,
       })
-      .from(userChurchRolesTable)
-      .innerJoin(churchesTable, eq(userChurchRolesTable.churchId, churchesTable.id))
+      .from(userSiteRolesTable)
+      .innerJoin(sitesTable, eq(userSiteRolesTable.siteId, sitesTable.id))
       .where(
         and(
-          eq(userChurchRolesTable.userId, dbUser.id),
-          isNull(userChurchRolesTable.deletedAt),
-          isNull(churchesTable.deletedAt)
+          eq(userSiteRolesTable.userId, dbUser.id),
+          isNull(userSiteRolesTable.deletedAt),
+          isNull(sitesTable.deletedAt)
         )
       )
       .limit(1)
@@ -53,12 +53,12 @@ export const getAuth = cache(
     let scopes: string[] = [];
     if (roleRow && !roleRow.isAdmin) {
       const scopeRows = await db
-        .select({ scope: userChurchScopesTable.scope })
-        .from(userChurchScopesTable)
+        .select({ scope: userSiteScopesTable.scope })
+        .from(userSiteScopesTable)
         .where(
           and(
-            eq(userChurchScopesTable.userId, dbUser.id),
-            eq(userChurchScopesTable.churchId, roleRow.churchId)
+            eq(userSiteScopesTable.userId, dbUser.id),
+            eq(userSiteScopesTable.siteId, roleRow.siteId)
           )
         );
       scopes = scopeRows.map(r => r.scope);
@@ -70,9 +70,9 @@ export const getAuth = cache(
       email: dbUser.email,
       name: dbUser.name,
       isSuperAdmin: dbUser.isSuperAdmin,
-      churchAssignment: roleRow
+      siteAssignment: roleRow
         ? {
-            churchId: roleRow.churchId,
+            siteId: roleRow.siteId,
             githubRepoName: roleRow.githubRepoName,
             slug: roleRow.slug,
             displayName: roleRow.displayName,

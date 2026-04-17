@@ -5,168 +5,168 @@ import YAML from "yaml";
 import { completeStep, uncompleteStep } from "@/lib/actions/setup";
 import { getAuth } from "@/lib/auth";
 
-async function assertChurchAccess(churchId: string) {
+async function assertSiteAccess(siteId: string) {
   const { user } = await getAuth();
   if (!user) throw new Error("Not authenticated.");
   if (user.isSuperAdmin) return;
-  if (user.churchAssignment?.churchId !== churchId) throw new Error("Access denied.");
+  if (user.siteAssignment?.siteId !== siteId) throw new Error("Access denied.");
 }
 
-export async function markWelcomeComplete(churchId: string): Promise<void> {
-  await assertChurchAccess(churchId);
-  const result = await completeStep(churchId, "welcome");
+export async function markWelcomeComplete(siteId: string): Promise<void> {
+  await assertSiteAccess(siteId);
+  const result = await completeStep(siteId, "welcome");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveIdentity(
-  churchId: string,
+  siteId: string,
   slug: string,
   updates: { name: string; description?: string },
 ): Promise<void> {
-  await assertChurchAccess(churchId);
-  await updateSiteConfig(slug, updates, "wizard: update church identity");
-  const result = await completeStep(churchId, "identity");
+  await assertSiteAccess(siteId);
+  await updateSiteConfig(slug, updates, "wizard: update site identity");
+  const result = await completeStep(siteId, "identity");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveLogo(
-  churchId: string,
+  siteId: string,
   slug: string,
   base64Content: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const sha = await tryGetSha(slug, "public/images/logo.png");
-  await commitBinaryFile(slug, "public/images/logo.png", base64Content, sha, "wizard: add church logo");
-  const result = await completeStep(churchId, "logo");
+  await commitBinaryFile(slug, "public/images/logo.png", base64Content, sha, "wizard: add site logo");
+  const result = await completeStep(siteId, "logo");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveFavicon(
-  churchId: string,
+  siteId: string,
   slug: string,
   base64Content: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const sha = await tryGetSha(slug, "public/favicon.svg");
   await commitBinaryFile(slug, "public/favicon.svg", base64Content, sha, "wizard: add favicon");
-  const result = await completeStep(churchId, "favicon");
+  const result = await completeStep(siteId, "favicon");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveTheme(
-  churchId: string,
+  siteId: string,
   slug: string,
   preset: string,
   customTheme?: Record<string, string>,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const themeUpdate: Record<string, unknown> = { theme: preset };
   if (preset === "custom" && customTheme) {
     themeUpdate.customTheme = customTheme;
   }
   await updateSiteConfig(slug, themeUpdate, "wizard: set theme");
-  const result = await completeStep(churchId, "theme");
+  const result = await completeStep(siteId, "theme");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveContact(
-  churchId: string,
+  siteId: string,
   slug: string,
   email: string,
   phone: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   await updateSiteConfig(slug, { contact: { email, phone } }, "wizard: add contact info");
-  const result = await completeStep(churchId, "contact");
+  const result = await completeStep(siteId, "contact");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveLocation(
-  churchId: string,
+  siteId: string,
   slug: string,
   address: { street: string; city: string; state: string; zip: string },
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   await updateSiteConfig(
     slug,
     { contact: { address } },
     "wizard: add location",
   );
-  const result = await completeStep(churchId, "location");
+  const result = await completeStep(siteId, "location");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveServices(
-  churchId: string,
+  siteId: string,
   slug: string,
   serviceTimes: { day: string; time: string; label?: string }[],
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   await updateSiteConfig(slug, { serviceTimes }, "wizard: add service times");
-  const result = await completeStep(churchId, "services");
+  const result = await completeStep(siteId, "services");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveSocialLinks(
-  churchId: string,
+  siteId: string,
   slug: string,
   links: { platform: string; url: string; label?: string; icon?: string }[],
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   // Write full footer structure so footer.sections and footer.variant always exist
   // (corner-template starts without a footer key; deepMerge can't fill in missing fields)
   await updateSiteConfig(slug, {
     footer: { variant: "comprehensive", style: "centered", socialLinks: links, sections: [] },
   }, "wizard: add social links");
-  const result = await completeStep(churchId, "social");
+  const result = await completeStep(siteId, "social");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveGiving(
-  churchId: string,
+  siteId: string,
   slug: string,
   url: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   await updateSiteConfig(slug, { giving: { url } }, "wizard: add giving URL");
-  const result = await completeStep(churchId, "giving");
+  const result = await completeStep(siteId, "giving");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveStreaming(
-  churchId: string,
+  siteId: string,
   slug: string,
   youtubeApiKey: string,
   youtubeChannelId: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   await updateSiteConfig(slug, { integrations: { youtubeApiKey, youtubeChannelId } }, "wizard: add YouTube streaming config");
-  const result = await completeStep(churchId, "streaming");
+  const result = await completeStep(siteId, "streaming");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveFeature(
-  churchId: string,
+  siteId: string,
   slug: string,
   feature: string,
   enabled: boolean,
   extra?: Record<string, unknown>,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const featureUpdate: Record<string, unknown> = { [feature]: enabled, ...extra };
   await updateSiteConfig(slug, { features: featureUpdate }, `wizard: ${enabled ? "enable" : "skip"} ${feature}`);
-  const result = await completeStep(churchId, feature);
+  const result = await completeStep(siteId, feature);
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 // ─── Home Page ────────────────────────────────────────────────────────────────
 
 export async function saveHero(
-  churchId: string,
+  siteId: string,
   slug: string,
   opts: { imageBase64?: string; imageExt?: string; videoUrl?: string },
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
 
   if (opts.imageBase64) {
     const heroPath = `public/uploads/hero.jpg`;
@@ -174,16 +174,16 @@ export async function saveHero(
     await commitBinaryFile(slug, heroPath, opts.imageBase64, sha, "wizard: add hero image");
   }
 
-  const result = await completeStep(churchId, "hero");
+  const result = await completeStep(siteId, "hero");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function savePhotos(
-  churchId: string,
+  siteId: string,
   slug: string,
   photos: { base64: string; ext: string; name: string }[],
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
 
   await Promise.all(
     photos.map(async (photo) => {
@@ -194,7 +194,7 @@ export async function savePhotos(
     }),
   );
 
-  const result = await completeStep(churchId, "photos");
+  const result = await completeStep(siteId, "photos");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
@@ -208,28 +208,28 @@ function fm(fields: Record<string, unknown>): string {
 }
 
 export async function commitContentFile(
-  churchId: string,
+  siteId: string,
   slug: string,
   path: string,
   content: string,
   message: string,
   stepKey: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, message);
-  const result = await completeStep(churchId, stepKey);
+  const result = await completeStep(siteId, stepKey);
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function commitContentBinaryFile(
-  churchId: string,
+  siteId: string,
   slug: string,
   path: string,
   base64: string,
   message: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const sha = await tryGetSha(slug, path);
   await commitBinaryFile(slug, path, base64, sha, message);
 }
@@ -237,7 +237,7 @@ export async function commitContentBinaryFile(
 // ─── First Sermon ─────────────────────────────────────────────────────────────
 
 export async function saveFirstSermon(
-  churchId: string,
+  siteId: string,
   slug: string,
   fields: {
     title: string;
@@ -251,7 +251,7 @@ export async function saveFirstSermon(
     imageExt?: string;
   },
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const fileSlug = slugify(fields.title) || "first-sermon";
   const path = `src/content/sermons/${fileSlug}.md`;
 
@@ -301,18 +301,18 @@ export async function saveFirstSermon(
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: add first sermon");
-  const result = await completeStep(churchId, "first-sermon");
+  const result = await completeStep(siteId, "first-sermon");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 // ─── First Series ─────────────────────────────────────────────────────────────
 
 export async function saveFirstSeries(
-  churchId: string,
+  siteId: string,
   slug: string,
   fields: { title: string; description?: string },
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const fileSlug = slugify(fields.title) || "first-series";
   const path = `src/content/series/${fileSlug}.md`;
   const content = fm({
@@ -350,18 +350,18 @@ export async function saveFirstSeries(
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: add first series");
-  const result = await completeStep(churchId, "first-series");
+  const result = await completeStep(siteId, "first-series");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 // ─── First Ministries ─────────────────────────────────────────────────────────
 
 export async function saveFirstMinistries(
-  churchId: string,
+  siteId: string,
   slug: string,
   ministries: { name: string; description?: string; icon?: string; proseContent?: string }[],
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   await Promise.all(ministries.map(async (ministry) => {
     if (!ministry.name.trim()) return;
     const fileSlug = slugify(ministry.name) || "ministry";
@@ -406,14 +406,14 @@ export async function saveFirstMinistries(
     const sha = await tryGetSha(slug, path);
     await commitFile(slug, path, content, sha, "wizard: add ministry");
   }));
-  const result = await completeStep(churchId, "first-ministry");
+  const result = await completeStep(siteId, "first-ministry");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 // ─── First Event ──────────────────────────────────────────────────────────────
 
 export async function saveFirstEvent(
-  churchId: string,
+  siteId: string,
   slug: string,
   fields: {
     title: string;
@@ -424,7 +424,7 @@ export async function saveFirstEvent(
     proseContent?: string;
   },
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const fileSlug = slugify(fields.title) || "first-event";
   const path = `src/content/events/${fileSlug}.md`;
   const content = fm({
@@ -458,18 +458,18 @@ export async function saveFirstEvent(
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: add first event");
-  const result = await completeStep(churchId, "first-event");
+  const result = await completeStep(siteId, "first-event");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 // ─── First Article ────────────────────────────────────────────────────────────
 
 export async function saveFirstArticle(
-  churchId: string,
+  siteId: string,
   slug: string,
   fields: { title: string; author: string; category?: string; description?: string; proseContent?: string; imageBase64?: string; imageExt?: string },
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const fileSlug = slugify(fields.title) || "first-article";
   const path = `src/content/articles/${fileSlug}.md`;
   const today = new Date().toISOString().split("T")[0];
@@ -515,18 +515,18 @@ export async function saveFirstArticle(
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: add first article");
-  const result = await completeStep(churchId, "first-article");
+  const result = await completeStep(siteId, "first-article");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 // ─── Staff Members ────────────────────────────────────────────────────────────
 
 export async function saveStaffMembers(
-  churchId: string,
+  siteId: string,
   slug: string,
   members: { name: string; title?: string; showDetailPage?: boolean; proseContent?: string; photoBase64?: string; photoExt?: string }[],
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   await Promise.all(members.map(async (member) => {
     if (!member.name.trim()) return;
     const fileSlug = slugify(member.name) || "staff";
@@ -555,18 +555,18 @@ export async function saveStaffMembers(
     const sha = await tryGetSha(slug, mdPath);
     await commitFile(slug, mdPath, content, sha, "wizard: add staff member");
   }));
-  const result = await completeStep(churchId, "first-staff");
+  const result = await completeStep(siteId, "first-staff");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 // ─── Leaders ──────────────────────────────────────────────────────────────────
 
 export async function saveLeaders(
-  churchId: string,
+  siteId: string,
   slug: string,
   leaders: { name: string; role: string; photoBase64?: string; photoExt?: string; existingPhotoPath?: string }[],
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
 
   // Resolve the final photo path for each leader (new upload takes priority over existing)
   const resolved = await Promise.all(leaders.filter(l => l.name.trim()).map(async (leader) => {
@@ -612,7 +612,7 @@ export async function saveLeaders(
   const leadershipPagePath = "src/content/pages/leadership.md";
   const leadershipPageContent = fm({
     title: "Our Leadership",
-    description: "Meet our church leadership",
+    description: "Meet our leadership",
     template: "leadership",
     draft: false,
     passwordProtected: false,
@@ -647,7 +647,7 @@ export async function saveLeaders(
   const leadershipPageSha = await tryGetSha(slug, leadershipPagePath);
   await commitFile(slug, leadershipPagePath, leadershipPageContent, leadershipPageSha, "wizard: update leadership page");
 
-  const result = await completeStep(churchId, "first-leaders");
+  const result = await completeStep(siteId, "first-leaders");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
@@ -669,15 +669,15 @@ const SECONDARY_HERO = {
 };
 
 export async function saveAboutPage(
-  churchId: string,
+  siteId: string,
   slug: string,
   proseContent: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const path = "src/content/pages/about.md";
   const content = fm({
     title: "About Us",
-    description: "Learn about our church's history, mission, and values.",
+    description: "Learn about our history, mission, and values.",
     template: "default",
     draft: false,
     passwordProtected: false,
@@ -689,7 +689,7 @@ export async function saveAboutPage(
         variant: "primary",
         headline: "Come visit us",
         showDescription: true,
-        description: "We'd love to meet you and welcome you to our church family.",
+        description: "We'd love to meet you and welcome you to our community.",
         showPrimaryCta: true,
         primaryCta: { label: "Plan Your Visit", href: "/visit" },
         showSecondaryCta: false,
@@ -698,16 +698,16 @@ export async function saveAboutPage(
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: update about page content");
-  const result = await completeStep(churchId, "about-content");
+  const result = await completeStep(siteId, "about-content");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveBeliefPage(
-  churchId: string,
+  siteId: string,
   slug: string,
   proseContent: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const path = "src/content/pages/beliefs.md";
   const content = fm({
     title: "What We Believe",
@@ -731,20 +731,20 @@ export async function saveBeliefPage(
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: update beliefs page content");
-  const result = await completeStep(churchId, "beliefs-content");
+  const result = await completeStep(siteId, "beliefs-content");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveVisitPage(
-  churchId: string,
+  siteId: string,
   slug: string,
   proseContent: string,
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const path = "src/content/pages/visit.md";
   const content = fm({
     title: "Plan Your Visit",
-    description: "Everything you need to know before visiting our church.",
+    description: "Everything you need to know before your first visit.",
     template: "default",
     draft: false,
     passwordProtected: false,
@@ -764,20 +764,20 @@ export async function saveVisitPage(
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: update visit page content");
-  const result = await completeStep(churchId, "visit-content");
+  const result = await completeStep(siteId, "visit-content");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 export async function saveFAQPage(
-  churchId: string,
+  siteId: string,
   slug: string,
   items: { question: string; answer: string }[],
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
   const path = "src/content/pages/faq.md";
   const content = fm({
     title: "Frequently Asked Questions",
-    description: "Find answers to common questions about our church and what to expect when you visit.",
+    description: "Find answers to common questions about what to expect when you visit.",
     template: "faq",
     draft: false,
     passwordProtected: false,
@@ -796,18 +796,18 @@ export async function saveFAQPage(
   });
   const sha = await tryGetSha(slug, path);
   await commitFile(slug, path, content, sha, "wizard: update FAQ page content");
-  const result = await completeStep(churchId, "faq-content");
+  const result = await completeStep(siteId, "faq-content");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
 // ─── First Bulletin ───────────────────────────────────────────────────────────
 
 export async function saveFirstBulletin(
-  churchId: string,
+  siteId: string,
   slug: string,
   fields: { date: string; pdfBase64: string; passwordProtected: boolean; password?: string },
 ): Promise<void> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
 
   // Upload the PDF (skip if no new PDF provided — just updating password settings)
   if (fields.pdfBase64) {
@@ -821,7 +821,7 @@ export async function saveFirstBulletin(
     const bulletinsPath = "src/content/pages/bulletins.md";
     const bulletinsContent = fm({
       title: "Bulletins",
-      description: "Weekly church bulletins",
+      description: "Weekly bulletins",
       template: "bulletins",
       draft: false,
       passwordProtected: true,
@@ -853,7 +853,7 @@ export async function saveFirstBulletin(
     await commitFile(slug, bulletinsPath, bulletinsContent, bulletinsSha, "wizard: enable bulletin password protection");
   }
 
-  const result = await completeStep(churchId, "first-bulletin");
+  const result = await completeStep(siteId, "first-bulletin");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
 
@@ -865,15 +865,15 @@ export async function saveFirstBulletin(
  * Idempotent — safe to call again if the address already exists.
  */
 export async function initiateContactFormVerification(
-  churchId: string,
+  siteId: string,
   slug: string,
   email: string,
 ): Promise<{ ok: boolean; email?: string; alreadyVerified?: boolean; error?: string }> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
 
   if (!email) return { ok: false, error: "Please enter an email address." };
 
-  // Persist the chosen form email so launchChurch can register it with corner-apostle
+  // Persist the chosen form email so launchSite can register it with corner-apostle
   await updateSiteConfig(slug, { contact: { formEmail: email } }, "wizard: set form email");
 
   const accountId = process.env.CF_ACCOUNT_ID;
@@ -895,7 +895,7 @@ export async function initiateContactFormVerification(
 
   if (res.status === 409) {
     // Address already registered — check if already verified
-    const check = await checkContactFormVerification(churchId, slug, email);
+    const check = await checkContactFormVerification(siteId, slug, email);
     return { ok: true, email, alreadyVerified: check.verified };
   }
 
@@ -905,15 +905,15 @@ export async function initiateContactFormVerification(
 }
 
 /**
- * Checks whether the church's contact email has been verified as a
+ * Checks whether the site's contact email has been verified as a
  * CF Email Routing destination address.
  */
 export async function checkContactFormVerification(
-  churchId: string,
+  siteId: string,
   slug: string,
   email: string,
 ): Promise<{ verified: boolean; email?: string; error?: string }> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
 
   if (!email) return { verified: false, error: "No email provided." };
 
@@ -939,11 +939,11 @@ export async function checkContactFormVerification(
  * clears formEmail from site.config.yaml, and marks the step incomplete.
  */
 export async function removeContactFormEmail(
-  churchId: string,
+  siteId: string,
   slug: string,
   email: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  await assertChurchAccess(churchId);
+  await assertSiteAccess(siteId);
 
   const accountId = process.env.CF_ACCOUNT_ID;
   const apiToken = process.env.CF_API_TOKEN;
@@ -978,7 +978,7 @@ export async function removeContactFormEmail(
     // Config may not exist yet — fine
   }
 
-  await uncompleteStep(churchId, "contact-form");
+  await uncompleteStep(siteId, "contact-form");
 
   return { ok: true };
 }
