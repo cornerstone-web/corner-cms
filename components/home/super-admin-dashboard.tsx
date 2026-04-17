@@ -102,7 +102,7 @@ export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
           </span>
         </div>
         <Button asChild size="sm">
-          <Link href="/admin/churches/new">
+          <Link href="/admin/sites/new">
             <Plus className="h-4 w-4 mr-1.5" />
             Provision New Site
           </Link>
@@ -117,7 +117,7 @@ export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
             Provision your first site to get started.
           </p>
           <Button asChild className="mt-4" size="sm">
-            <Link href="/admin/churches/new">
+            <Link href="/admin/sites/new">
               <Plus className="h-4 w-4 mr-1.5" />
               Provision New Site
             </Link>
@@ -219,7 +219,7 @@ export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button asChild variant="ghost" size="xs">
-                          <Link href={`/admin/churches/${site.id}/portal`}>
+                          <Link href={`/admin/sites/${site.id}/portal`}>
                             <LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
                             <span className="hidden sm:inline">Portal</span>
                           </Link>
@@ -231,7 +231,7 @@ export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
                           </Link>
                         </Button>
                         <Button asChild variant="ghost" size="xs">
-                          <Link href={`/admin/churches/${site.id}`}>
+                          <Link href={`/admin/sites/${site.id}`}>
                             <Settings className="h-3.5 w-3.5 mr-1.5" />
                             <span className="hidden sm:inline">Manage</span>
                           </Link>
