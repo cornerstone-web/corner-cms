@@ -28,16 +28,24 @@ We have age-appropriate classes for children of all ages during our morning Bibl
 interface StepProps {
   site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  onSkip?: () => Promise<void>;
   initialProseContent?: string;
   initialServiceTimes?: { day?: string; time?: string; name?: string; label?: string }[];
 }
 
-export default function VisitContentStep({ site, onComplete, initialProseContent, initialServiceTimes }: StepProps) {
+export default function VisitContentStep({ site, onComplete, onSkip, initialProseContent, initialServiceTimes }: StepProps) {
   const [proseContent, setProseContent] = useState(
     initialProseContent ?? buildDefaultVisitContent(initialServiceTimes)
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleSkip() {
+    if (!onSkip) return;
+    setIsSkipping(true);
+    try { await onSkip(); } catch { setIsSkipping(false); } finally { setIsSkipping(false); }
+  }
 
   async function handleSubmit() {
     setIsLoading(true);
@@ -62,9 +70,16 @@ export default function VisitContentStep({ site, onComplete, initialProseContent
       <div className="space-y-1.5">
         <WizardProseEditor value={proseContent} onChange={setProseContent} />
       </div>
-      <Button onClick={handleSubmit} disabled={isLoading}>
-        {isLoading ? "Saving..." : "Continue →"}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button onClick={handleSubmit} disabled={isLoading}>
+          {isLoading ? "Saving..." : "Continue →"}
+        </Button>
+        {onSkip && (
+          <Button variant="ghost" onClick={handleSkip} disabled={isSkipping} className="text-muted-foreground">
+            Not applicable
+          </Button>
+        )}
+      </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
     </div>
   );

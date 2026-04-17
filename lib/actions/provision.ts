@@ -39,6 +39,7 @@ export async function provisionSite(
   const slug = (formData.get("slug") as string | null)?.trim().toLowerCase() ?? "";
   const adminEmail = (formData.get("adminEmail") as string | null)?.trim().toLowerCase() ?? "";
   const adminName = (formData.get("adminName") as string | null)?.trim() ?? "";
+  const siteType = (formData.get("siteType") as string | null) === "organization" ? "organization" as const : "church" as const;
 
   if (!displayName || !slug || !adminEmail || !adminName) {
     return { status: "error", message: "All fields are required." };
@@ -65,7 +66,7 @@ export async function provisionSite(
     } else {
       const [inserted] = await db
         .insert(sitesTable)
-        .values({ githubRepoName, slug, displayName, status: "provisioning" })
+        .values({ githubRepoName, slug, displayName, status: "provisioning", siteType })
         .returning({ id: sitesTable.id });
       site = inserted;
     }

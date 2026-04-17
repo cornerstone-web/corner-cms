@@ -5,6 +5,7 @@ import { Control } from "react-hook-form";
 import { Loader } from "lucide-react";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/config-context";
+import { useUser } from "@/contexts/user-context";
 import {
   FormField,
   FormItem,
@@ -35,7 +36,7 @@ interface BlockUsage {
   blockType: string;
 }
 
-const featureLabels: Record<string, string> = {
+const allFeatureLabels: Record<string, string> = {
   articles: "Articles",
   events: "Events",
   ministries: "Ministries",
@@ -44,12 +45,16 @@ const featureLabels: Record<string, string> = {
   staff: "Staff",
 };
 
-const featureKeys = Object.keys(featureLabels) as Array<
-  keyof typeof featureLabels
->;
+const churchOnlyFeatures = new Set(["sermons", "series"]);
 
 export function FeaturesSection({ control, onSaveAndReload }: FeaturesSectionProps) {
   const { config } = useConfig();
+  const { user } = useUser();
+  const isOrg = user?.siteAssignment?.siteType === "organization";
+  const featureLabels = isOrg
+    ? Object.fromEntries(Object.entries(allFeatureLabels).filter(([k]) => !churchOnlyFeatures.has(k)))
+    : allFeatureLabels;
+  const featureKeys = Object.keys(featureLabels) as Array<keyof typeof featureLabels>;
 
   const [usageData, setUsageData] = useState<Record<string, BlockUsage[]>>({});
   const [usageLoading, setUsageLoading] = useState(true);

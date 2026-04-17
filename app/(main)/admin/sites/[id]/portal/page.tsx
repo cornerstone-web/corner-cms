@@ -39,6 +39,7 @@ export default async function SitePortalPage(props: { params: Promise<{ id: stri
     cfPagesUrl: site.cfPagesUrl,
     isAdmin: true,
     scopes: [] as string[],
+    siteType: site.siteType,
   };
 
   return (

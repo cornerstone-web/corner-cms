@@ -37,6 +37,7 @@ export const getAuth = cache(
         slug: sitesTable.slug,
         displayName: sitesTable.displayName,
         cfPagesUrl: sitesTable.cfPagesUrl,
+        siteType: sitesTable.siteType,
       })
       .from(userSiteRolesTable)
       .innerJoin(sitesTable, eq(userSiteRolesTable.siteId, sitesTable.id))
@@ -79,6 +80,7 @@ export const getAuth = cache(
             cfPagesUrl: roleRow.cfPagesUrl,
             isAdmin: roleRow.isAdmin,
             scopes,
+            siteType: roleRow.siteType,
           }
         : null,
     };

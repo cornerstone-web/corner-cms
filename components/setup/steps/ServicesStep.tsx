@@ -9,6 +9,7 @@ import { saveServices } from "@/lib/actions/setup-steps";
 interface StepProps {
   site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  onSkip?: () => Promise<void>;
   initialServiceTimes?: {
     day: string;
     time: string;
@@ -41,8 +42,17 @@ function makeRow(): ServiceRow {
 export default function ServicesStep({
   site,
   onComplete,
+  onSkip,
   initialServiceTimes,
 }: StepProps) {
+  const [isSkipping, setIsSkipping] = useState(false);
+
+  async function handleSkip() {
+    if (!onSkip) return;
+    setIsSkipping(true);
+    try { await onSkip(); } catch { setIsSkipping(false); } finally { setIsSkipping(false); }
+  }
+
   const [rows, setRows] = useState<ServiceRow[]>(() => {
     if (initialServiceTimes && initialServiceTimes.length > 0) {
       return initialServiceTimes.map((s, i) => ({
@@ -174,9 +184,16 @@ export default function ServicesStep({
           + Add another service
         </button>
       </div>
-      <Button onClick={handleSubmit} disabled={isLoading}>
-        {isLoading ? "Saving..." : "Continue →"}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button onClick={handleSubmit} disabled={isLoading}>
+          {isLoading ? "Saving..." : "Continue →"}
+        </Button>
+        {onSkip && (
+          <Button variant="ghost" onClick={handleSkip} disabled={isSkipping} className="text-muted-foreground">
+            We don&apos;t have regular meeting times
+          </Button>
+        )}
+      </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
     </div>
   );

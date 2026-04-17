@@ -8,6 +8,8 @@ import WizardTimeline from "./WizardTimeline";
 import { User } from "@/components/user";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useEffect } from "react";
+import { saveFeature, skipContentPage, skipStep } from "@/lib/actions/setup-steps";
 import BuildProgressStep from "./steps/BuildProgressStep";
 import LaunchStep from "./steps/LaunchStep";
 import WelcomeStep from "./steps/WelcomeStep";
@@ -50,6 +52,7 @@ interface WizardShellProps {
     id: string;
     displayName: string;
     slug: string;
+    siteType: "church" | "organization";
   };
   completedStepsArray: string[];
   initialConfig: Record<string, unknown>;
@@ -84,6 +87,47 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
   const progressStep = getCurrentStep(completedSteps, enabledFeatures);
   const [launched, setLaunched] = useState<{ cfPagesUrl: string } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [autoSkipError, setAutoSkipError] = useState<string | null>(null);
+
+  // For organization sites, auto-complete church-only steps on first load
+  useEffect(() => {
+    if (site.siteType !== "organization") return;
+    const churchOnlySteps: { key: StepKey; action: () => Promise<void> }[] = [
+      { key: "sermons",        action: () => saveFeature(site.id, site.slug, "sermons", false) },
+      { key: "bulletins",      action: () => saveFeature(site.id, site.slug, "bulletins", false) },
+      { key: "beliefs-content", action: () => skipContentPage(site.id, site.slug, "beliefs") },
+    ];
+    const pending = churchOnlySteps.filter(s => !completedSteps.has(s.key));
+    if (pending.length === 0) return;
+    Promise.all(pending.map(s => s.action())).then(() => {
+      const next = new Set(completedSteps);
+      const nextFeatures = new Set(enabledFeatures);
+      for (const s of pending) {
+        next.add(s.key);
+        nextFeatures.delete(s.key);
+      }
+      setEnabledFeatures(nextFeatures);
+      setCompletedSteps(next);
+      setCurrentStep(getCurrentStep(next, nextFeatures));
+    }).catch((err) => {
+      console.error(err);
+      setAutoSkipError("Some steps couldn't be configured automatically. Please refresh the page.");
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSkip(stepKey: StepKey) {
+    try {
+      if (stepKey === "visit-content") {
+        await skipContentPage(site.id, site.slug, "visit");
+      } else {
+        await skipStep(site.id, stepKey);
+      }
+      handleComplete(stepKey);
+    } catch (err) {
+      console.error("Failed to skip step:", err);
+    }
+  }
 
   function handleComplete(stepKey: StepKey, featureEnabled?: boolean) {
     const nextCompleted = new Set(completedSteps);
@@ -143,12 +187,14 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
         initialEmail={(contact.formEmail as string) || userEmail || ""}
       />;
       case "location": return <LocationStep {...base}
+        onSkip={() => handleSkip("location")}
         initialStreet={address.street || ""}
         initialCity={address.city || ""}
         initialState={address.state || ""}
         initialZip={address.zip || ""}
       />;
       case "services": return <ServicesStep {...base}
+        onSkip={() => handleSkip("services")}
         initialServiceTimes={(cfg.serviceTimes as { day: string; time: string; name?: string; label?: string }[]) || []}
       />;
       case "social": return <SocialStep {...base}
@@ -248,7 +294,7 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
       case "first-bulletin": return <FirstBulletinStep {...base} initialDate={initialFirstBulletin?.date} initialPasswordProtected={initialFirstBulletin?.passwordProtected} initialPassword={initialFirstBulletin?.password} />;
       case "about-content": return <AboutContentStep {...base} initialProseContent={initialAboutProse} />;
       case "beliefs-content": return <BeliefsContentStep {...base} initialProseContent={initialBeliefsProse} />;
-      case "visit-content": return <VisitContentStep {...base} initialProseContent={initialVisitProse} initialServiceTimes={(cfg.serviceTimes as { day?: string; time?: string; name?: string; label?: string }[] | undefined) ?? []} />;
+      case "visit-content": return <VisitContentStep {...base} onSkip={() => handleSkip("visit-content")} initialProseContent={initialVisitProse} initialServiceTimes={(cfg.serviceTimes as { day?: string; time?: string; name?: string; label?: string }[] | undefined) ?? []} />;
       case "faq-content": return <FAQStep {...base} initialItems={initialFaqItems} />;
       case "hero": return <HeroStep {...base} initialHeroUrl={initialHeroUrl} />;
       case "photos": return <PhotosStep {...base} initialPhotos={initialMarqueePhotos} />;
@@ -321,6 +367,11 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-2xl">
+            {autoSkipError && (
+              <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {autoSkipError}
+              </div>
+            )}
             {renderCurrentStep()}
           </div>
         </main>

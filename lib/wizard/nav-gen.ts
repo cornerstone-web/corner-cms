@@ -8,6 +8,8 @@ export interface WizardFeatures {
   bulletins?: boolean;
   leadership?: boolean;
   givingUrl?: string;
+  siteType?: "church" | "organization";
+  visitPageEnabled?: boolean;
 }
 
 export function generateNav(features: WizardFeatures) {
@@ -47,15 +49,18 @@ export function generateNav(features: WizardFeatures) {
     items.push({ type: "link", label: "Articles", href: "/articles" });
   }
 
+  const isChurch = features.siteType !== "organization";
+  const visitEnabled = features.visitPageEnabled !== false;
+
   const aboutLinks = [
     { label: "About Us", href: "/about" },
-    { label: "What We Believe", href: "/beliefs" },
+    ...(isChurch ? [{ label: "What We Believe", href: "/beliefs" }] : []),
     ...(features.leadership ? [{ label: "Leadership", href: "/leadership" }] : []),
     ...(features.staff ? [{ label: "Our Staff", href: "/staff" }] : []),
     { label: "FAQ", href: "/faq" },
   ];
   const visitLinks = [
-    { label: "Plan Your Visit", href: "/visit" },
+    ...(visitEnabled ? [{ label: "Plan Your Visit", href: "/visit" }] : []),
     { label: "Contact Us", href: "/contact" },
   ];
   items.push({
@@ -63,7 +68,7 @@ export function generateNav(features: WizardFeatures) {
     label: "About",
     href: "/about",
     columns: [
-      { heading: "Our Church", icon: "church", links: aboutLinks },
+      { heading: isChurch ? "Our Church" : "About Us", icon: isChurch ? "church" : "info", links: aboutLinks },
       { heading: "Visit", icon: "map-pin", links: visitLinks },
     ],
   });
