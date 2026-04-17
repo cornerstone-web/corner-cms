@@ -8,12 +8,12 @@ export async function sendSupportMessage({
   message,
   fromEmail,
   fromName,
-  churchName,
+  siteName,
 }: {
   message: string;
   fromEmail?: string;
   fromName?: string;
-  churchName?: string;
+  siteName?: string;
 }): Promise<{ ok: boolean }> {
   try {
     const res = await fetch(`${process.env.CORNER_APOSTLE_URL}/send-support`, {
@@ -22,7 +22,7 @@ export async function sendSupportMessage({
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.CORNERSTONE_INTERNAL_SECRET ?? ""}`,
       },
-      body: JSON.stringify({ message, fromEmail, fromName, churchName }),
+      body: JSON.stringify({ message, fromEmail, fromName, siteName }),
     });
     if (!res.ok) {
       console.error("Support email send failed:", await res.text().catch(() => "(no body)"));

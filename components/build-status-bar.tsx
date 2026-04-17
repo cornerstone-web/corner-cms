@@ -55,7 +55,7 @@ export function BuildStatusBar({ siteId }: { siteId?: string }) {
       message: supportMessage.trim(),
       fromEmail: user?.email ?? undefined,
       fromName: user?.name ?? undefined,
-      churchName: user?.siteAssignment?.displayName ?? undefined,
+      siteName: user?.siteAssignment?.displayName ?? undefined,
     });
     setSupportSending(false);
     if (result.ok) {
