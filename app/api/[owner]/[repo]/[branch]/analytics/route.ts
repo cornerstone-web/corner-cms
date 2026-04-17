@@ -3,7 +3,7 @@ export const maxDuration = 30;
 import { type NextRequest } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable } from "@/db/schema";
+import { sitesTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { verifyRepoAccess } from "@/lib/utils/repoAccess";
 import { handleRouteError } from "@/lib/utils/apiError";
@@ -203,7 +203,7 @@ async function queryCfAnalytics(
 /**
  * GET /api/[owner]/[repo]/[branch]/analytics?range=7d|30d|90d
  *
- * Returns Cloudflare Web Analytics data for the church site.
+ * Returns Cloudflare Web Analytics data for the site.
  * Requires CF_ACCOUNT_ID and CF_API_TOKEN (with Account Analytics: Read scope).
  * Response is cached for 5 minutes (stale-while-revalidate 10 minutes).
  */
@@ -228,12 +228,12 @@ export async function GET(
     }
 
     const repoName = `${params.owner}/${params.repo}`.toLowerCase();
-    const church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.githubRepoName, repoName),
+    const site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.githubRepoName, repoName),
       columns: { cfAnalyticsSiteTag: true },
     });
 
-    if (!church?.cfAnalyticsSiteTag) {
+    if (!site?.cfAnalyticsSiteTag) {
       return Response.json(
         { status: "error", message: "Analytics not configured for this site." },
         { status: 404 },
@@ -245,7 +245,7 @@ export async function GET(
       ? (rawRange as Range)
       : "30d";
 
-    const data = await queryCfAnalytics(cfAccountId, church.cfAnalyticsSiteTag, range, cfApiToken);
+    const data = await queryCfAnalytics(cfAccountId, site.cfAnalyticsSiteTag, range, cfApiToken);
 
     return Response.json(
       { status: "success", data },

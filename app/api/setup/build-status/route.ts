@@ -1,17 +1,17 @@
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable } from "@/db/schema";
+import { sitesTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 /**
  * Poll the Cloudflare Pages deployment API for the most recent deployment status.
  *
- * GET /api/setup/build-status?churchId=<uuid>
+ * GET /api/setup/build-status?siteId=<uuid>
  * GET /api/setup/build-status?repo=owner/repo
  *
  * Returns: { status: "building" | "success" | "failure"; url?: string; consecutiveFailures?: number }
  *
- * Auth: must be authenticated as any role for the queried church, or isSuperAdmin.
+ * Auth: must be authenticated as any role for the queried site, or isSuperAdmin.
  */
 
 type CfStage = { name: string; status: string };
@@ -23,51 +23,51 @@ export async function GET(request: Request) {
   if (!user) return new Response(null, { status: 401 });
 
   const url = new URL(request.url);
-  const churchId = url.searchParams.get("churchId");
+  const siteId = url.searchParams.get("siteId");
   const repo = url.searchParams.get("repo"); // "owner/repo" alternative
 
-  if (!churchId && !repo) {
-    return Response.json({ error: "Missing churchId or repo query param" }, { status: 400 });
+  if (!siteId && !repo) {
+    return Response.json({ error: "Missing siteId or repo query param" }, { status: 400 });
   }
 
-  let church: { cfPagesProjectName: string | null; cfPagesUrl: string | null } | undefined;
+  let site: { cfPagesProjectName: string | null; cfPagesUrl: string | null } | undefined;
 
-  if (churchId) {
-    // Auth guard: super admin or any role assigned to the queried church
+  if (siteId) {
+    // Auth guard: super admin or any role assigned to the queried site
     const isAuthorized =
       user.isSuperAdmin ||
-      user.churchAssignment?.churchId === churchId;
+      user.siteAssignment?.siteId === siteId;
     if (!isAuthorized) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
-    church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.id, churchId),
+    site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.id, siteId),
       columns: { cfPagesProjectName: true, cfPagesUrl: true },
     });
   } else {
-    // Auth guard: super admin or user whose church matches the repo
+    // Auth guard: super admin or user whose site matches the repo
     const isAuthorized =
       user.isSuperAdmin ||
-      user.churchAssignment?.githubRepoName === repo;
+      user.siteAssignment?.githubRepoName === repo;
     if (!isAuthorized) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
-    church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.githubRepoName, repo!),
+    site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.githubRepoName, repo!),
       columns: { cfPagesProjectName: true, cfPagesUrl: true },
     });
   }
 
-  if (!church) {
-    return Response.json({ error: "Church not found" }, { status: 404 });
+  if (!site) {
+    return Response.json({ error: "Site not found" }, { status: 404 });
   }
 
   const accountId = process.env.CF_ACCOUNT_ID;
   const apiToken = process.env.CF_API_TOKEN;
-  const projectName = church.cfPagesProjectName;
+  const projectName = site.cfPagesProjectName;
 
   if (!accountId || !apiToken || !projectName) {
-    return Response.json({ error: "Cloudflare Pages not configured for this church" }, { status: 502 });
+    return Response.json({ error: "Cloudflare Pages not configured for this site" }, { status: 502 });
   }
 
   // Fetch recent deployments — enough to count a consecutive failure streak (up to 5)
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
   const latestStatus = deployment.latest_stage?.status;
 
   if (latestStatus === "success") {
-    return Response.json({ status: "success", url: church.cfPagesUrl ?? deployment.url });
+    return Response.json({ status: "success", url: site.cfPagesUrl ?? deployment.url });
   }
 
   if (latestStatus === "failure") {

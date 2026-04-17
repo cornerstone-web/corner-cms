@@ -161,7 +161,7 @@ export async function POST(
       case "media":
         if (!data.name) throw new Error(`"name" is required for media.`);
 
-        if (!isAdminUser(user) && !(user.churchAssignment?.scopes ?? []).includes(`media:${data.name}`)) {
+        if (!isAdminUser(user) && !(user.siteAssignment?.scopes ?? []).includes(`media:${data.name}`)) {
           return new Response(null, { status: 403 });
         }
 
@@ -379,7 +379,7 @@ export async function DELETE(
       case "media":
         if (!name) throw new Error(`"name" is required for media.`);
 
-        if (!isAdminUser(user) && !(user.churchAssignment?.scopes ?? []).includes(`media:${name}`)) {
+        if (!isAdminUser(user) && !(user.siteAssignment?.scopes ?? []).includes(`media:${name}`)) {
           return new Response(null, { status: 403 });
         }
 

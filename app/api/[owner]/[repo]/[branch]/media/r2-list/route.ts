@@ -36,7 +36,7 @@ export async function GET(
       );
     }
 
-    if (!isAdminUser(user) && !(user.churchAssignment?.scopes ?? []).includes(`media:${category}`)) {
+    if (!isAdminUser(user) && !(user.siteAssignment?.scopes ?? []).includes(`media:${category}`)) {
       return new Response(null, { status: 403 });
     }
 

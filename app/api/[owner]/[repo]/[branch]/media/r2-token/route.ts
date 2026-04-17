@@ -42,7 +42,7 @@ export async function POST(
       return Response.json({ status: 'error', message: 'Missing or invalid category (must be "video" or "audio")' }, { status: 400 });
     }
 
-    if (!isAdminUser(user) && !(user.churchAssignment?.scopes ?? []).includes(`media:${category}`)) {
+    if (!isAdminUser(user) && !(user.siteAssignment?.scopes ?? []).includes(`media:${category}`)) {
       return new Response(null, { status: 403 });
     }
 

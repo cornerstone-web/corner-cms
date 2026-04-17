@@ -1,6 +1,6 @@
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable } from "@/db/schema";
+import { sitesTable } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { handleRouteError } from "@/lib/utils/apiError";
 import { updateApostleOrigins } from "@/lib/actions/setup";
@@ -37,21 +37,21 @@ export async function GET(
 
     // Access guard
     if (!user.isSuperAdmin) {
-      if (!user.churchAssignment) {
+      if (!user.siteAssignment) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }
-      if (user.churchAssignment.githubRepoName !== githubRepoName) {
+      if (user.siteAssignment.githubRepoName !== githubRepoName) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }
     }
 
-    const church = await db.query.churchesTable.findFirst({
-      where: and(eq(churchesTable.githubRepoName, githubRepoName), isNull(churchesTable.deletedAt)),
+    const site = await db.query.sitesTable.findFirst({
+      where: and(eq(sitesTable.githubRepoName, githubRepoName), isNull(sitesTable.deletedAt)),
     });
 
-    if (!church) return new Response(JSON.stringify({ error: "Church not found." }), { status: 404 });
+    if (!site) return new Response(JSON.stringify({ error: "Site not found." }), { status: 404 });
 
-    const { customDomain, cfPagesProjectName } = church;
+    const { customDomain, cfPagesProjectName } = site;
 
     // Fetch live status from CF Pages API if we have enough info
     let rootStatus: string | null = null;
@@ -95,14 +95,14 @@ export async function POST(
 
     const githubRepoName = `${params.owner}/${params.repo}`;
 
-    // Only church_admin or super_admin may set a custom domain
+    // Only site_admin or super_admin may set a custom domain
     if (!user.isSuperAdmin) {
-      if (!user.churchAssignment) {
+      if (!user.siteAssignment) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }
       if (
-        user.churchAssignment.githubRepoName !== githubRepoName ||
-        !user.churchAssignment.isAdmin
+        user.siteAssignment.githubRepoName !== githubRepoName ||
+        !user.siteAssignment.isAdmin
       ) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }
@@ -121,14 +121,14 @@ export async function POST(
       return new Response(JSON.stringify({ error: "Invalid domain format." }), { status: 400 });
     }
 
-    const church = await db.query.churchesTable.findFirst({
-      where: and(eq(churchesTable.githubRepoName, githubRepoName), isNull(churchesTable.deletedAt)),
+    const site = await db.query.sitesTable.findFirst({
+      where: and(eq(sitesTable.githubRepoName, githubRepoName), isNull(sitesTable.deletedAt)),
     });
 
-    if (!church) return new Response(JSON.stringify({ error: "Church not found." }), { status: 404 });
-    if (!church.cfPagesProjectName) {
+    if (!site) return new Response(JSON.stringify({ error: "Site not found." }), { status: 404 });
+    if (!site.cfPagesProjectName) {
       return new Response(
-        JSON.stringify({ error: "Cloudflare Pages project not yet configured for this church." }),
+        JSON.stringify({ error: "Cloudflare Pages project not yet configured for this site." }),
         { status: 422 },
       );
     }
@@ -140,7 +140,7 @@ export async function POST(
       return new Response(JSON.stringify({ error: "Cloudflare API not configured." }), { status: 503 });
     }
 
-    const projectName = church.cfPagesProjectName;
+    const projectName = site.cfPagesProjectName;
     const domainsUrl = `${CF_API_BASE}/accounts/${cfAccountId}/pages/projects/${projectName}/domains`;
 
     // Register root domain
@@ -175,13 +175,13 @@ export async function POST(
 
     // Persist to DB
     await db
-      .update(churchesTable)
+      .update(sitesTable)
       .set({ customDomain: domain, updatedAt: new Date() })
-      .where(eq(churchesTable.id, church.id));
+      .where(eq(sitesTable.id, site.id));
 
     // Update corner-apostle allowedOrigins (non-fatal)
     const origins = [
-      ...(church.cfPagesUrl ? [church.cfPagesUrl] : []),
+      ...(site.cfPagesUrl ? [site.cfPagesUrl] : []),
       `https://${domain}`,
       `https://www.${domain}`,
     ];
@@ -208,24 +208,24 @@ export async function DELETE(
     const githubRepoName = `${params.owner}/${params.repo}`;
 
     if (!user.isSuperAdmin) {
-      if (!user.churchAssignment) {
+      if (!user.siteAssignment) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }
       if (
-        user.churchAssignment.githubRepoName !== githubRepoName ||
-        !user.churchAssignment.isAdmin
+        user.siteAssignment.githubRepoName !== githubRepoName ||
+        !user.siteAssignment.isAdmin
       ) {
         return new Response(JSON.stringify({ error: "Access denied." }), { status: 403 });
       }
     }
 
-    const church = await db.query.churchesTable.findFirst({
-      where: and(eq(churchesTable.githubRepoName, githubRepoName), isNull(churchesTable.deletedAt)),
+    const site = await db.query.sitesTable.findFirst({
+      where: and(eq(sitesTable.githubRepoName, githubRepoName), isNull(sitesTable.deletedAt)),
     });
 
-    if (!church) return new Response(JSON.stringify({ error: "Church not found." }), { status: 404 });
+    if (!site) return new Response(JSON.stringify({ error: "Site not found." }), { status: 404 });
 
-    const { customDomain, cfPagesProjectName } = church;
+    const { customDomain, cfPagesProjectName } = site;
 
     if (customDomain && cfPagesProjectName && process.env.CF_ACCOUNT_ID && process.env.CF_API_TOKEN) {
       const base = `${CF_API_BASE}/accounts/${process.env.CF_ACCOUNT_ID}/pages/projects/${cfPagesProjectName}/domains`;
@@ -244,14 +244,14 @@ export async function DELETE(
     }
 
     await db
-      .update(churchesTable)
+      .update(sitesTable)
       .set({ customDomain: null, updatedAt: new Date() })
-      .where(eq(churchesTable.id, church.id));
+      .where(eq(sitesTable.id, site.id));
 
     // Restore corner-apostle allowedOrigins to pages.dev only (non-fatal)
     await updateApostleOrigins(
       params.repo,
-      church.cfPagesUrl ? [church.cfPagesUrl] : [],
+      site.cfPagesUrl ? [site.cfPagesUrl] : [],
     ).catch(() => null);
 
     return new Response(null, { status: 204 });

@@ -82,7 +82,7 @@ export async function GET(
       (m: any) => ((m.output as string).startsWith("/") ? m.output : `/${m.output}`),
     );
 
-    // Fetch previewUrl from site.config.yaml (the church-specific deployed URL)
+    // Fetch previewUrl from site.config.yaml (the site-specific deployed URL)
     let previewUrl: string | undefined;
     try {
       const octokit = createOctokitInstance(token);
