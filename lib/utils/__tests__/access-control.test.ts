@@ -11,14 +11,14 @@ function makeUser(overrides: Partial<User> = {}): User {
     email: "u@test.com",
     name: "Test",
     isSuperAdmin: false,
-    churchAssignment: null,
+    siteAssignment: null,
     ...overrides,
   };
 }
 
 function makeAssignment(isAdmin: boolean, scopes: string[] = []) {
   return {
-    churchId: "c1",
+    siteId: "c1",
     githubRepoName: "org/repo",
     slug: "repo",
     displayName: "Repo",
@@ -35,8 +35,8 @@ describe("hasScope", () => {
     expect(hasScope(user, "entry:pages:youth")).toBe(true);
   });
 
-  it("church admin (isAdmin=true) always has any scope", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(true) });
+  it("site admin (isAdmin=true) always has any scope", () => {
+    const user = makeUser({ siteAssignment: makeAssignment(true) });
     expect(hasScope(user, "collection:sermons")).toBe(true);
   });
 
@@ -46,40 +46,40 @@ describe("hasScope", () => {
   });
 
   it("user with explicit scope has that scope", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:sermons"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["collection:sermons"]) });
     expect(hasScope(user, "collection:sermons")).toBe(true);
   });
 
   it("user without the scope does not have it", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:events"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["collection:events"]) });
     expect(hasScope(user, "collection:sermons")).toBe(false);
   });
 
   it("collection scope grants access to all entries in that collection", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["collection:pages"]) });
     expect(hasScope(user, "entry:pages:youth-ministry")).toBe(true);
     expect(hasScope(user, "entry:pages:about")).toBe(true);
   });
 
   it("collection scope does NOT grant access to entries in a different collection", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["collection:pages"]) });
     expect(hasScope(user, "entry:sermons:first-sermon")).toBe(false);
   });
 
   it("explicit entry scope grants access to that entry", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["entry:pages:youth-ministry"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["entry:pages:youth-ministry"]) });
     expect(hasScope(user, "entry:pages:youth-ministry")).toBe(true);
   });
 
   it("explicit entry scope does NOT grant access to the whole collection", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["entry:pages:youth-ministry"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["entry:pages:youth-ministry"]) });
     expect(hasScope(user, "collection:pages")).toBe(false);
   });
 
   it("malformed stored entry scope (missing slug) does not grant access to any entry", () => {
     // "entry:pages" is 2-part — invalid — but might exist in the DB from a bug or migration.
     // It should not match a well-formed entry scope check.
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["entry:pages"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["entry:pages"]) });
     expect(hasScope(user, "entry:pages:about")).toBe(false);
     expect(hasScope(user, "entry:pages:youth-ministry")).toBe(false);
   });
@@ -183,12 +183,12 @@ describe("isAdminUser", () => {
     expect(isAdminUser(makeUser({ isSuperAdmin: true }))).toBe(true);
   });
 
-  it("returns true for church admin", () => {
-    expect(isAdminUser(makeUser({ churchAssignment: makeAssignment(true) }))).toBe(true);
+  it("returns true for site admin", () => {
+    expect(isAdminUser(makeUser({ siteAssignment: makeAssignment(true) }))).toBe(true);
   });
 
   it("returns false for scoped editor", () => {
-    expect(isAdminUser(makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) }))).toBe(false);
+    expect(isAdminUser(makeUser({ siteAssignment: makeAssignment(false, ["collection:pages"]) }))).toBe(false);
   });
 
   it("returns false for user with no assignment", () => {
@@ -199,21 +199,21 @@ describe("isAdminUser", () => {
 describe("hasCollectionAccess", () => {
   it("admin always has access", () => {
     expect(hasCollectionAccess(makeUser({ isSuperAdmin: true }), "pages")).toBe(true);
-    expect(hasCollectionAccess(makeUser({ churchAssignment: makeAssignment(true) }), "pages")).toBe(true);
+    expect(hasCollectionAccess(makeUser({ siteAssignment: makeAssignment(true) }), "pages")).toBe(true);
   });
 
   it("returns true for full collection scope", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["collection:pages"]) });
     expect(hasCollectionAccess(user, "pages")).toBe(true);
   });
 
   it("returns true when user has any entry scope in the collection", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["entry:pages:about"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["entry:pages:about"]) });
     expect(hasCollectionAccess(user, "pages")).toBe(true);
   });
 
   it("returns false for scope in a different collection", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:sermons"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["collection:sermons"]) });
     expect(hasCollectionAccess(user, "pages")).toBe(false);
   });
 
@@ -228,12 +228,12 @@ describe("hasMediaAccess", () => {
   });
 
   it("returns true when user has any media scope", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["media:images"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["media:images"]) });
     expect(hasMediaAccess(user)).toBe(true);
   });
 
   it("returns false with no media scopes", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["collection:pages"]) });
     expect(hasMediaAccess(user)).toBe(false);
   });
 });
@@ -244,12 +244,12 @@ describe("hasSiteConfigAccess", () => {
   });
 
   it("returns true when user has any site-config scope", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["site-config:navigation"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["site-config:navigation"]) });
     expect(hasSiteConfigAccess(user)).toBe(true);
   });
 
   it("returns false with no site-config scopes", () => {
-    const user = makeUser({ churchAssignment: makeAssignment(false, ["collection:pages"]) });
+    const user = makeUser({ siteAssignment: makeAssignment(false, ["collection:pages"]) });
     expect(hasSiteConfigAccess(user)).toBe(false);
   });
 });
