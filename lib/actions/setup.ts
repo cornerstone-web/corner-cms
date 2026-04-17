@@ -3,7 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, churchWizardStepsTable } from "@/db/schema";
+import { sitesTable, siteWizardStepsTable } from "@/db/schema";
 import { createRepoFromTemplate, updateSiteConfig, commitFile, tryGetSha, getFileWithSha, getDirectoryFileNames } from "@/lib/github/wizard";
 import { applyLatestVersionToRepo } from "@/lib/actions/cornerstone-update";
 import { generateNav, WizardFeatures } from "@/lib/wizard/nav-gen";
@@ -16,13 +16,13 @@ const GITHUB_ORG = process.env.GITHUB_ORG ?? "cornerstone-web";
 // ─── Apostle helpers ──────────────────────────────────────────────────────────
 
 /**
- * Registers (or updates) a church's contact form email with corner-apostle:
- * - Updates src/registry.json with the church's email, name, and allowedOrigins
+ * Registers (or updates) a site's contact form email with corner-apostle:
+ * - Updates src/registry.json with the site's email, name, and allowedOrigins
  * - Adds the email to wrangler.jsonc's allowed_destination_addresses
  *
  * Safe to call multiple times (idempotent). Non-throwing — logs on failure.
  */
-export async function updateApostleForChurch(
+export async function updateApostleForSite(
   repoName: string,
   displayName: string,
   cfPagesUrl: string,
@@ -77,11 +77,11 @@ export async function updateApostleForChurch(
 }
 
 /**
- * Updates the allowedOrigins for a church in corner-apostle's registry.json.
- * Call this when a church's custom domain is set or removed.
+ * Updates the allowedOrigins for a site in corner-apostle's registry.json.
+ * Call this when a site's custom domain is set or removed.
  *
  * Non-throwing — logs on failure. No-op if CORNER_APOSTLE_REPO is unset or
- * the church entry doesn't exist yet.
+ * the site entry doesn't exist yet.
  */
 export async function updateApostleOrigins(
   repoName: string,
@@ -110,8 +110,8 @@ export async function updateApostleOrigins(
 }
 
 /**
- * Removes a church's contact form email from corner-apostle:
- * - Clears the email field in src/registry.json for this church
+ * Removes a site's contact form email from corner-apostle:
+ * - Clears the email field in src/registry.json for this site
  * - Removes the email from wrangler.jsonc's allowed_destination_addresses
  *   (only if no other registry entry uses the same address)
  *
@@ -122,7 +122,7 @@ export async function clearApostleEmail(repoName: string, email: string): Promis
   if (!apostleRepo) return;
 
   try {
-    // Update registry.json — clear this church's email
+    // Update registry.json — clear this site's email
     const { content: registryRaw, sha: registrySha } =
       await getFileWithSha(apostleRepo, "src/registry.json");
     const registry = JSON.parse(registryRaw) as Record<string, {
@@ -143,7 +143,7 @@ export async function clearApostleEmail(repoName: string, email: string): Promis
     );
 
     // Update wrangler.jsonc — remove from allowed_destination_addresses
-    // only if no other church uses this email
+    // only if no other site uses this email
     if (!emailUsedElsewhere) {
       const { content: wranglerRaw, sha: wranglerSha } =
         await getFileWithSha(apostleRepo, "wrangler.jsonc");
@@ -174,13 +174,13 @@ export async function clearApostleEmail(repoName: string, email: string): Promis
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 
-async function assertChurchAdmin(churchId: string) {
+async function assertSiteAdmin(siteId: string) {
   const { user } = await getAuth();
   if (!user) throw new Error("Not authenticated.");
   if (user.isSuperAdmin) return user;
   if (
-    user.churchAssignment?.churchId === churchId &&
-    user.churchAssignment.isAdmin
+    user.siteAssignment?.siteId === siteId &&
+    user.siteAssignment.isAdmin
   )
     return user;
   throw new Error("Unauthorized.");
@@ -194,41 +194,41 @@ async function assertChurchAdmin(churchId: string) {
  * Idempotent — safe to call on subsequent loads (checks wizardStartedAt).
  */
 export async function initWizard(
-  churchId: string,
+  siteId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await assertChurchAdmin(churchId);
+    await assertSiteAdmin(siteId);
 
-    const church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.id, churchId),
+    const site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.id, siteId),
     });
-    if (!church) throw new Error("Church not found.");
-    if (church.wizardStartedAt) return { ok: true }; // Already initialized
+    if (!site) throw new Error("Site not found.");
+    if (site.wizardStartedAt) return { ok: true }; // Already initialized
 
-    const repoName = church.slug;
+    const repoName = site.slug;
     await createRepoFromTemplate(repoName);
 
-    // Set package.json name to the church slug immediately after repo creation,
+    // Set package.json name to the site slug immediately after repo creation,
     // before CF Pages ever runs npm install.
     try {
       const { content: pkgContent, sha: pkgSha } = await getFileWithSha(repoName, "package.json");
       const pkg = JSON.parse(pkgContent) as { name?: string };
       if (pkg.name !== repoName) {
         pkg.name = repoName;
-        await commitFile(repoName, "package.json", JSON.stringify(pkg, null, 2) + "\n", pkgSha, "chore: set package name to church slug");
+        await commitFile(repoName, "package.json", JSON.stringify(pkg, null, 2) + "\n", pkgSha, "chore: set package name to site slug");
       }
     } catch (err) {
       console.error("package.json name update failed (non-fatal):", err);
     }
 
     await db
-      .update(churchesTable)
+      .update(sitesTable)
       .set({
         wizardStartedAt: new Date(),
         githubRepoName: `${GITHUB_ORG}/${repoName}`,
         updatedAt: new Date(),
       })
-      .where(eq(churchesTable.id, churchId));
+      .where(eq(sitesTable.id, siteId));
 
     return { ok: true };
   } catch (err) {
@@ -247,14 +247,14 @@ export async function initWizard(
  * Uses onConflictDoNothing so it is safe to call multiple times for the same step.
  */
 export async function completeStep(
-  churchId: string,
+  siteId: string,
   stepKey: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await assertChurchAdmin(churchId);
+    await assertSiteAdmin(siteId);
     await db
-      .insert(churchWizardStepsTable)
-      .values({ churchId, stepKey })
+      .insert(siteWizardStepsTable)
+      .values({ siteId, stepKey })
       .onConflictDoNothing();
     return { ok: true };
   } catch (err) {
@@ -267,17 +267,17 @@ export async function completeStep(
 }
 
 export async function uncompleteStep(
-  churchId: string,
+  siteId: string,
   stepKey: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await assertChurchAdmin(churchId);
+    await assertSiteAdmin(siteId);
     await db
-      .delete(churchWizardStepsTable)
+      .delete(siteWizardStepsTable)
       .where(
         and(
-          eq(churchWizardStepsTable.churchId, churchId),
-          eq(churchWizardStepsTable.stepKey, stepKey),
+          eq(siteWizardStepsTable.siteId, siteId),
+          eq(siteWizardStepsTable.stepKey, stepKey),
         ),
       );
     return { ok: true };
@@ -290,10 +290,10 @@ export async function uncompleteStep(
   }
 }
 
-// ─── launchChurch ─────────────────────────────────────────────────────────────
+// ─── launchSite ───────────────────────────────────────────────────────────────
 
 export interface LaunchOptions {
-  churchId: string;
+  siteId: string;
   features: WizardFeatures;
   homeOpts: HomeGenOptions;
 }
@@ -307,23 +307,23 @@ export interface LaunchOptions {
  * 5. Commit nav config → triggers first CF Pages build
  * 6. Commit home page blocks → triggers second build
  * 7. Register with corner-apostle (non-fatal)
- * 8. Set church status to "active"
+ * 8. Set site status to "active"
  * 9. Mark "launched" step complete
  */
-export async function launchChurch(opts: LaunchOptions): Promise<{
+export async function launchSite(opts: LaunchOptions): Promise<{
   ok: boolean;
   cfPagesUrl?: string;
   error?: string;
 }> {
   try {
-    await assertChurchAdmin(opts.churchId);
+    await assertSiteAdmin(opts.siteId);
 
-    const church = await db.query.churchesTable.findFirst({
-      where: eq(churchesTable.id, opts.churchId),
+    const site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.id, opts.siteId),
     });
-    if (!church) throw new Error("Church not found.");
+    if (!site) throw new Error("Site not found.");
 
-    const repoName = church.slug;
+    const repoName = site.slug;
 
     // 1. Read current site.config.yaml for giving URL, contact email, service times, and channel ID
     let givingUrl: string | undefined;
@@ -409,9 +409,9 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
         // subdomain already includes ".pages.dev" — do not append it again
         cfPagesUrl = subdomain ? `https://${subdomain}` : undefined;
         await db
-          .update(churchesTable)
+          .update(sitesTable)
           .set({ cfPagesProjectName, cfPagesUrl, updatedAt: new Date() })
-          .where(eq(churchesTable.id, opts.churchId));
+          .where(eq(sitesTable.id, opts.siteId));
 
         // 3. Create Cloudflare Web Analytics site and get the beacon token
         let cfAnalyticsSiteTag: string | undefined;
@@ -433,9 +433,9 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
               cfAnalyticsSiteTag = rumData.result?.tag as string | undefined;
               if (cfAnalyticsSiteTag) {
                 await db
-                  .update(churchesTable)
+                  .update(sitesTable)
                   .set({ cfAnalyticsSiteTag, updatedAt: new Date() })
-                  .where(eq(churchesTable.id, opts.churchId));
+                  .where(eq(sitesTable.id, opts.siteId));
               }
             } else {
               console.error("CF RUM site creation failed (non-fatal):", await rumRes.json().catch(() => ({})));
@@ -546,7 +546,7 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
 
       const contactPageContent = YAML.stringify({
         title: "Contact Us",
-        description: "Get in touch with our church",
+        description: "Get in touch with our site",
         template: "default",
         draft: false,
         passwordProtected: false,
@@ -686,10 +686,10 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
       console.error("cornerstone-core version update failed (non-fatal):", err);
     }
 
-    // 6. Register church with corner-apostle via GitHub commit (non-fatal)
+    // 6. Register site with corner-apostle via GitHub commit (non-fatal)
     if (contactEmail && cfPagesUrl) {
       try {
-        await updateApostleForChurch(repoName, church.displayName, cfPagesUrl, contactEmail);
+        await updateApostleForSite(repoName, site.displayName, cfPagesUrl, contactEmail);
       } catch (err) {
         console.error("corner-apostle registration failed (non-fatal):", err);
       }
@@ -697,16 +697,16 @@ export async function launchChurch(opts: LaunchOptions): Promise<{
 
     // 7. Set status to active
     await db
-      .update(churchesTable)
+      .update(sitesTable)
       .set({ status: "active", updatedAt: new Date() })
-      .where(eq(churchesTable.id, opts.churchId));
+      .where(eq(sitesTable.id, opts.siteId));
 
     // 8. Mark launched step complete
-    await completeStep(opts.churchId, "launched");
+    await completeStep(opts.siteId, "launched");
 
     return { ok: true, cfPagesUrl };
   } catch (err) {
-    console.error("launchChurch failed:", err);
+    console.error("launchSite failed:", err);
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Launch failed.",
