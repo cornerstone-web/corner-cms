@@ -8,7 +8,7 @@ import { saveLeaders } from "@/lib/actions/setup-steps";
 import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
-  site: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string; siteType?: "church" | "organization" };
   onComplete: () => void;
   initialLeaders?: { name: string; role: string; photoUrl?: string; existingPhotoPath?: string }[];
 }
@@ -45,7 +45,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function initGroups(initialLeaders?: StepProps["initialLeaders"]): Group[] {
+function initGroups(initialLeaders?: StepProps["initialLeaders"], isOrg?: boolean): Group[] {
   if (initialLeaders && initialLeaders.length > 0) {
     // Group by role in order of first appearance
     const roleOrder: string[] = [];
@@ -67,11 +67,13 @@ function initGroups(initialLeaders?: StepProps["initialLeaders"]): Group[] {
       })),
     }));
   }
+  if (isOrg) return [makeGroup("Leadership")];
   return [makeGroup("Elder"), makeGroup("Deacon")];
 }
 
 export default function LeadersStep({ site, onComplete, initialLeaders }: StepProps) {
-  const [groups, setGroups] = useState<Group[]>(() => initGroups(initialLeaders));
+  const isOrg = site.siteType === "organization";
+  const [groups, setGroups] = useState<Group[]>(() => initGroups(initialLeaders, isOrg));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,9 +150,11 @@ export default function LeadersStep({ site, onComplete, initialLeaders }: StepPr
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold">Church Leadership</h2>
+        <h2 className="text-xl font-semibold">{isOrg ? "Leadership Team" : "Church Leadership"}</h2>
         <p className="text-muted-foreground text-sm">
-          Introduce your elders, deacons, and other leaders to {site.displayName}.
+          {isOrg
+            ? `Introduce ${site.displayName}'s leadership team.`
+            : `Introduce your elders, deacons, and other leaders to ${site.displayName}.`}
         </p>
       </div>
 

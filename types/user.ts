@@ -6,6 +6,7 @@ export interface SiteAssignment {
   cfPagesUrl: string | null;
   isAdmin: boolean;
   scopes: string[];
+  siteType: "church" | "organization";
 }
 
 export interface User {

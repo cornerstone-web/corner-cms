@@ -350,6 +350,15 @@ export async function launchSite(opts: LaunchOptions): Promise<{
     // completedSteps includes both "yes" and "no" answers, so opts.features
     // cannot distinguish enabled from dismissed.
     const configFeatures = (currentConfig?.features as Record<string, boolean> | undefined) ?? {};
+    // Check if visit.md was skipped (draft: true) to exclude it from nav
+    let visitPageEnabled = true;
+    try {
+      const { content: visitMd } = await getFileWithSha(repoName, "src/content/pages/visit.md");
+      visitPageEnabled = !/^\s*draft:\s*true/m.test(visitMd);
+    } catch {
+      visitPageEnabled = false;
+    }
+
     const features: WizardFeatures = {
       sermons:    configFeatures.sermons    === true,
       series:     configFeatures.series     === true,
@@ -360,6 +369,8 @@ export async function launchSite(opts: LaunchOptions): Promise<{
       bulletins:  configFeatures.bulletins  === true,
       leadership: configFeatures.leadership === true,
       givingUrl,
+      siteType: site.siteType,
+      visitPageEnabled,
     };
 
     // Collect marquee image paths — only if photos were actually uploaded

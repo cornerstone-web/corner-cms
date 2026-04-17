@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { saveIdentity } from "@/lib/actions/setup-steps";
 
 interface StepProps {
-  site: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string; siteType?: "church" | "organization" };
   onComplete: () => void;
   initialName?: string;
   initialDescription?: string;
@@ -19,6 +19,8 @@ export default function IdentityStep({
   initialName,
   initialDescription,
 }: StepProps) {
+  const isOrg = site.siteType === "organization";
+  const nameLabel = isOrg ? "Organization name" : "Congregation name";
   const [name, setName] = useState(initialName ?? site.displayName);
   const [description, setDescription] = useState(initialDescription ?? "");
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +28,7 @@ export default function IdentityStep({
 
   async function handleSubmit() {
     if (!name.trim()) {
-      setError("Congregation name is required.");
+      setError(`${nameLabel} is required.`);
       return;
     }
     setIsLoading(true);
@@ -53,7 +55,7 @@ export default function IdentityStep({
       </div>
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="site-name">Congregation name</Label>
+          <Label htmlFor="site-name">{nameLabel}</Label>
           <Input
             id="site-name"
             value={name}

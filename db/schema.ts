@@ -19,6 +19,11 @@ export const siteStatusEnum = pgEnum("site_status", [
   "suspended",
 ]);
 
+export const siteTypeEnum = pgEnum("site_type", [
+  "church",
+  "organization",
+]);
+
 // ─── Multi-tenant tables ──────────────────────────────────────────────────────
 
 export const sitesTable = pgTable("sites", {
@@ -31,6 +36,7 @@ export const sitesTable = pgTable("sites", {
   cfAnalyticsSiteTag: text("cf_analytics_site_tag"),
   customDomain: text("custom_domain"),
   status: siteStatusEnum("status").notNull().default("provisioning"),
+  siteType: siteTypeEnum("site_type").notNull().default("church"),
   plan: text("plan").notNull().default("free"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

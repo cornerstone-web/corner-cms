@@ -7,7 +7,7 @@ import { completeStep } from "@/lib/actions/setup";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
-  site: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string; siteType?: "church" | "organization" };
   onComplete: (enabled: boolean) => void;
   initialEnabled?: boolean;
 }
@@ -17,6 +17,7 @@ export default function LeadershipFeatureStep({
   onComplete,
   initialEnabled,
 }: StepProps) {
+  const isOrg = site.siteType === "organization";
   const [selection, setSelection] = useState<boolean | null>(
     initialEnabled ?? null,
   );
@@ -48,14 +49,16 @@ export default function LeadershipFeatureStep({
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold">Shepherds &amp; Deacons</h2>
+        <h2 className="text-xl font-semibold">{isOrg ? "Leadership Team" : "Shepherds & Deacons"}</h2>
         <p className="text-muted-foreground text-sm">
-          Do you want a page listing {site.displayName}&apos;s elders and
-          deacons?
+          {isOrg
+            ? `Do you want a page listing ${site.displayName}'s leadership team?`
+            : `Do you want a page listing ${site.displayName}'s elders and deacons?`}
         </p>
         <p className="text-muted-foreground text-sm">
-          A leadership page introduces your elders and deacons with photos and
-          names so visitors can quickly get to know them.
+          {isOrg
+            ? "A leadership page introduces your team with photos and names so visitors can quickly get to know them."
+            : "A leadership page introduces your elders and deacons with photos and names so visitors can quickly get to know them."}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">

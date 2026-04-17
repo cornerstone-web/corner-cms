@@ -9,6 +9,7 @@ import { saveLocation } from "@/lib/actions/setup-steps";
 interface StepProps {
   site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
+  onSkip?: () => void;
   initialStreet?: string;
   initialCity?: string;
   initialState?: string;
@@ -18,11 +19,19 @@ interface StepProps {
 export default function LocationStep({
   site,
   onComplete,
+  onSkip,
   initialStreet,
   initialCity,
   initialState,
   initialZip,
 }: StepProps) {
+  const [isSkipping, setIsSkipping] = useState(false);
+
+  async function handleSkip() {
+    if (!onSkip) return;
+    setIsSkipping(true);
+    try { onSkip(); } catch { setIsSkipping(false); }
+  }
   const [street, setStreet] = useState(initialStreet ?? "");
   const [city, setCity] = useState(initialCity ?? "");
   const [state, setState] = useState(initialState ?? "");
@@ -95,9 +104,16 @@ export default function LocationStep({
           </div>
         </div>
       </div>
-      <Button onClick={handleSubmit} disabled={isLoading}>
-        {isLoading ? "Saving..." : "Continue →"}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button onClick={handleSubmit} disabled={isLoading}>
+          {isLoading ? "Saving..." : "Continue →"}
+        </Button>
+        {onSkip && (
+          <Button variant="ghost" onClick={handleSkip} disabled={isSkipping} className="text-muted-foreground">
+            We don&apos;t have a physical location
+          </Button>
+        )}
+      </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
     </div>
   );

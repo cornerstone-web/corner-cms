@@ -185,6 +185,20 @@ export function ProvisionSiteForm() {
           </p>
         </div>
 
+        <div className="space-y-1.5">
+          <Label>Site Type</Label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" name="siteType" value="church" defaultChecked className="accent-primary" />
+              Church
+            </label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" name="siteType" value="organization" className="accent-primary" />
+              Organization
+            </label>
+          </div>
+        </div>
+
         <div className="rounded-lg border p-4 space-y-4">
           <p className="text-sm font-medium">Site Admin Account</p>
 

@@ -982,3 +982,34 @@ export async function removeContactFormEmail(
 
   return { ok: true };
 }
+
+// ─── Skip content page ────────────────────────────────────────────────────────
+
+/**
+ * Marks a page-content step as N/A by committing a draft:true file (overwriting
+ * the template default so Astro won't build the page) and completing the step.
+ */
+export async function skipContentPage(
+  siteId: string,
+  slug: string,
+  page: "beliefs" | "visit",
+): Promise<void> {
+  await assertSiteAccess(siteId);
+  const path = page === "beliefs"
+    ? "src/content/pages/beliefs.md"
+    : "src/content/pages/visit.md";
+  const sha = await tryGetSha(slug, path);
+  await commitFile(slug, path, "---\ndraft: true\n---\n", sha, `wizard: skip ${page} page (N/A)`);
+  const stepKey = page === "beliefs" ? "beliefs-content" : "visit-content";
+  const result = await completeStep(siteId, stepKey);
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}
+
+/**
+ * Marks a config-only step as N/A without saving any data.
+ */
+export async function skipStep(siteId: string, stepKey: string): Promise<void> {
+  await assertSiteAccess(siteId);
+  const result = await completeStep(siteId, stepKey);
+  if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
+}

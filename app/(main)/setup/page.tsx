@@ -158,7 +158,7 @@ export default async function SetupPage() {
 
   return (
     <WizardShell
-      site={{ id: site.id, displayName: site.displayName, slug: site.slug }}
+      site={{ id: site.id, displayName: site.displayName, slug: site.slug, siteType: site.siteType }}
       completedStepsArray={[...completedSteps]}
       initialConfig={initialConfig}
       initialLogoUrl={logoUrl ?? undefined}

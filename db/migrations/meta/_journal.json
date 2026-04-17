@@ -64,6 +64,13 @@
       "when": 1776185223576,
       "tag": "0008_church_to_site_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1745107200000,
+      "tag": "0009_site_type",
+      "breakpoints": true
     }
   ]
 }
