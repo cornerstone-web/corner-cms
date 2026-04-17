@@ -9,7 +9,7 @@ import {
   checkContactFormVerification,
   removeContactFormEmail,
 } from "./setup-steps";
-import { updateApostleForChurch, clearApostleEmail } from "./setup";
+import { updateApostleForSite, clearApostleEmail } from "./setup";
 
 async function getSiteContext(repoSlug?: string) {
   const { user } = await getAuth();
@@ -63,7 +63,7 @@ export async function confirmFormEmail(email: string, repoSlug?: string) {
   const { repoName, displayName, cfPagesUrl, customDomain } = await getSiteContext(repoSlug);
   if (!cfPagesUrl) return { ok: false, error: "Site not yet launched." };
   try {
-    await updateApostleForChurch(repoName, displayName, cfPagesUrl, email, customDomain ?? undefined);
+    await updateApostleForSite(repoName, displayName, cfPagesUrl, email, customDomain ?? undefined);
     return { ok: true };
   } catch (err) {
     console.error("confirmFormEmail: apostle update failed:", err);

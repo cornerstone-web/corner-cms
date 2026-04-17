@@ -81,7 +81,7 @@ export async function applyLatestVersion(
 
 /**
  * Internal helper — updates package.json in a repo by slug.
- * Not a server action; call from other server actions (e.g. launchChurch).
+ * Not a server action; call from other server actions (e.g. launchSite).
  */
 export async function applyLatestVersionToRepo(
   slug: string,
