@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Building2, ChevronDown, ChevronUp, ChevronsUpDown, ExternalLink, LayoutDashboard, Pencil, Plus, Settings } from "lucide-react";
 
-type ChurchRow = {
+type SiteRow = {
   id: string;
   displayName: string;
   slug: string;
@@ -27,7 +27,7 @@ type ChurchRow = {
 };
 
 const statusVariant: Record<
-  ChurchRow["status"],
+  SiteRow["status"],
   "default" | "secondary" | "destructive"
 > = {
   active: "default",
@@ -49,7 +49,7 @@ function formatRelativeDate(date: Date): string {
 type SortKey = "name" | "status" | "updatedAt";
 type SortDir = "asc" | "desc";
 
-const STATUS_ORDER: Record<ChurchRow["status"], number> = {
+const STATUS_ORDER: Record<SiteRow["status"], number> = {
   active: 0,
   provisioning: 1,
   suspended: 2,
@@ -62,7 +62,7 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
     : <ChevronDown className="h-3.5 w-3.5 ml-1" />;
 }
 
-export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
+export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -76,7 +76,7 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
   }
 
   const sorted = useMemo(() => {
-    return [...churches].sort((a, b) => {
+    return [...sites].sort((a, b) => {
       let cmp = 0;
       if (sortKey === "name") {
         cmp = a.displayName.localeCompare(b.displayName);
@@ -87,7 +87,7 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [churches, sortKey, sortDir]);
+  }, [sites, sortKey, sortDir]);
 
   return (
     <div className="max-w-screen-lg mx-auto p-4 md:p-6 space-y-6">
@@ -98,7 +98,7 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
             Sites
           </h1>
           <span className="text-sm text-muted-foreground">
-            ({churches.length})
+            ({sites.length})
           </span>
         </div>
         <Button asChild size="sm">
@@ -109,7 +109,7 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
         </Button>
       </div>
 
-      {churches.length === 0 ? (
+      {sites.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <Building2 className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
           <p className="font-medium">No sites yet</p>
@@ -134,7 +134,7 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                     className="flex items-center hover:text-foreground transition-colors"
                     onClick={() => toggleSort("name")}
                   >
-                    Congregation
+                    Site
                     <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
                   </button>
                 </TableHead>
@@ -163,38 +163,38 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map((church) => {
-                const [owner, repo] = church.githubRepoName.split("/");
+              {sorted.map((site) => {
+                const [owner, repo] = site.githubRepoName.split("/");
                 return (
-                  <TableRow key={church.id}>
+                  <TableRow key={site.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{church.displayName}</p>
+                        <p className="font-medium">{site.displayName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {church.githubRepoName}
+                          {site.githubRepoName}
                         </p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {church.status === "provisioning" && (
+                      {site.status === "provisioning" && (
                         <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium">
                           Awaiting Setup
                         </span>
                       )}
-                      {church.status === "active" && (
+                      {site.status === "active" && (
                         <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
                           Active
                         </span>
                       )}
-                      {church.status === "suspended" && (
+                      {site.status === "suspended" && (
                         <Badge variant="destructive">
                           Suspended
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      {(church.customDomain || church.cfPagesUrl) ? (() => {
-                        const url = church.customDomain ?? church.cfPagesUrl!;
+                      {(site.customDomain || site.cfPagesUrl) ? (() => {
+                        const url = site.customDomain ?? site.cfPagesUrl!;
                         return (
                           <a
                             href={url}
@@ -211,15 +211,15 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                       )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {church.lastCmsEditAt
-                        ? formatRelativeDate(new Date(church.lastCmsEditAt))
+                      {site.lastCmsEditAt
+                        ? formatRelativeDate(new Date(site.lastCmsEditAt))
                         : <span className="text-muted-foreground/50">—</span>
                       }
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button asChild variant="ghost" size="xs">
-                          <Link href={`/admin/churches/${church.id}/portal`}>
+                          <Link href={`/admin/churches/${site.id}/portal`}>
                             <LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
                             <span className="hidden sm:inline">Portal</span>
                           </Link>
@@ -231,7 +231,7 @@ export function SuperAdminDashboard({ churches }: { churches: ChurchRow[] }) {
                           </Link>
                         </Button>
                         <Button asChild variant="ghost" size="xs">
-                          <Link href={`/admin/churches/${church.id}`}>
+                          <Link href={`/admin/churches/${site.id}`}>
                             <Settings className="h-3.5 w-3.5 mr-1.5" />
                             <span className="hidden sm:inline">Manage</span>
                           </Link>
