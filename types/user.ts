@@ -1,5 +1,5 @@
-export interface ChurchAssignment {
-  churchId: string;
+export interface SiteAssignment {
+  siteId: string;
   githubRepoName: string;
   slug: string;
   displayName: string;
@@ -14,5 +14,5 @@ export interface User {
   email: string;
   name: string;
   isSuperAdmin: boolean;
-  churchAssignment: ChurchAssignment | null;
+  siteAssignment: SiteAssignment | null;
 }
