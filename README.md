@@ -6,27 +6,27 @@ A content management system purpose-built for the [Cornerstone](https://github.c
 
 ### Closed multi-tenant platform
 
-Upstream Pages CMS is a self-hosted, single-tenant tool — anyone can sign up and connect their own repo. Cornerstone CMS is a closed, invitation-only platform that manages multiple church sites from one deployment.
+Upstream Pages CMS is a self-hosted, single-tenant tool — anyone can sign up and connect their own repo. Cornerstone CMS is a closed, invitation-only platform that manages multiple sites from one deployment.
 
 **Roles:**
 
 | Role | Access |
 |---|---|
-| `super_admin` | Platform operator — provisions churches, manages all users across the platform |
-| `church_admin` | Manages their church's editors and content |
+| `super_admin` | Platform operator — provisions sites, manages all users across the platform |
+| `site_admin` | Manages their site's editors and content |
 | `editor` | Edits content only |
 
-A user can belong to at most one church at a time. Auth is handled by Auth0 (email/password) rather than GitHub OAuth. GitHub tokens (per-installation) are encrypted at rest with AES-256.
+A user can belong to at most one site at a time. Auth is handled by Auth0 (email/password) rather than GitHub OAuth. GitHub tokens (per-installation) are encrypted at rest with AES-256.
 
-### Church provisioning
+### Site Provisioning
 
-Super admins provision new churches from a dashboard — no self-signup. Provisioning:
+Super admins provision new sites from a dashboard — no self-signup. Provisioning:
 
-1. Creates the church record in the database
-2. Creates an Auth0 account for the church admin
+1. Creates the site record in the database
+2. Creates an Auth0 account for the site admin
 3. Sends an invite email via [corner-apostle](https://github.com/cornerstone-web/corner-apostle) with a password-setup link
 
-The church admin then completes the onboarding wizard to launch their site.
+The site admin then completes the onboarding wizard to launch their site.
 
 ### Onboarding wizard
 
@@ -48,25 +48,25 @@ Step state is persisted in the database — the wizard is resumable and each ste
 
 ### Platform-baked schema
 
-Standard Pages CMS reads a `.pages.yml` file from each repository to define the CMS structure. Cornerstone church repos don't have a `.pages.yml` — the schema is defined in [`@cornerstone-web/core`](https://github.com/cornerstone-web/cornerstone-core) alongside the block components it describes.
+Standard Pages CMS reads a `.pages.yml` file from each repository to define the CMS structure. Cornerstone site repos don't have a `.pages.yml` — the schema is defined in [`@cornerstone-web/core`](https://github.com/cornerstone-web/cornerstone-core) alongside the block components it describes.
 
-On load, the CMS reads the church repo's `package-lock.json` to find the exact installed version of `@cornerstone-web/core`, then fetches the matching `.pages.yml` from `cornerstone-web/cornerstone-core` at the corresponding git tag (`v{version}`). The result is cached in the database by version; subsequent loads skip the GitHub fetch entirely.
+On load, the CMS reads the site repo's `package-lock.json` to find the exact installed version of `@cornerstone-web/core`, then fetches the matching `.pages.yml` from `cornerstone-web/cornerstone-core` at the corresponding git tag (`v{version}`). The result is cached in the database by version; subsequent loads skip the GitHub fetch entirely.
 
-This means the CMS schema and the site code are always version-matched — adding a block to `cornerstone-core` automatically makes it available in the CMS once the church repo updates its dependency.
+This means the CMS schema and the site code are always version-matched — adding a block to `cornerstone-core` automatically makes it available in the CMS once the site repo updates its dependency.
 
 ### `@cornerstone-web/core` update banner
 
-The CMS checks the latest published version of `@cornerstone-web/core` on GitHub Package Registry and displays an in-app banner when a church's repo is behind. Church admins can trigger a one-click dependency update that opens a PR on their GitHub repo.
+The CMS checks the latest published version of `@cornerstone-web/core` on GitHub Package Registry and displays an in-app banner when a site's repo is behind. Site admins can trigger a one-click dependency update that opens a PR on their GitHub repo.
 
 ### Site config editor
 
-A dedicated editor for `src/config/site.config.yaml` — the church-specific settings file (navigation, footer, contact info, theme, service times). Changes are committed directly to GitHub.
+A dedicated editor for `src/config/site.config.yaml` — the site-specific settings file (navigation, footer, contact info, theme, service times). Changes are committed directly to GitHub.
 
 Navigation supports three desktop header variants (`dropdown-columns`, `dropdown`, `simple`) and a discriminated union of element types (`link`, `search`, `cta`). The footer has separate `variant` (comprehensive/minimal) and `style` (centered/left-aligned) fields with conditional section visibility.
 
 ### Block picker
 
-A modal block picker with category filtering, search, and live iframe previews powered by the deployed church site's `/preview/*` routes.
+A modal block picker with category filtering, search, and live iframe previews powered by the deployed site's `/preview/*` routes.
 
 ### Custom fields
 
@@ -189,12 +189,12 @@ npm run dev
 
 | Variable | Description |
 |---|---|
-| `GITHUB_ORG` | GitHub org where church repos live (default: `cornerstone-web`) |
+| `GITHUB_ORG` | GitHub org where site repos live (default: `cornerstone-web`) |
 | `GITHUB_TEMPLATE_REPO` | Template repo to fork when provisioning (default: `template-repo`) |
-| `CF_PAGES_GITHUB_TOKEN` | Classic PAT with `read:packages` — injected into new church CF Pages deployments |
+| `CF_PAGES_GITHUB_TOKEN` | Classic PAT with `read:packages` — injected into new site CF Pages deployments |
 | `CF_ACCOUNT_ID` | Cloudflare account ID for auto-creating CF Pages projects |
 | `CF_API_TOKEN` | CF API token with Pages edit permission |
-| `CORNER_APOSTLE_URL` | corner-apostle Worker URL (for church form registration at launch) |
+| `CORNER_APOSTLE_URL` | corner-apostle Worker URL (for site form registration at launch) |
 | `CORNER_APOSTLE_REPO` | GitHub repo name for corner-apostle (default: `corner-apostle`) |
 | `CORNERSTONE_INTERNAL_SECRET` | Shared secret for server-to-server calls to corner-apostle (`/send-invite`) |
 | `CORNERSTONE_API_KEY` | Public API key for church form submissions |

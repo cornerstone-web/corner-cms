@@ -42,9 +42,9 @@ For development, you need a GitHub App configured. The webhook handler (`/api/we
   - `configSchema.ts` - Zod schema for config validation
   - `crypto.ts` - Token encryption (AES)
   - `cornerstone-version.ts` - GPR version check for `@cornerstone-web/core` update banner
-  - `actions/provision.ts` - Super admin: create church record + Auth0 admin user
-  - `actions/users.ts` - Church admin: invite / resend invite / update role / remove user
-  - `actions/setup.ts` - Wizard: `initWizard`, `launchChurch` (GitHub repo + CF Pages creation)
+  - `actions/provision.ts` - Super admin: create site record + Auth0 admin user
+  - `actions/users.ts` - Site admin: invite / resend invite / update role / remove user
+  - `actions/setup.ts` - Wizard: `initWizard`, `launchSite` (GitHub repo + CF Pages creation)
   - `actions/setup-steps.ts` - Wizard: per-step save actions (hero, identity, staff, content pages, etc.)
   - `actions/cornerstone-update.ts` - Update church repo's `@cornerstone-web/core` dependency
   - `utils/user-helpers.ts` - Shared Auth0 + DB helpers for user provisioning
@@ -52,7 +52,7 @@ For development, you need a GitHub App configured. The webhook handler (`/api/we
   - `wizard/` - Content generators: `home-gen.ts`, `nav-gen.ts`, `footer-gen.ts`
 
 - **`/db`** - Database layer (Drizzle ORM)
-  - `schema.ts` - Table definitions (users, userChurchRoles, churches, sessions, config, cache)
+  - `schema.ts` - Table definitions (users, userSiteRoles, sites, sessions, config, cache)
   - `/migrations/` - SQL migrations
 
 - **`/fields`** - Extensible field type system
@@ -63,8 +63,8 @@ For development, you need a GitHub App configured. The webhook handler (`/api/we
 - **`/components`** - React components
   - `/ui/` - shadcn/ui components
   - `/collection/`, `/entry/`, `/file/`, `/media/`, `/repo/` - Feature components
-  - `/home/` - Super admin dashboard (`super-admin-dashboard.tsx`) and church portal card (`church-portal-card.tsx`)
-  - `/admin/` - Church management UI (`church-management.tsx`, `provision-church-form.tsx`)
+  - `/home/` - Super admin dashboard (`super-admin-dashboard.tsx`) and site portal card (`site-portal-card.tsx`)
+  - `/admin/` - Site management UI (`site-management.tsx`, `provision-site-form.tsx`)
   - `/setup/` - Onboarding wizard: `WizardShell.tsx`, `WizardTimeline.tsx`, `WizardProseEditor.tsx`, `steps.ts`, and all step components under `steps/`
 
 ### Field Type System
@@ -110,21 +110,21 @@ Repositories define their CMS structure via `.pages.yml` (or YAML/TOML variants)
 The CMS is a closed, invitation-only platform. There is no public sign-up.
 
 **Roles:**
-- `super_admin` — platform operator; can provision churches and manage all users (flag on `users` table)
-- `church_admin` — manages their church's users and content
+- `super_admin` — platform operator; can provision sites and manage all users (flag on `users` table)
+- `site_admin` — manages their site's users and content
 - `editor` — edits content only
 
-**Key invariant:** A user can have an active role in at most one church at a time (`assignChurchRole` enforces this). Removing a user from a church soft-deletes both their role row and their user record and hard-deletes their Auth0 account.
+**Key invariant:** A user can have an active role in at most one site at a time (`assignSiteRole` enforces this). Removing a user from a site soft-deletes both their role row and their user record and hard-deletes their Auth0 account.
 
 **Access guards:**
-- `assertCanManageUsers(churchId)` — used in `lib/actions/users.ts`; allows super admin or church admin for that church
-- `verifyRepoAccess(repoName)` — used in API route handlers; checks the current user's church assignment matches the repo
+- `assertCanManageUsers(siteId)` — used in `lib/actions/users.ts`; allows super admin or site admin for that site
+- `verifyRepoAccess(repoName)` — used in API route handlers; checks the current user's site assignment matches the repo
 
-### Church Provisioning & Onboarding Wizard
+### Site Provisioning & Onboarding Wizard
 
-**Provisioning** (`lib/actions/provision.ts`): Super admin fills out a form (display name, slug, admin email/name). This creates the church DB record and Auth0 admin account, and sends an invite email via corner-apostle.
+**Provisioning** (`lib/actions/provision.ts`): Super admin fills out a form (display name, slug, admin email/name). This creates the site DB record and Auth0 admin account, and sends an invite email via corner-apostle.
 
-**Onboarding wizard** (`/setup` route, `components/setup/`): The new church admin completes a multi-step wizard that:
+**Onboarding wizard** (`/setup` route, `components/setup/`): The new site admin completes a multi-step wizard that:
 1. Collects identity, branding, theme, service times, features, social links, contact info, giving URL, streaming, hero image/video
 2. Optionally creates first content (sermon, article, event, ministry, staff, bulletin, FAQ, about/beliefs/visit pages)
 3. On "Launch": creates the GitHub repo from `corner-template`, commits all generated content, updates `site.config.yaml`, creates the Cloudflare Pages project, and triggers the first build
