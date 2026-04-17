@@ -9,7 +9,7 @@ import { saveLocation } from "@/lib/actions/setup-steps";
 interface StepProps {
   site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
-  onSkip?: () => void;
+  onSkip?: () => Promise<void>;
   initialStreet?: string;
   initialCity?: string;
   initialState?: string;
@@ -30,7 +30,7 @@ export default function LocationStep({
   async function handleSkip() {
     if (!onSkip) return;
     setIsSkipping(true);
-    try { onSkip(); } catch { setIsSkipping(false); }
+    try { await onSkip(); } catch { setIsSkipping(false); } finally { setIsSkipping(false); }
   }
   const [street, setStreet] = useState(initialStreet ?? "");
   const [city, setCity] = useState(initialCity ?? "");

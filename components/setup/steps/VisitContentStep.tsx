@@ -28,7 +28,7 @@ We have age-appropriate classes for children of all ages during our morning Bibl
 interface StepProps {
   site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
-  onSkip?: () => void;
+  onSkip?: () => Promise<void>;
   initialProseContent?: string;
   initialServiceTimes?: { day?: string; time?: string; name?: string; label?: string }[];
 }
@@ -44,7 +44,7 @@ export default function VisitContentStep({ site, onComplete, onSkip, initialPros
   async function handleSkip() {
     if (!onSkip) return;
     setIsSkipping(true);
-    try { onSkip(); } catch { setIsSkipping(false); }
+    try { await onSkip(); } catch { setIsSkipping(false); } finally { setIsSkipping(false); }
   }
 
   async function handleSubmit() {

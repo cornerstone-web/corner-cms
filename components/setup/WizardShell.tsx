@@ -87,6 +87,7 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
   const progressStep = getCurrentStep(completedSteps, enabledFeatures);
   const [launched, setLaunched] = useState<{ cfPagesUrl: string } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [autoSkipError, setAutoSkipError] = useState<string | null>(null);
 
   // For organization sites, auto-complete church-only steps on first load
   useEffect(() => {
@@ -108,7 +109,10 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
       setEnabledFeatures(nextFeatures);
       setCompletedSteps(next);
       setCurrentStep(getCurrentStep(next, nextFeatures));
-    }).catch(console.error);
+    }).catch((err) => {
+      console.error(err);
+      setAutoSkipError("Some steps couldn't be configured automatically. Please refresh the page.");
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -363,6 +367,11 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-2xl">
+            {autoSkipError && (
+              <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {autoSkipError}
+              </div>
+            )}
             {renderCurrentStep()}
           </div>
         </main>
