@@ -134,7 +134,7 @@ export default function SocialStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Social Media</h2>
         <p className="text-muted-foreground text-sm">
-          Add links to your site&apos;s social profiles. All fields are
+          Add links to {site.displayName}&apos;s social profiles. All fields are
           optional.
         </p>
       </div>

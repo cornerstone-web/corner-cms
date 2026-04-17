@@ -91,7 +91,7 @@ export default function PhotosStep({ site, onComplete, initialPhotos }: StepProp
         </p>
         <p className="text-muted-foreground text-sm">
           Featured photos appear as an animated scrolling strip on your home page — a great way to
-          showcase your site and events.
+          showcase {site.displayName} and events.
         </p>
       </div>
 

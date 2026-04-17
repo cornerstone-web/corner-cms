@@ -101,7 +101,7 @@ export default function ServicesStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Service Times</h2>
         <p className="text-muted-foreground text-sm">
-          When does your site meet?
+          When does {site.displayName} meet?
         </p>
       </div>
       <div className="space-y-3">

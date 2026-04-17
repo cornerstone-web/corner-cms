@@ -148,9 +148,9 @@ export default function LeadersStep({ site, onComplete, initialLeaders }: StepPr
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className="text-xl font-semibold">Site Leadership</h2>
+        <h2 className="text-xl font-semibold">Church Leadership</h2>
         <p className="text-muted-foreground text-sm">
-          Introduce your elders, deacons, and other leaders to the site.
+          Introduce your elders, deacons, and other leaders to {site.displayName}.
         </p>
       </div>
 

@@ -41,7 +41,7 @@ export default function ContactStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Contact Info</h2>
         <p className="text-muted-foreground text-sm">
-          How can people reach your site?
+          How can people get in touch with {site.displayName}?
         </p>
       </div>
       <div className="space-y-4">

@@ -50,7 +50,7 @@ export default function WelcomeStep({
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">Welcome to your site setup</h2>
         <p className="text-muted-foreground">
-          We&apos;ll walk you through setting up your site website step by
+          We&apos;ll walk you through setting up {site.displayName}&apos;s website step by
           step. It should take about 15–20 minutes.
         </p>
       </div>

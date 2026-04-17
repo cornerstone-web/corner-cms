@@ -52,7 +52,7 @@ export default function LocationStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Location</h2>
         <p className="text-muted-foreground text-sm">
-          Where is your site located?
+          Where is {site.displayName} located?
         </p>
       </div>
       <div className="space-y-4">

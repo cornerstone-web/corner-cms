@@ -54,7 +54,7 @@ export default function GivingStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Online Giving</h2>
         <p className="text-muted-foreground text-sm">
-          Does your site accept online donations?
+          Does {site.displayName} accept online donations?
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">

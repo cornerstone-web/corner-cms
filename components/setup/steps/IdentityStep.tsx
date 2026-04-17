@@ -26,7 +26,7 @@ export default function IdentityStep({
 
   async function handleSubmit() {
     if (!name.trim()) {
-      setError("Site name is required.");
+      setError("Congregation name is required.");
       return;
     }
     setIsLoading(true);
@@ -48,12 +48,12 @@ export default function IdentityStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Identity</h2>
         <p className="text-muted-foreground text-sm">
-          Tell us your site&apos;s name and provide a short description.
+          Tell us your congregation&apos;s name and provide a short description.
         </p>
       </div>
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="site-name">Site name</Label>
+          <Label htmlFor="site-name">Congregation name</Label>
           <Input
             id="site-name"
             value={name}

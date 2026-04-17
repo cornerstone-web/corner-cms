@@ -79,7 +79,7 @@ export default function FAQStep({ site, onComplete, initialItems }: StepProps) {
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">FAQ Page</h2>
         <p className="text-muted-foreground text-sm">
-          Answer common questions visitors might have about your site.
+          Answer common questions visitors might have about {site.displayName}.
         </p>
       </div>
       <div className="space-y-4">

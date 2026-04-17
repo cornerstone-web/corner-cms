@@ -54,7 +54,7 @@ export default function HeroStep({ site, onComplete, initialHeroUrl }: StepProps
         <p className="text-muted-foreground text-sm">
           Choose a hero image to display prominently on your home page. This
           will be the first thing visitors see, so make it engaging and
-          representative of your site. We recommend using a high-quality image
+          representative of {site.displayName}. We recommend using a high-quality image
           that is at least 1200px wide for the best results.
         </p>
       </div>

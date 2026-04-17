@@ -50,10 +50,10 @@ export default function MinistriesFeatureStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Ministry Pages</h2>
         <p className="text-muted-foreground text-sm">
-          Do you want pages for your site&apos;s ministries?
+          Do you want pages for {site.displayName}&apos;s ministries?
         </p>
         <p className="text-muted-foreground text-sm">
-          Ministry pages showcase the different groups and programs your site
+          Ministry pages showcase the different groups and programs {site.displayName}
           offers — youth ministry, small groups, and more.
         </p>
       </div>
