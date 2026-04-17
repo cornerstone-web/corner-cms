@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   inviteUser,
   updateUserAccess,
-  removeUserFromChurch,
+  removeUserFromSite,
   resendInvite,
   type InviteState,
 } from "@/lib/actions/users";
@@ -106,13 +106,13 @@ function scopeSummary(scopes: string[], collections: ConfigCollection[]): string
 }
 
 export function UsersPanel({
-  churchId,
+  siteId,
   owner,
   repo,
   branch,
   initialUsers,
 }: {
-  churchId: string;
+  siteId: string;
   owner: string;
   repo: string;
   branch: string;
@@ -152,7 +152,7 @@ export function UsersPanel({
     setActionError(null);
     setResendResult(null);
     startTransition(async () => {
-      const result = await resendInvite(churchId, userId);
+      const result = await resendInvite(siteId, userId);
       if (!result.ok) {
         setActionError(result.error ?? "Failed to resend invite.");
       } else {
@@ -175,7 +175,7 @@ export function UsersPanel({
   function handleRemove(userId: string) {
     setActionError(null);
     startTransition(async () => {
-      const result = await removeUserFromChurch(churchId, userId);
+      const result = await removeUserFromSite(siteId, userId);
       if (!result.ok) setActionError(result.error ?? "Remove failed.");
       else router.refresh();
     });
@@ -192,7 +192,7 @@ export function UsersPanel({
     setActionError(null);
     startTransition(async () => {
       const result = await updateUserAccess(
-        churchId,
+        siteId,
         editingUser.userId,
         editIsAdmin,
         editIsAdmin ? [] : editScopes,
@@ -219,7 +219,7 @@ export function UsersPanel({
           action={inviteAction}
           className="rounded-lg border p-4 space-y-4 bg-muted/30"
         >
-          <input type="hidden" name="churchId" value={churchId} />
+          <input type="hidden" name="siteId" value={siteId} />
           <input type="hidden" name="isAdmin" value={String(inviteIsAdmin)} />
           <input type="hidden" name="scopes" value={JSON.stringify(inviteScopes)} />
           <p className="text-sm font-medium">Invite a new user</p>

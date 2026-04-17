@@ -44,7 +44,7 @@ export default function BuildProgressStep({ church, cfPagesUrl }: BuildProgressS
     async function poll() {
       if (cancelled) return;
       try {
-        const res = await fetch(`/api/setup/build-status?churchId=${church.id}`);
+        const res = await fetch(`/api/setup/build-status?siteId=${church.id}`);
         const data = await res.json();
 
         if (data.status === "success") {

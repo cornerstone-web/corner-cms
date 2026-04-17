@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { launchChurch } from "@/lib/actions/setup";
+import { launchSite } from "@/lib/actions/setup";
 import type { WizardFeatures } from "@/lib/wizard/nav-gen";
 import type { HomeGenOptions } from "@/lib/wizard/home-gen";
 import { STEP_GROUPS } from "@/components/setup/steps";
@@ -43,7 +43,7 @@ export default function LaunchStep({ church, completedSteps, onLaunched }: Launc
       streaming: completedSteps.has("streaming"),
     };
 
-    const result = await launchChurch({ churchId: church.id, features, homeOpts });
+    const result = await launchSite({ siteId: church.id, features, homeOpts });
 
     if (!result.ok) {
       setError(result.error ?? "Launch failed. Please try again.");

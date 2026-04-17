@@ -13,8 +13,8 @@ async function assertBulletinAccess(repoName: string) {
   const { user } = await getAuth();
   if (!user) throw new Error("Not authenticated.");
   if (user.isSuperAdmin) return;
-  if (!user.churchAssignment) throw new Error("Access denied.");
-  const repo = user.churchAssignment.githubRepoName.split("/")[1];
+  if (!user.siteAssignment) throw new Error("Access denied.");
+  const repo = user.siteAssignment.githubRepoName.split("/")[1];
   if (repo !== repoName) throw new Error("Access denied.");
 }
 
