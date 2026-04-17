@@ -5,7 +5,7 @@
 
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { usersTable, userChurchRolesTable } from "@/db/schema";
+import { usersTable, userSiteRolesTable } from "@/db/schema";
 
 // ─── Auth0 helpers ────────────────────────────────────────────────────────────
 
@@ -149,39 +149,39 @@ export async function createOrRestoreDbUser(
 }
 
 /**
- * Assign (or restore) a church membership for the given user.
- * isAdmin=true makes the user a church admin; false makes them a scoped user.
- * Throws if the user already has an active role at a different church.
+ * Assign (or restore) a site membership for the given user.
+ * isAdmin=true makes the user a site admin; false makes them a scoped user.
+ * Throws if the user already has an active role at a different site.
  * Upserts to handle re-invites (restores soft-deleted rows).
  */
-export async function assignChurchMembership(
+export async function assignSiteMembership(
   dbUserId: string,
-  churchId: string,
+  siteId: string,
   isAdmin: boolean,
 ): Promise<void> {
-  const activeElsewhere = await db.query.userChurchRolesTable.findFirst({
+  const activeElsewhere = await db.query.userSiteRolesTable.findFirst({
     where: and(
-      eq(userChurchRolesTable.userId, dbUserId),
-      isNull(userChurchRolesTable.deletedAt),
+      eq(userSiteRolesTable.userId, dbUserId),
+      isNull(userSiteRolesTable.deletedAt),
     ),
   });
-  if (activeElsewhere && activeElsewhere.churchId !== churchId) {
+  if (activeElsewhere && activeElsewhere.siteId !== siteId) {
     throw new Error("This user already has an active account with another site.");
   }
 
-  const existingRole = await db.query.userChurchRolesTable.findFirst({
+  const existingRole = await db.query.userSiteRolesTable.findFirst({
     where: and(
-      eq(userChurchRolesTable.userId, dbUserId),
-      eq(userChurchRolesTable.churchId, churchId),
+      eq(userSiteRolesTable.userId, dbUserId),
+      eq(userSiteRolesTable.siteId, siteId),
     ),
   });
 
   if (existingRole) {
     await db
-      .update(userChurchRolesTable)
+      .update(userSiteRolesTable)
       .set({ isAdmin, deletedAt: null })
-      .where(eq(userChurchRolesTable.id, existingRole.id));
+      .where(eq(userSiteRolesTable.id, existingRole.id));
   } else {
-    await db.insert(userChurchRolesTable).values({ userId: dbUserId, churchId, isAdmin });
+    await db.insert(userSiteRolesTable).values({ userId: dbUserId, siteId, isAdmin });
   }
 }
