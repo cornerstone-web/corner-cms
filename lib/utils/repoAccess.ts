@@ -2,8 +2,8 @@
  * Repo access guard — verifies the authenticated user may access [owner]/[repo].
  *
  * Access is granted when:
- *   1. User is a super admin → may access any church repo.
- *   2. User has a church role for the church whose github_repo_name matches
+ *   1. User is a super admin → may access any site repo.
+ *   2. User has a site role for the site whose github_repo_name matches
  *      `${owner}/${repo}` (case-insensitive).
  *
  * Throws AccessDeniedError (→ 403) when access is denied.
@@ -21,7 +21,7 @@ export class AccessDeniedError extends Error {
 export function verifyRepoAccess(user: User, owner: string, repo: string): void {
   if (user.isSuperAdmin) return;
 
-  const assignment = user.churchAssignment;
+  const assignment = user.siteAssignment;
   if (!assignment) {
     throw new AccessDeniedError(`You do not have access to "${owner}/${repo}".`);
   }
