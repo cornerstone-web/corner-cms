@@ -612,7 +612,7 @@ export async function saveLeaders(
   const leadershipPagePath = "src/content/pages/leadership.md";
   const leadershipPageContent = fm({
     title: "Our Leadership",
-    description: "Meet our site leadership",
+    description: "Meet our leadership",
     template: "leadership",
     draft: false,
     passwordProtected: false,
@@ -677,7 +677,7 @@ export async function saveAboutPage(
   const path = "src/content/pages/about.md";
   const content = fm({
     title: "About Us",
-    description: "Learn about our site's history, mission, and values.",
+    description: "Learn about our history, mission, and values.",
     template: "default",
     draft: false,
     passwordProtected: false,
@@ -744,7 +744,7 @@ export async function saveVisitPage(
   const path = "src/content/pages/visit.md";
   const content = fm({
     title: "Plan Your Visit",
-    description: "Everything you need to know before visiting our site.",
+    description: "Everything you need to know before your first visit.",
     template: "default",
     draft: false,
     passwordProtected: false,
@@ -777,7 +777,7 @@ export async function saveFAQPage(
   const path = "src/content/pages/faq.md";
   const content = fm({
     title: "Frequently Asked Questions",
-    description: "Find answers to common questions about our site and what to expect when you visit.",
+    description: "Find answers to common questions about what to expect when you visit.",
     template: "faq",
     draft: false,
     passwordProtected: false,
@@ -821,7 +821,7 @@ export async function saveFirstBulletin(
     const bulletinsPath = "src/content/pages/bulletins.md";
     const bulletinsContent = fm({
       title: "Bulletins",
-      description: "Weekly site bulletins",
+      description: "Weekly bulletins",
       template: "bulletins",
       draft: false,
       passwordProtected: true,
