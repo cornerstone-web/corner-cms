@@ -41,6 +41,11 @@ export default async function Layout(
   const lowerOwner = owner.toLowerCase();
   const lowerRepo = repo.toLowerCase();
 
+  // NOTE: Restricting access to main branch only for now.
+  if (decodedBranch !== "main") {
+    return redirect(`/${lowerOwner}/${lowerRepo}/main`);
+  }
+
   // Read the site repo's package-lock.json to find the exact installed version
   // of @cornerstone-web/core. This drives which .pages.yml tag we fetch so that
   // the CMS config is always version-matched to the deployed site.
