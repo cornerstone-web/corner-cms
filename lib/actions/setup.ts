@@ -546,7 +546,7 @@ export async function launchSite(opts: LaunchOptions): Promise<{
 
       const contactPageContent = YAML.stringify({
         title: "Contact Us",
-        description: "Get in touch with our site",
+        description: "Get in touch!",
         template: "default",
         draft: false,
         passwordProtected: false,
