@@ -1,5 +1,5 @@
-import { ProvisionChurchForm } from "@/components/admin/provision-church-form";
+import { ProvisionSiteForm } from "@/components/admin/provision-site-form";
 
-export default function NewChurchPage() {
-  return <ProvisionChurchForm />;
+export default function NewSitePage() {
+  return <ProvisionSiteForm />;
 }

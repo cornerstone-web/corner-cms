@@ -29,7 +29,7 @@ export default async function LockedOutPage() {
             )}
           </p>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Please contact your church administrator to request access, or reach
+            Please contact your site administrator to request access, or reach
             out to the Cornerstone team for help.
           </p>
         </div>

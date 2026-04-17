@@ -2,38 +2,38 @@ import { notFound, redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, usersTable, userChurchRolesTable } from "@/db/schema";
-import { ChurchManagement } from "@/components/admin/church-management";
+import { sitesTable, usersTable, userSiteRolesTable } from "@/db/schema";
+import { SiteManagement } from "@/components/admin/site-management";
 
-export default async function ChurchPage(props: { params: Promise<{ id: string }> }) {
+export default async function SitePage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const { user } = await getAuth();
   if (!user || !user.isSuperAdmin) return redirect("/");
 
-  const church = await db.query.churchesTable.findFirst({
-    where: eq(churchesTable.id, params.id),
+  const site = await db.query.sitesTable.findFirst({
+    where: eq(sitesTable.id, params.id),
   });
 
-  if (!church || church.deletedAt) return notFound();
+  if (!site || site.deletedAt) return notFound();
 
-  // Fetch users with roles for this church
+  // Fetch users with roles for this site
   const roleRows = await db
     .select({
-      userId: userChurchRolesTable.userId,
-      isAdmin: userChurchRolesTable.isAdmin,
+      userId: userSiteRolesTable.userId,
+      isAdmin: userSiteRolesTable.isAdmin,
       name: usersTable.name,
       email: usersTable.email,
       auth0Id: usersTable.auth0Id,
     })
-    .from(userChurchRolesTable)
-    .innerJoin(usersTable, eq(userChurchRolesTable.userId, usersTable.id))
+    .from(userSiteRolesTable)
+    .innerJoin(usersTable, eq(userSiteRolesTable.userId, usersTable.id))
     .where(
       and(
-        eq(userChurchRolesTable.churchId, church.id),
-        isNull(userChurchRolesTable.deletedAt),
+        eq(userSiteRolesTable.siteId, site.id),
+        isNull(userSiteRolesTable.deletedAt),
         isNull(usersTable.deletedAt),
       )
     );
 
-  return <ChurchManagement church={church} users={roleRows} />;
+  return <SiteManagement site={site} users={roleRows} />;
 }

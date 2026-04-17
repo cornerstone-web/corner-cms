@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable } from "@/db/schema";
+import { sitesTable } from "@/db/schema";
 import { eq, isNull } from "drizzle-orm";
 import { MainRootLayout } from "./main-root-layout";
-import { ChurchPortalCard } from "@/components/home/church-portal-card";
+import { SitePortalCard } from "@/components/home/site-portal-card";
 import { SuperAdminDashboard } from "@/components/home/super-admin-dashboard";
 import { getVersionStatus } from "@/lib/actions/cornerstone-update";
 import { getFileWithSha } from "@/lib/github/wizard";
@@ -15,39 +15,39 @@ export default async function Page() {
   if (!user) return redirect("/auth/login");
 
   if (user.isSuperAdmin) {
-    const churches = await db
+    const sites = await db
       .select({
-        id: churchesTable.id,
-        displayName: churchesTable.displayName,
-        slug: churchesTable.slug,
-        githubRepoName: churchesTable.githubRepoName,
-        cfPagesUrl: churchesTable.cfPagesUrl,
-        customDomain: churchesTable.customDomain,
-        status: churchesTable.status,
-        updatedAt: churchesTable.updatedAt,
-        lastCmsEditAt: churchesTable.lastCmsEditAt,
+        id: sitesTable.id,
+        displayName: sitesTable.displayName,
+        slug: sitesTable.slug,
+        githubRepoName: sitesTable.githubRepoName,
+        cfPagesUrl: sitesTable.cfPagesUrl,
+        customDomain: sitesTable.customDomain,
+        status: sitesTable.status,
+        updatedAt: sitesTable.updatedAt,
+        lastCmsEditAt: sitesTable.lastCmsEditAt,
       })
-      .from(churchesTable)
-      .where(isNull(churchesTable.deletedAt))
-      .orderBy(churchesTable.displayName);
+      .from(sitesTable)
+      .where(isNull(sitesTable.deletedAt))
+      .orderBy(sitesTable.displayName);
 
     return (
       <MainRootLayout>
-        <SuperAdminDashboard churches={churches} />
+        <SuperAdminDashboard sites={sites} />
       </MainRootLayout>
     );
   }
 
-  if (user.churchAssignment) {
-    const churchId = user.churchAssignment.churchId;
-    const repoName = user.churchAssignment.githubRepoName.split("/")[1];
-    const [church, versionStatus, bulletinsEnabled] = await Promise.all([
-      db.query.churchesTable.findFirst({
-        where: eq(churchesTable.id, churchId),
+  if (user.siteAssignment) {
+    const siteId = user.siteAssignment.siteId;
+    const repoName = user.siteAssignment.githubRepoName.split("/")[1];
+    const [site, versionStatus, bulletinsEnabled] = await Promise.all([
+      db.query.sitesTable.findFirst({
+        where: eq(sitesTable.id, siteId),
         columns: { status: true, customDomain: true },
       }),
       // Only check version for active sites — avoid noise during setup
-      getVersionStatus(churchId).catch(() => null),
+      getVersionStatus(siteId).catch(() => null),
       getFileWithSha(repoName, "src/config/site.config.yaml")
         .then(({ content }) => {
           const cfg = YAML.parse(content) as { features?: Record<string, boolean> };
@@ -58,18 +58,18 @@ export default async function Page() {
 
     return (
       <MainRootLayout>
-        <ChurchPortalCard
-          assignment={user.churchAssignment}
-          status={church?.status}
+        <SitePortalCard
+          assignment={user.siteAssignment}
+          status={site?.status}
           versionStatus={versionStatus ?? undefined}
           bulletinsEnabled={bulletinsEnabled}
-          customDomain={church?.customDomain}
+          customDomain={site?.customDomain}
         />
       </MainRootLayout>
     );
   }
 
-  // No church assigned and not super admin
+  // No site assigned and not super admin
   return (
     <MainRootLayout>
       <div className="flex items-center justify-center h-full p-8">

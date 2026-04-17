@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { churchesTable, usersTable, userChurchRolesTable, userChurchScopesTable } from "@/db/schema";
+import { sitesTable, usersTable, userSiteRolesTable, userSiteScopesTable } from "@/db/schema";
 import { UsersPanel } from "@/components/repo/users-panel";
 
 export default async function UsersPage(
@@ -21,36 +21,36 @@ export default async function UsersPage(
   if (!user) return redirect("/auth/login");
 
   const githubRepoName = `${owner}/${repo}`;
-  const church = await db.query.churchesTable.findFirst({
+  const site = await db.query.sitesTable.findFirst({
     where: and(
-      eq(churchesTable.githubRepoName, githubRepoName),
-      isNull(churchesTable.deletedAt)
+      eq(sitesTable.githubRepoName, githubRepoName),
+      isNull(sitesTable.deletedAt)
     ),
   });
 
-  if (!church) return notFound();
+  if (!site) return notFound();
 
-  // Access guard: super admin or church admin only
+  // Access guard: super admin or site admin only
   const isAdmin =
     user.isSuperAdmin ||
-    (user.churchAssignment?.churchId === church.id &&
-      user.churchAssignment.isAdmin);
+    (user.siteAssignment?.siteId === site.id &&
+      user.siteAssignment.isAdmin);
 
   if (!isAdmin) return redirect(`/${owner}/${repo}`);
 
   const users = await db
     .select({
-      userId: userChurchRolesTable.userId,
-      isAdmin: userChurchRolesTable.isAdmin,
+      userId: userSiteRolesTable.userId,
+      isAdmin: userSiteRolesTable.isAdmin,
       name: usersTable.name,
       email: usersTable.email,
     })
-    .from(userChurchRolesTable)
-    .innerJoin(usersTable, eq(userChurchRolesTable.userId, usersTable.id))
+    .from(userSiteRolesTable)
+    .innerJoin(usersTable, eq(userSiteRolesTable.userId, usersTable.id))
     .where(
       and(
-        eq(userChurchRolesTable.churchId, church.id),
-        isNull(userChurchRolesTable.deletedAt),
+        eq(userSiteRolesTable.siteId, site.id),
+        isNull(userSiteRolesTable.deletedAt),
         isNull(usersTable.deletedAt)
       )
     );
@@ -58,11 +58,11 @@ export default async function UsersPage(
   // Load scopes for all non-admin users
   const allScopes = await db
     .select({
-      userId: userChurchScopesTable.userId,
-      scope: userChurchScopesTable.scope,
+      userId: userSiteScopesTable.userId,
+      scope: userSiteScopesTable.scope,
     })
-    .from(userChurchScopesTable)
-    .where(eq(userChurchScopesTable.churchId, church.id));
+    .from(userSiteScopesTable)
+    .where(eq(userSiteScopesTable.siteId, site.id));
 
   const scopesByUser = allScopes.reduce<Record<string, string[]>>((acc, row) => {
     acc[row.userId] ??= [];
@@ -75,5 +75,5 @@ export default async function UsersPage(
     scopes: scopesByUser[u.userId] ?? [],
   }));
 
-  return <UsersPanel churchId={church.id} owner={owner} repo={repo} branch={params.branch} initialUsers={usersWithScopes} />;
+  return <UsersPanel siteId={site.id} owner={owner} repo={repo} branch={params.branch} initialUsers={usersWithScopes} />;
 }
