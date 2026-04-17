@@ -10,13 +10,13 @@ interface UseBuildStatusResult {
   consecutiveFailures: number;
   triggerRebuildWatch: () => void;
   /** Payload to POST to /api/setup/retry-build, or null if no target is resolved. */
-  retryPayload: { churchId: string } | { repo: string } | null;
+  retryPayload: { siteId: string } | { repo: string } | null;
 }
 
 /**
  * Polls the build-status API every 10 seconds.
  *
- * When churchId is provided, polls by churchId. Otherwise, reads owner/repo
+ * When siteId is provided, polls by siteId. Otherwise, reads owner/repo
  * from URL params (editor context) and polls by repo.
  *
  * consecutiveFailures increments each time "failure" is returned and resets
@@ -27,19 +27,19 @@ interface UseBuildStatusResult {
  * Sets a "waiting for new build" flag so a stale "success" from the previous
  * build doesn't prematurely stop the poll loop.
  */
-export function useBuildStatus(churchId?: string): UseBuildStatusResult {
+export function useBuildStatus(siteId?: string): UseBuildStatusResult {
   const params = useParams() as { owner?: string; repo?: string } | null;
 
   // Resolve the build target — used for both polling and retry
-  const retryPayload: { churchId: string } | { repo: string } | null = churchId
-    ? { churchId }
+  const retryPayload: { siteId: string } | { repo: string } | null = siteId
+    ? { siteId }
     : params?.owner && params?.repo
     ? { repo: `${params.owner}/${params.repo}` }
     : null;
 
   const apiQuery = retryPayload
-    ? "churchId" in retryPayload
-      ? `churchId=${encodeURIComponent(retryPayload.churchId)}`
+    ? "siteId" in retryPayload
+      ? `siteId=${encodeURIComponent(retryPayload.siteId)}`
       : `repo=${encodeURIComponent(retryPayload.repo)}`
     : null;
 

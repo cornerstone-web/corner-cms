@@ -26,7 +26,7 @@ export default function IdentityStep({
 
   async function handleSubmit() {
     if (!name.trim()) {
-      setError("Church name is required.");
+      setError("Site name is required.");
       return;
     }
     setIsLoading(true);

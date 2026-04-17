@@ -14,21 +14,21 @@ export function generateFooterSections(features: WizardFeatures): FooterSection[
   const sections: FooterSection[] = [];
 
   // "Our Church" section — always present
-  const churchLinks: FooterLink[] = [
+  const siteLinks: FooterLink[] = [
     { label: "About Us", href: "/about" },
     { label: "What We Believe", href: "/beliefs" },
   ];
   if (features.leadership) {
-    churchLinks.push({ label: "Leadership", href: "/leadership" });
+    siteLinks.push({ label: "Leadership", href: "/leadership" });
   }
   if (features.staff) {
-    churchLinks.push({ label: "Our Staff", href: "/staff" });
+    siteLinks.push({ label: "Our Staff", href: "/staff" });
   }
-  churchLinks.push({ label: "FAQ", href: "/faq" });
-  churchLinks.push({ label: "Plan Your Visit", href: "/visit" });
-  churchLinks.push({ label: "Contact Us", href: "/contact" });
+  siteLinks.push({ label: "FAQ", href: "/faq" });
+  siteLinks.push({ label: "Plan Your Visit", href: "/visit" });
+  siteLinks.push({ label: "Contact Us", href: "/contact" });
 
-  sections.push({ heading: "Our Church", links: churchLinks });
+  sections.push({ heading: "Our Church", links: siteLinks });
 
   // "Resources" section — only if at least one resource feature is enabled
   const resourceLinks: FooterLink[] = [];
