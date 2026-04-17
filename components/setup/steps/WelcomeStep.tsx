@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { markWelcomeComplete } from "@/lib/actions/setup-steps";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   onNavigateToIdentity?: () => void;
 }
 
 export default function WelcomeStep({
-  church,
+  site,
   onComplete,
   onNavigateToIdentity,
 }: StepProps) {
@@ -22,7 +22,7 @@ export default function WelcomeStep({
     setIsLoading(true);
     setError(null);
     try {
-      await markWelcomeComplete(church.id);
+      await markWelcomeComplete(site.id);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -50,7 +50,7 @@ export default function WelcomeStep({
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">Welcome to your site setup</h2>
         <p className="text-muted-foreground">
-          We&apos;ll walk you through setting up your church website step by
+          We&apos;ll walk you through setting up your site website step by
           step. It should take about 15–20 minutes.
         </p>
       </div>

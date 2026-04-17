@@ -104,13 +104,13 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
 
   // Post-launch: full-screen build progress replaces the entire wizard layout
   if (launched) {
-    return <BuildProgressStep church={site} cfPagesUrl={launched.cfPagesUrl} />;
+    return <BuildProgressStep site={site} cfPagesUrl={launched.cfPagesUrl} />;
   }
 
   const visibleSteps = getVisibleSteps(completedSteps, enabledFeatures);
 
   function renderCurrentStep() {
-    const base = { church: site, onComplete: () => handleComplete(currentStep) };
+    const base = { site, onComplete: () => handleComplete(currentStep) };
     const featureOnComplete = (enabled: boolean) => handleComplete(currentStep, enabled);
     const cfg = initialConfig;
     const contact = (cfg.contact as Record<string, unknown> | undefined) ?? {};
@@ -163,14 +163,14 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
         initialYoutubeApiKey={(cfg.integrations as Record<string, string> | undefined)?.youtubeApiKey}
         initialYoutubeChannelId={(cfg.integrations as Record<string, string> | undefined)?.youtubeChannelId}
       />;
-      case "sermons": return <SermonFeatureStep church={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("sermons") ? features.sermons : undefined} />;
-      case "series": return <SeriesFeatureStep church={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("series") ? features.series : undefined} />;
-      case "ministries": return <MinistriesFeatureStep church={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("ministries") ? features.ministries : undefined} />;
-      case "events": return <EventsFeatureStep church={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("events") ? features.events : undefined} />;
-      case "articles": return <ArticlesFeatureStep church={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("articles") ? features.articles : undefined} />;
-      case "staff": return <StaffFeatureStep church={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("staff") ? features.staff : undefined} />;
-      case "bulletins": return <BulletinsFeatureStep church={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("bulletins") ? features.bulletins : undefined} />;
-      case "leadership": return <LeadershipFeatureStep church={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("leadership") ? features.leadership : undefined} />;
+      case "sermons": return <SermonFeatureStep site={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("sermons") ? features.sermons : undefined} />;
+      case "series": return <SeriesFeatureStep site={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("series") ? features.series : undefined} />;
+      case "ministries": return <MinistriesFeatureStep site={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("ministries") ? features.ministries : undefined} />;
+      case "events": return <EventsFeatureStep site={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("events") ? features.events : undefined} />;
+      case "articles": return <ArticlesFeatureStep site={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("articles") ? features.articles : undefined} />;
+      case "staff": return <StaffFeatureStep site={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("staff") ? features.staff : undefined} />;
+      case "bulletins": return <BulletinsFeatureStep site={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("bulletins") ? features.bulletins : undefined} />;
+      case "leadership": return <LeadershipFeatureStep site={site} onComplete={featureOnComplete} initialEnabled={completedSteps.has("leadership") ? features.leadership : undefined} />;
       case "first-series": return <FirstSeriesStep {...base}
         initialTitle={initialFirstSeries?.title as string | undefined}
         initialDescription={initialFirstSeries?.description as string | undefined}
@@ -254,7 +254,7 @@ export default function WizardShell({ site, completedStepsArray, initialConfig, 
       case "photos": return <PhotosStep {...base} initialPhotos={initialMarqueePhotos} />;
       case "launched": return (
         <LaunchStep
-          church={site}
+          site={site}
           completedSteps={completedSteps}
           onLaunched={(url) => setLaunched({ cfPagesUrl: url })}
         />

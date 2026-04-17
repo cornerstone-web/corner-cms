@@ -9,7 +9,7 @@ import { compressImage } from "@/lib/utils/image-compression";
 import WizardProseEditor from "@/components/setup/WizardProseEditor";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialMembers?: { name: string; title?: string; showDetailPage?: boolean; proseContent?: string; photoUrl?: string }[];
 }
@@ -51,7 +51,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export default function StaffStep({
-  church,
+  site,
   onComplete,
   initialMembers,
 }: StepProps) {
@@ -124,8 +124,8 @@ export default function StaffStep({
     setError(null);
     try {
       await saveStaffMembers(
-        church.id,
-        church.slug,
+        site.id,
+        site.slug,
         filled.map((r) => ({
           name: r.name.trim(),
           showDetailPage: r.showDetailPage,

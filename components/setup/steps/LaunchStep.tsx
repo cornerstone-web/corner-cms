@@ -8,12 +8,12 @@ import type { HomeGenOptions } from "@/lib/wizard/home-gen";
 import { STEP_GROUPS } from "@/components/setup/steps";
 
 interface LaunchStepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   completedSteps: Set<string>;
   onLaunched: (cfPagesUrl: string) => void;
 }
 
-export default function LaunchStep({ church, completedSteps, onLaunched }: LaunchStepProps) {
+export default function LaunchStep({ site, completedSteps, onLaunched }: LaunchStepProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,7 +43,7 @@ export default function LaunchStep({ church, completedSteps, onLaunched }: Launc
       streaming: completedSteps.has("streaming"),
     };
 
-    const result = await launchSite({ siteId: church.id, features, homeOpts });
+    const result = await launchSite({ siteId: site.id, features, homeOpts });
 
     if (!result.ok) {
       setError(result.error ?? "Launch failed. Please try again.");
@@ -67,7 +67,7 @@ export default function LaunchStep({ church, completedSteps, onLaunched }: Launc
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold">🎉 You&apos;re Ready to Launch!</h2>
         <p className="text-muted-foreground">
-          Here&apos;s what we&apos;ve set up for <strong>{church.displayName}</strong>:
+          Here&apos;s what we&apos;ve set up for <strong>{site.displayName}</strong>:
         </p>
       </div>
 

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialPhotos?: { name: string; url: string }[];
 }
@@ -20,7 +20,7 @@ interface PhotoEntry {
   previewUrl: string;
 }
 
-export default function PhotosStep({ church, onComplete, initialPhotos }: StepProps) {
+export default function PhotosStep({ site, onComplete, initialPhotos }: StepProps) {
   const hasExisting = (initialPhotos?.length ?? 0) > 0;
   const [wantsPhotos, setWantsPhotos] = useState<boolean | null>(hasExisting ? true : null);
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
@@ -67,12 +67,12 @@ export default function PhotosStep({ church, onComplete, initialPhotos }: StepPr
     try {
       if (wantsPhotos && photos.length > 0) {
         await savePhotos(
-          church.id,
-          church.slug,
+          site.id,
+          site.slug,
           photos.map(({ base64, ext, name }) => ({ base64, ext, name })),
         );
       } else {
-        const result = await completeStep(church.id, "photos");
+        const result = await completeStep(site.id, "photos");
         if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
       }
       onComplete();

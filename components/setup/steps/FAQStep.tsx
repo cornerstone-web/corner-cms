@@ -29,12 +29,12 @@ interface FaqItem {
 }
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialItems?: { question: string; answer: string }[];
 }
 
-export default function FAQStep({ church, onComplete, initialItems }: StepProps) {
+export default function FAQStep({ site, onComplete, initialItems }: StepProps) {
   const [items, setItems] = useState<FaqItem[]>(() =>
     (initialItems ?? DEFAULT_FAQ_ITEMS).map((item, i) => ({ id: i, ...item }))
   );
@@ -63,8 +63,8 @@ export default function FAQStep({ church, onComplete, initialItems }: StepProps)
     setError(null);
     try {
       await saveFAQPage(
-        church.id,
-        church.slug,
+        site.id,
+        site.slug,
         filled.map(({ question, answer }) => ({ question: question.trim(), answer: answer.trim() })),
       );
       onComplete();
@@ -79,7 +79,7 @@ export default function FAQStep({ church, onComplete, initialItems }: StepProps)
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">FAQ Page</h2>
         <p className="text-muted-foreground text-sm">
-          Answer common questions visitors might have about your church.
+          Answer common questions visitors might have about your site.
         </p>
       </div>
       <div className="space-y-4">

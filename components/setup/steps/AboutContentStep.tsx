@@ -21,12 +21,12 @@ We exist to help people find and follow Jesus.
 *   **Growth**: We never stop learning and becoming more like Jesus`;
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialProseContent?: string;
 }
 
-export default function AboutContentStep({ church, onComplete, initialProseContent }: StepProps) {
+export default function AboutContentStep({ site, onComplete, initialProseContent }: StepProps) {
   const [proseContent, setProseContent] = useState(initialProseContent ?? DEFAULT_ABOUT_PROSE);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export default function AboutContentStep({ church, onComplete, initialProseConte
     setIsLoading(true);
     setError(null);
     try {
-      await saveAboutPage(church.id, church.slug, proseContent.trim());
+      await saveAboutPage(site.id, site.slug, proseContent.trim());
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

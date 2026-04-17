@@ -8,13 +8,13 @@ import { saveStreaming } from "@/lib/actions/setup-steps";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialYoutubeApiKey?: string;
   initialYoutubeChannelId?: string;
 }
 
-export default function StreamingStep({ church, onComplete, initialYoutubeApiKey, initialYoutubeChannelId }: StepProps) {
+export default function StreamingStep({ site, onComplete, initialYoutubeApiKey, initialYoutubeChannelId }: StepProps) {
   const [streamsLive, setStreamsLive] = useState<boolean | null>(
     initialYoutubeApiKey === undefined ? null : initialYoutubeApiKey ? true : false
   );
@@ -40,8 +40,8 @@ export default function StreamingStep({ church, onComplete, initialYoutubeApiKey
     setError(null);
     try {
       await saveStreaming(
-        church.id,
-        church.slug,
+        site.id,
+        site.slug,
         streamsLive ? youtubeApiKey.trim() : "",
         streamsLive ? youtubeChannelId.trim() : "",
       );

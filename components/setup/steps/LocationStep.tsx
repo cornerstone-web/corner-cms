@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { saveLocation } from "@/lib/actions/setup-steps";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialStreet?: string;
   initialCity?: string;
@@ -16,7 +16,7 @@ interface StepProps {
 }
 
 export default function LocationStep({
-  church,
+  site,
   onComplete,
   initialStreet,
   initialCity,
@@ -34,7 +34,7 @@ export default function LocationStep({
     setIsLoading(true);
     setError(null);
     try {
-      await saveLocation(church.id, church.slug, {
+      await saveLocation(site.id, site.slug, {
         street: street.trim(),
         city: city.trim(),
         state: state.trim(),

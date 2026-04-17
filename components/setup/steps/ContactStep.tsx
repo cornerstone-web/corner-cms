@@ -7,14 +7,14 @@ import { Label } from "@/components/ui/label";
 import { saveContact } from "@/lib/actions/setup-steps";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialEmail?: string;
   initialPhone?: string;
 }
 
 export default function ContactStep({
-  church,
+  site,
   onComplete,
   initialEmail,
   initialPhone,
@@ -28,7 +28,7 @@ export default function ContactStep({
     setIsLoading(true);
     setError(null);
     try {
-      await saveContact(church.id, church.slug, email.trim(), phone.trim());
+      await saveContact(site.id, site.slug, email.trim(), phone.trim());
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

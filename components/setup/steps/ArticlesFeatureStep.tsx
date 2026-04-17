@@ -7,13 +7,13 @@ import { completeStep } from "@/lib/actions/setup";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: (enabled: boolean) => void;
   initialEnabled?: boolean;
 }
 
 export default function ArticlesFeatureStep({
-  church,
+  site,
   onComplete,
   initialEnabled,
 }: StepProps) {
@@ -32,9 +32,9 @@ export default function ArticlesFeatureStep({
     setError(null);
     try {
       if (selection) {
-        await saveFeature(church.id, church.slug, "articles", true);
+        await saveFeature(site.id, site.slug, "articles", true);
       } else {
-        const result = await completeStep(church.id, "articles");
+        const result = await completeStep(site.id, "articles");
         if (!result.ok)
           throw new Error(result.error ?? "Failed to complete step.");
       }

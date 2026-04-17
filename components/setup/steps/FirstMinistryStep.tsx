@@ -10,7 +10,7 @@ import { EditComponent as IconPicker } from "@/fields/custom/icon/edit-component
 import WizardProseEditor from "@/components/setup/WizardProseEditor";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialMinistries?: { name: string; description?: string; icon?: string; proseContent?: string }[];
 }
@@ -29,7 +29,7 @@ function makeRow(): MinistryRow {
   return { id: Date.now() + Math.random(), name: "", description: "", icon: "", proseContent: "" };
 }
 
-export default function FirstMinistryStep({ church, onComplete, initialMinistries }: StepProps) {
+export default function FirstMinistryStep({ site, onComplete, initialMinistries }: StepProps) {
   const [rows, setRows] = useState<MinistryRow[]>(() =>
     initialMinistries && initialMinistries.length > 0
       ? initialMinistries.map(m => ({
@@ -69,8 +69,8 @@ export default function FirstMinistryStep({ church, onComplete, initialMinistrie
     setError(null);
     try {
       await saveFirstMinistries(
-        church.id,
-        church.slug,
+        site.id,
+        site.slug,
         filled.map((r) => ({
           name: r.name.trim(),
           ...(r.description.trim() ? { description: r.description.trim() } : {}),
@@ -90,7 +90,7 @@ export default function FirstMinistryStep({ church, onComplete, initialMinistrie
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Ministries</h2>
         <p className="text-muted-foreground text-sm">
-          Add up to {MAX_ROWS} ministries to introduce your church&apos;s programs. You can add more later.
+          Add up to {MAX_ROWS} ministries to introduce your site&apos;s programs. You can add more later.
         </p>
       </div>
       <div className="space-y-6">

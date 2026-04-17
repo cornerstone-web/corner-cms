@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface BuildProgressStepProps {
-  church: { id: string };
+  site: { id: string };
   cfPagesUrl: string;
 }
 
@@ -15,7 +15,7 @@ const STAGES = [
   { label: "Almost there...", durationMs: 999999 },
 ];
 
-export default function BuildProgressStep({ church, cfPagesUrl }: BuildProgressStepProps) {
+export default function BuildProgressStep({ site, cfPagesUrl }: BuildProgressStepProps) {
   const router = useRouter();
   const [stageIndex, setStageIndex] = useState(0);
   const [error, setError] = useState("");
@@ -44,7 +44,7 @@ export default function BuildProgressStep({ church, cfPagesUrl }: BuildProgressS
     async function poll() {
       if (cancelled) return;
       try {
-        const res = await fetch(`/api/setup/build-status?siteId=${church.id}`);
+        const res = await fetch(`/api/setup/build-status?siteId=${site.id}`);
         const data = await res.json();
 
         if (data.status === "success") {
@@ -69,7 +69,7 @@ export default function BuildProgressStep({ church, cfPagesUrl }: BuildProgressS
     return () => {
       cancelled = true;
     };
-  }, [church.id, router]);
+  }, [site.id, router]);
 
   if (error) {
     return (

@@ -7,13 +7,13 @@ import { saveLogo } from "@/lib/actions/setup-steps";
 import { compressImage } from "@/lib/utils/image-compression";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialLogoUrl?: string;
 }
 
 export default function LogoStep({
-  church,
+  site,
   onComplete,
   initialLogoUrl,
 }: StepProps) {
@@ -49,7 +49,7 @@ export default function LogoStep({
     try {
       const compressed = await compressImage(file!, "logo");
       const base64 = await fileToBase64(compressed);
-      await saveLogo(church.id, church.slug, base64);
+      await saveLogo(site.id, site.slug, base64);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

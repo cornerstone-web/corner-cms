@@ -9,7 +9,7 @@ import { saveFirstEvent } from "@/lib/actions/setup-steps";
 import WizardProseEditor from "@/components/setup/WizardProseEditor";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialTitle?: string;
   initialDate?: string;
@@ -19,7 +19,7 @@ interface StepProps {
   initialProseContent?: string;
 }
 
-export default function FirstEventStep({ church, onComplete, initialTitle, initialDate, initialTime, initialLocation, initialDescription, initialProseContent }: StepProps) {
+export default function FirstEventStep({ site, onComplete, initialTitle, initialDate, initialTime, initialLocation, initialDescription, initialProseContent }: StepProps) {
   const [title, setTitle] = useState(initialTitle ?? "");
   const [date, setDate] = useState(initialDate ?? "");
   const [time, setTime] = useState(initialTime ?? "");
@@ -49,7 +49,7 @@ export default function FirstEventStep({ church, onComplete, initialTitle, initi
     setIsLoading(true);
     setError(null);
     try {
-      await saveFirstEvent(church.id, church.slug, {
+      await saveFirstEvent(site.id, site.slug, {
         title: title.trim(),
         date,
         time: time.trim(),

@@ -8,13 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { saveFirstSeries } from "@/lib/actions/setup-steps";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: () => void;
   initialTitle?: string;
   initialDescription?: string;
 }
 
-export default function FirstSeriesStep({ church, onComplete, initialTitle, initialDescription }: StepProps) {
+export default function FirstSeriesStep({ site, onComplete, initialTitle, initialDescription }: StepProps) {
   const [title, setTitle] = useState(initialTitle ?? "");
   const [description, setDescription] = useState(initialDescription ?? "");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +28,7 @@ export default function FirstSeriesStep({ church, onComplete, initialTitle, init
     setIsLoading(true);
     setError(null);
     try {
-      await saveFirstSeries(church.id, church.slug, {
+      await saveFirstSeries(site.id, site.slug, {
         title: title.trim(),
         ...(description.trim() ? { description: description.trim() } : {}),
       });

@@ -7,13 +7,13 @@ import { completeStep } from "@/lib/actions/setup";
 import { cn } from "@/lib/utils";
 
 interface StepProps {
-  church: { id: string; displayName: string; slug: string };
+  site: { id: string; displayName: string; slug: string };
   onComplete: (enabled: boolean) => void;
   initialEnabled?: boolean;
 }
 
 export default function MinistriesFeatureStep({
-  church,
+  site,
   onComplete,
   initialEnabled,
 }: StepProps) {
@@ -32,9 +32,9 @@ export default function MinistriesFeatureStep({
     setError(null);
     try {
       if (selection) {
-        await saveFeature(church.id, church.slug, "ministries", true);
+        await saveFeature(site.id, site.slug, "ministries", true);
       } else {
-        const result = await completeStep(church.id, "ministries");
+        const result = await completeStep(site.id, "ministries");
         if (!result.ok)
           throw new Error(result.error ?? "Failed to complete step.");
       }
@@ -50,10 +50,10 @@ export default function MinistriesFeatureStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Ministry Pages</h2>
         <p className="text-muted-foreground text-sm">
-          Do you want pages for your church&apos;s ministries?
+          Do you want pages for your site&apos;s ministries?
         </p>
         <p className="text-muted-foreground text-sm">
-          Ministry pages showcase the different groups and programs your church
+          Ministry pages showcase the different groups and programs your site
           offers — youth ministry, small groups, and more.
         </p>
       </div>
