@@ -69,7 +69,7 @@ export default function FirstEventStep({ church, onComplete, initialTitle, initi
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">First Event</h2>
         <p className="text-muted-foreground text-sm">
-          Add an upcoming event to your congregation&apos;s calendar.
+          Add an upcoming event to your site&apos;s calendar.
         </p>
       </div>
       <div className="space-y-4">

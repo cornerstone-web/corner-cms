@@ -46,7 +46,7 @@ export default function EventsFeatureStep({ church, onComplete, initialEnabled }
           Do you want an events calendar on your site?
         </p>
         <p className="text-muted-foreground text-sm">
-          An events section lets you post upcoming services, special events, and activities for your congregation.
+          An events section lets you post upcoming services, special events, and activities for your site.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">

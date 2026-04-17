@@ -46,7 +46,7 @@ export default function BulletinsFeatureStep({ church, onComplete, initialEnable
           Do you publish weekly bulletins or announcements?
         </p>
         <p className="text-muted-foreground text-sm">
-          A bulletins section lets you upload PDF bulletins and weekly announcements for your congregation to download.
+          A bulletins section lets you upload PDF bulletins and weekly announcements for your site to download.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">

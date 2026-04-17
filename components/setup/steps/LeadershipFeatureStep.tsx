@@ -50,7 +50,7 @@ export default function LeadershipFeatureStep({
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Shepherds &amp; Deacons</h2>
         <p className="text-muted-foreground text-sm">
-          Do you want a page listing your congregation&apos;s elders and
+          Do you want a page listing your site&apos;s elders and
           deacons?
         </p>
         <p className="text-muted-foreground text-sm">

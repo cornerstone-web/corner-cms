@@ -91,7 +91,7 @@ export default function PhotosStep({ church, onComplete, initialPhotos }: StepPr
         </p>
         <p className="text-muted-foreground text-sm">
           Featured photos appear as an animated scrolling strip on your home page — a great way to
-          showcase your congregation and events.
+          showcase your site and events.
         </p>
       </div>
 

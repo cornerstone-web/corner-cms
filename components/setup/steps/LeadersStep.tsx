@@ -150,7 +150,7 @@ export default function LeadersStep({ church, onComplete, initialLeaders }: Step
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Church Leadership</h2>
         <p className="text-muted-foreground text-sm">
-          Introduce your elders, deacons, and other leaders to the congregation.
+          Introduce your elders, deacons, and other leaders to the site.
         </p>
       </div>
 
