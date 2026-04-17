@@ -1,32 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import Link from "next/link";
 import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { useBuildStatus } from "@/hooks/use-build-status";
-import { useUser } from "@/contexts/user-context";
-import { sendSupportMessage } from "@/lib/actions/support";
+import { useConfig } from "@/contexts/config-context";
 
 const MAX_RETRY_ATTEMPTS = 3;
 
 export function BuildStatusBar({ siteId }: { siteId?: string }) {
-  const { user } = useUser();
+  const { config } = useConfig();
   const { buildStatus, consecutiveFailures, triggerRebuildWatch, retryPayload } =
     useBuildStatus(siteId);
 
   const [retrying, setRetrying] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
-  const [supportMessage, setSupportMessage] = useState("");
-  const [supportSending, setSupportSending] = useState(false);
-  const [supportError, setSupportError] = useState(false);
 
   if (buildStatus !== "building" && buildStatus !== "failure") return null;
 
@@ -44,26 +32,6 @@ export function BuildStatusBar({ siteId }: { siteId?: string }) {
       }
     } finally {
       setRetrying(false);
-    }
-  }
-
-  async function handleSendSupport() {
-    if (!supportMessage.trim()) return;
-    setSupportSending(true);
-    setSupportError(false);
-    const result = await sendSupportMessage({
-      message: supportMessage.trim(),
-      fromEmail: user?.email ?? undefined,
-      fromName: user?.name ?? undefined,
-      siteName: user?.siteAssignment?.displayName ?? undefined,
-    });
-    setSupportSending(false);
-    if (result.ok) {
-      toast.success("Message sent. We'll be in touch soon.");
-      setSupportOpen(false);
-      setSupportMessage("");
-    } else {
-      setSupportError(true);
     }
   }
 
@@ -86,77 +54,44 @@ export function BuildStatusBar({ siteId }: { siteId?: string }) {
 
   // Failure state
   const canRetry = consecutiveFailures < MAX_RETRY_ATTEMPTS;
+  const helpHref = config
+    ? `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/help`
+    : "#";
 
   return (
-    <>
-      <div className="border-b border-destructive/30 bg-destructive/5 shrink-0">
-        <div className="flex items-center gap-2 px-4 md:px-6 h-10 text-sm">
-          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-          <span className="text-destructive font-medium">
-            Last build failed.
-          </span>
-          <div className="ml-auto">
-            {canRetry ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={handleRetry}
-                disabled={retrying || !retryPayload}
-              >
-                {retrying ? (
-                  <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Retrying…</>
-                ) : (
-                  <><RefreshCw className="h-3 w-3 mr-1.5" />Retry build</>
-                )}
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setSupportOpen(true)}
-              >
-                Contact support →
-              </Button>
-            )}
-          </div>
+    <div className="border-b border-destructive/30 bg-destructive/5 shrink-0">
+      <div className="flex items-center gap-2 px-4 md:px-6 h-10 text-sm">
+        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+        <span className="text-destructive font-medium">
+          Last build failed.
+        </span>
+        <div className="ml-auto">
+          {canRetry ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={handleRetry}
+              disabled={retrying || !retryPayload}
+            >
+              {retrying ? (
+                <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Retrying…</>
+              ) : (
+                <><RefreshCw className="h-3 w-3 mr-1.5" />Retry build</>
+              )}
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              asChild
+            >
+              <Link href={helpHref}>Get help →</Link>
+            </Button>
+          )}
         </div>
       </div>
-
-      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Contact Support</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-1">
-            <Textarea
-              placeholder="Describe the issue…"
-              value={supportMessage}
-              onChange={(e) => setSupportMessage(e.target.value)}
-              rows={5}
-              className="resize-none"
-            />
-            {supportError && (
-              <p className="text-sm text-destructive">
-                Failed to send. Please try again.
-              </p>
-            )}
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSendSupport}
-                disabled={supportSending || !supportMessage.trim()}
-              >
-                {supportSending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending…</>
-                ) : (
-                  "Send message"
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 }

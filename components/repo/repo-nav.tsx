@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { cn } from "@/lib/utils";
-import { BarChart3, FileStack, FileText, FolderOpen, Settings, Users } from "lucide-react";
+import { BarChart3, FileStack, FileText, FolderOpen, HelpCircle, Settings, Users } from "lucide-react";
 import { useSiteFeatures } from "@/hooks/use-site-features";
 import { checkNavigationGuard } from "@/lib/navigation-guard";
 import { isAdminUser, hasCollectionAccess, hasMediaAccess, hasSiteConfigAccess } from "@/lib/utils/access-control";
@@ -108,10 +108,18 @@ const RepoNav = ({
       label: "Analytics",
     };
 
+    const helpItem = {
+      key: "help",
+      icon: <HelpCircle className="h-5 w-5 mr-2" />,
+      href: `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/help`,
+      label: "Help",
+    };
+
     return [
       ...contentItems,
       ...mediaItems,
       analyticsItem,
+      helpItem,
       usersItem,
       settingsItem,
     ].filter(Boolean);
