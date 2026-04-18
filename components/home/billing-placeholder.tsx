@@ -1,25 +1,27 @@
-import { ShieldX } from "lucide-react";
+import { CreditCard } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-interface NoAccessScreenProps {
+interface BillingPlaceholderProps {
+  siteName: string;
   admins: { name: string; email: string }[];
-  title?: string;
-  message?: string;
 }
 
-export function NoAccessScreen({
-  admins,
-  title = "No access",
-  message = "Your account doesn't have access to any content on this site.",
-}: NoAccessScreenProps) {
+export function BillingPlaceholder({ siteName, admins }: BillingPlaceholderProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="max-w-md w-full mx-auto p-8 text-center space-y-6">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">{siteName}</p>
+          <Badge variant="destructive">Suspended</Badge>
+        </div>
         <div className="flex justify-center">
-          <ShieldX className="h-12 w-12 text-muted-foreground" />
+          <CreditCard className="h-12 w-12 text-muted-foreground" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">{message}</p>
+          <h1 className="text-xl font-semibold tracking-tight">Billing</h1>
+          <p className="text-sm text-muted-foreground">
+            Your site is currently suspended. Billing management is coming soon — contact support to reactivate your site.
+          </p>
         </div>
         {admins.length > 0 && (
           <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
@@ -32,7 +34,7 @@ export function NoAccessScreen({
                 >
                   {admins[0].name}
                 </a>
-                <span className="text-muted-foreground"> · {admins[0].email}</span>
+                {" "}<span className="text-muted-foreground">· {admins[0].email}</span>
               </p>
             ) : (
               <>

@@ -7,6 +7,7 @@ export interface SiteAssignment {
   isAdmin: boolean;
   scopes: string[];
   siteType: "church" | "organization";
+  status: "provisioning" | "active" | "suspended";
 }
 
 export interface User {

@@ -40,6 +40,7 @@ export default async function SitePortalPage(props: { params: Promise<{ id: stri
     isAdmin: true,
     scopes: [] as string[],
     siteType: site.siteType,
+    status: site.status,
   };
 
   return (

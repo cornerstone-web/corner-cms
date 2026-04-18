@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/db";
-import { sitesTable } from "@/db/schema";
-import { eq, isNull } from "drizzle-orm";
+import { sitesTable, userSiteRolesTable, usersTable } from "@/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import { MainRootLayout } from "./main-root-layout";
 import { SitePortalCard } from "@/components/home/site-portal-card";
 import { SuperAdminDashboard } from "@/components/home/super-admin-dashboard";
+import { BillingPlaceholder } from "@/components/home/billing-placeholder";
+import { NoAccessScreen } from "@/components/no-access-screen";
 import { getVersionStatus } from "@/lib/actions/cornerstone-update";
 import { getFileWithSha } from "@/lib/github/wizard";
 import YAML from "yaml";
@@ -41,11 +43,45 @@ export default async function Page() {
   if (user.siteAssignment) {
     const siteId = user.siteAssignment.siteId;
     const repoName = user.siteAssignment.githubRepoName.split("/")[1];
-    const [site, versionStatus, bulletinsEnabled] = await Promise.all([
-      db.query.sitesTable.findFirst({
-        where: eq(sitesTable.id, siteId),
-        columns: { status: true, customDomain: true },
-      }),
+    const site = await db.query.sitesTable.findFirst({
+      where: eq(sitesTable.id, siteId),
+      columns: { status: true, customDomain: true },
+    });
+
+    if (site?.status === "suspended") {
+      const admins = await db
+        .select({ name: usersTable.name, email: usersTable.email })
+        .from(userSiteRolesTable)
+        .innerJoin(usersTable, eq(userSiteRolesTable.userId, usersTable.id))
+        .where(
+          and(
+            eq(userSiteRolesTable.siteId, siteId),
+            eq(userSiteRolesTable.isAdmin, true),
+            isNull(userSiteRolesTable.deletedAt),
+            isNull(usersTable.deletedAt)
+          )
+        );
+
+      if (user.siteAssignment.isAdmin) {
+        return (
+          <MainRootLayout>
+            <BillingPlaceholder siteName={user.siteAssignment.displayName} admins={admins} />
+          </MainRootLayout>
+        );
+      }
+
+      return (
+        <MainRootLayout>
+          <NoAccessScreen
+            title="Site access paused"
+            message="Access to your site is currently paused. Please contact an admin below."
+            admins={admins}
+          />
+        </MainRootLayout>
+      );
+    }
+
+    const [versionStatus, bulletinsEnabled] = await Promise.all([
       // Only check version for active sites — avoid noise during setup
       getVersionStatus(siteId).catch(() => null),
       getFileWithSha(repoName, "src/config/site.config.yaml")

@@ -34,6 +34,10 @@ export default async function Layout(
   const { user } = await getAuth();
   if (!user) return redirect("/auth/login");
 
+  if (user.siteAssignment?.status === "suspended" && !user.isSuperAdmin) {
+    redirect("/");
+  }
+
   const token = await getToken(user, owner, repo);
   if (!token) throw new Error("Token not found");
 
@@ -162,7 +166,7 @@ export default async function Layout(
 
     if (validScopes.length === 0) {
       const adminRows = await db
-        .select({ email: usersTable.email })
+        .select({ name: usersTable.name, email: usersTable.email })
         .from(userSiteRolesTable)
         .innerJoin(usersTable, eq(userSiteRolesTable.userId, usersTable.id))
         .where(
@@ -173,7 +177,7 @@ export default async function Layout(
             isNull(usersTable.deletedAt)
           )
         );
-      return <NoAccessScreen adminEmails={adminRows.map(r => r.email)} />;
+      return <NoAccessScreen admins={adminRows} />;
     }
   }
 

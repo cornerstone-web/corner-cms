@@ -25,6 +25,8 @@ function makeAssignment(isAdmin: boolean, scopes: string[] = []) {
     cfPagesUrl: null,
     isAdmin,
     scopes,
+    siteType: "church" as const,
+    status: "active" as const,
   };
 }
 
