@@ -105,6 +105,7 @@ export const siteConfigSchema = z.object({
   contact: z.object({
     email: z.string().email("Must be a valid email").or(z.literal("")),
     phone: z.string().default(""),
+    formEmail: z.string().email("Must be a valid email").or(z.literal("")).optional(),
     address: z.object({
       street: z.string().default(""),
       city: z.string().default(""),

@@ -113,7 +113,6 @@ export function SiteConfigEditor() {
       if (result.status === "error") throw new Error(result.message);
 
       setSha(result.data.sha);
-      // Extract formEmail before Zod strips it (it's not in siteConfigSchema)
       const rawFormEmail = (result.data.config?.contact as any)?.formEmail as string | undefined;
       setInitialFormEmail(rawFormEmail ?? "");
       form.reset(result.data.config);
