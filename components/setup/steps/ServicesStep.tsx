@@ -96,7 +96,7 @@ export default function ServicesStep({
       const serviceTimes = rows.map((r) => ({
         day: r.day,
         time: r.time.trim(),
-        ...(r.label.trim() ? { label: r.label.trim() } : {}),
+        name: r.label.trim(),
       }));
       await saveServices(site.id, site.slug, serviceTimes);
       onComplete();

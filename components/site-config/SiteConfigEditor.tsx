@@ -29,6 +29,31 @@ import { IntegrationsSection } from "./sections/IntegrationsSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
 import { DomainSettings } from "@/components/settings/DomainSettings";
 
+const FIELD_TO_TAB: Record<string, string> = {
+  name:         "identity",
+  description:  "identity",
+  theme:        "theme",
+  customTheme:  "theme",
+  fonts:        "theme",
+  navigation:   "navigation",
+  footer:       "footer",
+  contact:      "contact",
+  serviceTimes: "service-times",
+  integrations: "integrations",
+  features:     "features",
+};
+
+const TAB_LABELS: Record<string, string> = {
+  identity:        "Identity",
+  theme:           "Theme",
+  navigation:      "Navigation",
+  footer:          "Footer",
+  contact:         "Contact",
+  "service-times": "Service Times",
+  integrations:    "Integrations",
+  features:        "Features",
+};
+
 // Maps each tab value to the site-config scope(s) that unlock it.
 // The identity tab merges identity + branding — visible if either scope is present.
 const TAB_SCOPES: Record<string, string[]> = {
@@ -157,6 +182,14 @@ export function SiteConfigEditor() {
     if (success) window.location.reload();
   }, [form, handleSave]);
 
+  const handleValidationError = useCallback((errors: Record<string, any>) => {
+    const tabs = [...new Set(
+      Object.keys(errors).map(k => FIELD_TO_TAB[k]).filter(Boolean)
+    )];
+    const labels = tabs.map(t => TAB_LABELS[t] ?? t).join(", ");
+    toast.error(`Fix validation errors on: ${labels || "the form"}`);
+  }, []);
+
   const handleLoad = useCallback(() => {
     setIsLoaded(true);
     lastSentRef.current = "";
@@ -220,7 +253,7 @@ export function SiteConfigEditor() {
             />
           )}
           <Button
-            onClick={form.handleSubmit(handleSave)}
+            onClick={form.handleSubmit(handleSave, handleValidationError)}
             disabled={saving || !form.formState.isDirty}
             size="sm"
           >
@@ -239,7 +272,7 @@ export function SiteConfigEditor() {
         {/* Form panel */}
         <div className="w-full lg:w-1/2 overflow-y-auto p-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleSave, handleValidationError)} className="space-y-6">
               <Tabs defaultValue={defaultTab}>
                 <TabsList className="w-full flex flex-wrap h-auto gap-1">
                   {canSeeTab("identity")      && <TabsTrigger value="identity">Identity</TabsTrigger>}

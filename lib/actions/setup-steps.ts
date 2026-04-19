@@ -99,7 +99,7 @@ export async function saveLocation(
 export async function saveServices(
   siteId: string,
   slug: string,
-  serviceTimes: { day: string; time: string; label?: string }[],
+  serviceTimes: { day: string; time: string; name: string }[],
 ): Promise<void> {
   await assertSiteAccess(siteId);
   await updateSiteConfig(slug, { serviceTimes }, "wizard: add service times");

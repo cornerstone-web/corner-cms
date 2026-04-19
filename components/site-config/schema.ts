@@ -48,11 +48,14 @@ const customThemeSchema = z.object({
   border: z.string().optional(),
 });
 
-const serviceTimeSchema = z.object({
-  day: z.string().min(1, "Day is required"),
-  time: z.string().min(1, "Time is required"),
-  name: z.string().min(1, "Name is required"),
-});
+const serviceTimeSchema = z.preprocess(
+  (v: any) => v && !v.name && v.label ? { ...v, name: v.label } : v,
+  z.object({
+    day: z.string().min(1, "Day is required"),
+    time: z.string().min(1, "Time is required"),
+    name: z.string().min(1, "Name is required"),
+  })
+);
 
 export const siteConfigSchema = z.object({
   previewUrl: z.string().url().optional(),
