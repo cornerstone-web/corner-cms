@@ -284,76 +284,137 @@ export function UsersPanel({
       {initialUsers.length === 0 ? (
         <p className="text-sm text-muted-foreground">No users yet.</p>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Access</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {initialUsers.map((u) => (
-                <TableRow key={u.userId}>
-                  <TableCell className="font-medium">{u.name || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                  <TableCell>
-                    {u.isAdmin ? (
-                      <Badge variant="secondary">Admin</Badge>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">{scopeSummary(u.scopes, collections)}</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={isPending}
-                        onClick={() => openEditAccess(u)}
-                        title="Edit access"
-                      >
-                        <Settings2 className="h-4 w-4 text-muted-foreground" />
+        <>
+          {/* Mobile: stacked cards */}
+          <div className="sm:hidden rounded-lg border divide-y overflow-hidden">
+            {initialUsers.map((u) => (
+              <div key={u.userId} className="px-4 py-3 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-sm truncate">{u.name || "—"}</span>
+                  {u.isAdmin ? (
+                    <Badge variant="secondary" className="shrink-0 text-xs">Admin</Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground shrink-0">{scopeSummary(u.scopes, collections)}</span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground truncate">{u.email}</div>
+                <div className="flex items-center gap-1 pt-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={isPending}
+                    onClick={() => openEditAccess(u)}
+                    title="Edit access"
+                  >
+                    <Settings2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={isPending}
+                    onClick={() => handleResend(u.userId)}
+                    title="Resend invite"
+                  >
+                    <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" disabled={isPending}>
+                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={isPending}
-                        onClick={() => handleResend(u.userId)}
-                        title="Resend invite"
-                      >
-                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon-sm" disabled={isPending}>
-                            <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove user?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {u.name || u.email} will lose access to this site. This can be undone by re-inviting them.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleRemove(u.userId)}>
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove user?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {u.name || u.email} will lose access to this site. This can be undone by re-inviting them.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleRemove(u.userId)}>
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden sm:block rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Access</TableHead>
+                  <TableHead className="w-24" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {initialUsers.map((u) => (
+                  <TableRow key={u.userId}>
+                    <TableCell className="font-medium">{u.name || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    <TableCell>
+                      {u.isAdmin ? (
+                        <Badge variant="secondary">Admin</Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">{scopeSummary(u.scopes, collections)}</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isPending}
+                          onClick={() => openEditAccess(u)}
+                          title="Edit access"
+                        >
+                          <Settings2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isPending}
+                          onClick={() => handleResend(u.userId)}
+                          title="Resend invite"
+                        >
+                          <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon-sm" disabled={isPending}>
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove user?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {u.name || u.email} will lose access to this site. This can be undone by re-inviting them.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleRemove(u.userId)}>
+                                Remove
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {/* Edit access dialog */}
