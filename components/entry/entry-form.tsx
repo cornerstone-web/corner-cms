@@ -503,6 +503,16 @@ const BlocksField = forwardRef((props: any, ref) => {
 
   // Filter out blocks whose collection dependencies are disabled
   const { config: repoConfig } = useConfig();
+
+  // Fetch site config once so defaultFrom fields can inherit integration values
+  const [siteDefaults, setSiteDefaults] = useState<Record<string, unknown>>({});
+  useEffect(() => {
+    if (!repoConfig) return;
+    fetch(`/api/${repoConfig.owner}/${repoConfig.repo}/${encodeURIComponent(repoConfig.branch)}/site-config`)
+      .then((r) => r.json())
+      .then((result) => { if (result.status === "success") setSiteDefaults(result.data.config ?? {}); })
+      .catch(() => {});
+  }, [repoConfig]);
   const { features } = useSiteFeatures();
   const availableBlocks = useMemo(() => {
     if (!repoConfig?.object?.components) return blocks;
@@ -527,6 +537,16 @@ const BlocksField = forwardRef((props: any, ref) => {
     let initialState: Record<string, any> = { [blockKey]: blockName };
     if (selectedBlockDef.fields) {
       const choiceDefaults = initializeState(selectedBlockDef.fields, {});
+      // Resolve defaultFrom fields against site config (only fills fields with no static default)
+      for (const f of selectedBlockDef.fields as Field[]) {
+        if (f.defaultFrom && (choiceDefaults[f.name] === undefined || choiceDefaults[f.name] === "")) {
+          const value = f.defaultFrom.split(".").reduce<unknown>((acc, key) =>
+            acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined,
+            siteDefaults
+          );
+          if (value !== undefined && value !== "") choiceDefaults[f.name] = value;
+        }
+      }
       initialState = { ...initialState, ...choiceDefaults };
     }
     onChange(initialState);

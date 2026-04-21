@@ -128,7 +128,7 @@ export async function saveGiving(
   url: string,
 ): Promise<void> {
   await assertSiteAccess(siteId);
-  await updateSiteConfig(slug, { giving: { url } }, "wizard: add giving URL");
+  await updateSiteConfig(slug, { integrations: { giving: { url } } }, "wizard: add giving URL");
   const result = await completeStep(siteId, "giving");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }
@@ -140,7 +140,7 @@ export async function saveStreaming(
   youtubeChannelId: string,
 ): Promise<void> {
   await assertSiteAccess(siteId);
-  await updateSiteConfig(slug, { integrations: { youtubeApiKey, youtubeChannelId } }, "wizard: add YouTube streaming config");
+  await updateSiteConfig(slug, { integrations: { youtube: { apiKey: youtubeApiKey, channelId: youtubeChannelId } } }, "wizard: add YouTube streaming config");
   const result = await completeStep(siteId, "streaming");
   if (!result.ok) throw new Error(result.error ?? "Failed to complete step.");
 }

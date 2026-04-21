@@ -116,12 +116,37 @@ export const siteConfigSchema = z.object({
 
   serviceTimes: z.array(serviceTimeSchema).default([]),
 
-  integrations: z.object({
-    youtubeApiKey: z.string().default(""),
-  }),
+  integrations: z.preprocess(
+    (raw: any) => {
+      if (!raw || typeof raw !== "object") return raw;
+      // Migrate flat youtubeApiKey/youtubeChannelId → youtube sub-object
+      if ((raw.youtubeApiKey !== undefined || raw.youtubeChannelId !== undefined) && !raw.youtube) {
+        const { youtubeApiKey, youtubeChannelId, ...rest } = raw;
+        return {
+          ...rest,
+          youtube: {
+            ...(youtubeApiKey ? { apiKey: youtubeApiKey } : {}),
+            ...(youtubeChannelId ? { channelId: youtubeChannelId } : {}),
+          },
+        };
+      }
+      return raw;
+    },
+    z.object({
+      youtube: z.object({
+        apiKey: z.string().optional(),
+        channelId: z.string().optional(),
+      }).default({}),
+      giving: z.object({
+        url: z.string().optional(),
+        iframe: z.string().optional(),
+      }).default({}),
+    }).default({})
+  ),
 
   features: z.object({
     articles: z.boolean().default(true),
+    bulletins: z.boolean().default(false),
     events: z.boolean().default(true),
     ministries: z.boolean().default(true),
     series: z.boolean().default(true),

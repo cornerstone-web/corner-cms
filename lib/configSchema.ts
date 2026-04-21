@@ -219,6 +219,9 @@ const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.
         }).optional(),
         controlledByValue: z.union([z.string(), z.array(z.string())], {
           message: "'controlledByValue' must be a string or array of strings."
+        }).optional(),
+        defaultFrom: z.string({
+          message: "'defaultFrom' must be a dot-path string (e.g. 'integrations.giving.url')."
         }).optional()
       },
       ...baseObjectSchema

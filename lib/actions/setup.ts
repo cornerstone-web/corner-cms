@@ -332,7 +332,7 @@ export async function launchSite(opts: LaunchOptions): Promise<{
     try {
       const { content: configYaml } = await getFileWithSha(repoName, "src/config/site.config.yaml");
       currentConfig = YAML.parse(configYaml) as Record<string, unknown>;
-      givingUrl = (currentConfig?.giving as { url?: string } | undefined)?.url;
+      givingUrl = (currentConfig?.integrations as { giving?: { url?: string } } | undefined)?.giving?.url;
       contactEmail = (currentConfig?.contact as { formEmail?: string } | undefined)?.formEmail;
     } catch {
       // Config not yet written — proceed without it
@@ -343,7 +343,7 @@ export async function launchSite(opts: LaunchOptions): Promise<{
       .map(t => ({ time: t.time ?? "", label: t.label ?? t.name ?? t.day ?? "" }))
       .filter(t => t.time);
 
-    const channelId = (currentConfig?.integrations as { youtubeChannelId?: string } | undefined)?.youtubeChannelId;
+    const channelId = (currentConfig?.integrations as { youtube?: { channelId?: string } } | undefined)?.youtube?.channelId;
 
     // Read features from site.config.yaml — the authoritative source.
     // saveFeature() only writes features the user explicitly enabled (true).
