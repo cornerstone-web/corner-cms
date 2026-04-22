@@ -338,9 +338,9 @@ export async function launchSite(opts: LaunchOptions): Promise<{
       // Config not yet written — proceed without it
     }
 
-    const rawTimes = (currentConfig?.serviceTimes as { day?: string; time?: string; name?: string; label?: string }[] | undefined) ?? [];
+    const rawTimes = (currentConfig?.serviceTimes as { day?: string; time?: string; name?: string }[] | undefined) ?? [];
     const serviceTimes = rawTimes
-      .map(t => ({ time: t.time ?? "", label: t.label ?? t.name ?? t.day ?? "" }))
+      .map(t => ({ time: t.time ?? "", label: t.name ?? t.day ?? "" }))
       .filter(t => t.time);
 
     const channelId = (currentConfig?.integrations as { youtube?: { channelId?: string } } | undefined)?.youtube?.channelId;

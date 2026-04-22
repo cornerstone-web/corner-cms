@@ -48,14 +48,11 @@ const customThemeSchema = z.object({
   border: z.string().optional(),
 });
 
-const serviceTimeSchema = z.preprocess(
-  (v: any) => v && !v.name && v.label ? { ...v, name: v.label } : v,
-  z.object({
-    day: z.string().min(1, "Day is required"),
-    time: z.string().min(1, "Time is required"),
-    name: z.string().min(1, "Name is required"),
-  })
-);
+const serviceTimeSchema = z.object({
+  day: z.string().min(1, "Day is required"),
+  time: z.string().min(1, "Time is required"),
+  name: z.string().min(1, "Name is required"),
+});
 
 export const siteConfigSchema = z.object({
   previewUrl: z.string().url().optional(),
@@ -116,33 +113,16 @@ export const siteConfigSchema = z.object({
 
   serviceTimes: z.array(serviceTimeSchema).default([]),
 
-  integrations: z.preprocess(
-    (raw: any) => {
-      if (!raw || typeof raw !== "object") return raw;
-      // Migrate flat youtubeApiKey/youtubeChannelId → youtube sub-object
-      if ((raw.youtubeApiKey !== undefined || raw.youtubeChannelId !== undefined) && !raw.youtube) {
-        const { youtubeApiKey, youtubeChannelId, ...rest } = raw;
-        return {
-          ...rest,
-          youtube: {
-            ...(youtubeApiKey ? { apiKey: youtubeApiKey } : {}),
-            ...(youtubeChannelId ? { channelId: youtubeChannelId } : {}),
-          },
-        };
-      }
-      return raw;
-    },
-    z.object({
-      youtube: z.object({
-        apiKey: z.string().optional(),
-        channelId: z.string().optional(),
-      }).default({}),
-      giving: z.object({
-        url: z.string().optional(),
-        iframe: z.string().optional(),
-      }).default({}),
-    }).default({})
-  ),
+  integrations: z.object({
+    youtube: z.object({
+      apiKey: z.string().optional(),
+      channelId: z.string().optional(),
+    }).default({}),
+    giving: z.object({
+      url: z.string().optional(),
+      iframe: z.string().optional(),
+    }).default({}),
+  }).default({}),
 
   features: z.object({
     articles: z.boolean().default(true),
