@@ -34,7 +34,7 @@ export default async function Layout(
   const { user } = await getAuth();
   if (!user) return redirect("/auth/login");
 
-  if (user.siteAssignment?.status === "suspended" && !user.isSuperAdmin) {
+  if (user.siteAssignment?.status === "paused" && !user.isSuperAdmin) {
     redirect("/");
   }
 

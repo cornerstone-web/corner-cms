@@ -12,7 +12,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Building2, ChevronDown, ChevronUp, ChevronsUpDown, ExternalLink, LayoutDashboard, Pencil, Plus, Settings } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Building2,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Copy,
+  CreditCard,
+  ExternalLink,
+  LayoutDashboard,
+  Pencil,
+  Plus,
+  Settings,
+} from "lucide-react";
 
 type SiteRow = {
   id: string;
@@ -21,19 +39,44 @@ type SiteRow = {
   githubRepoName: string;
   cfPagesUrl: string | null;
   customDomain: string | null;
-  status: "provisioning" | "active" | "suspended";
+  status: "provisioning" | "active" | "paused";
   updatedAt: Date;
   lastCmsEditAt: Date | null;
+  subscriptionStatus: string | null;
+  stripeCustomerId: string | null;
 };
 
-const statusVariant: Record<
-  SiteRow["status"],
-  "default" | "secondary" | "destructive"
-> = {
+const siteStatusVariant: Record<SiteRow["status"], "default" | "secondary" | "destructive"> = {
   active: "default",
   provisioning: "secondary",
-  suspended: "destructive",
+  paused: "destructive",
 };
+
+const siteStatusLabel: Record<SiteRow["status"], string> = {
+  active: "Active",
+  provisioning: "Awaiting Setup",
+  paused: "Paused",
+};
+
+function SubBadge({ status }: { status: string | null }) {
+  if (!status) {
+    return <span className="text-xs text-muted-foreground/60">—</span>;
+  }
+  const variant =
+    status === "active" || status === "trialing"
+      ? "success"
+      : status === "past_due" || status === "incomplete"
+        ? "warning"
+        : "secondary";
+  const label = status.replace(/_/g, " ");
+  if (variant === "success") {
+    return <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium capitalize">{label}</span>;
+  }
+  if (variant === "warning") {
+    return <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium capitalize">{label}</span>;
+  }
+  return <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium capitalize">{label}</span>;
+}
 
 function formatRelativeDate(date: Date): string {
   const diff = Date.now() - date.getTime();
@@ -52,7 +95,7 @@ type SortDir = "asc" | "desc";
 const STATUS_ORDER: Record<SiteRow["status"], number> = {
   active: 0,
   provisioning: 1,
-  suspended: 2,
+  paused: 2,
 };
 
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
@@ -60,6 +103,118 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
   return sortDir === "asc"
     ? <ChevronUp className="h-3.5 w-3.5 ml-1" />
     : <ChevronDown className="h-3.5 w-3.5 ml-1" />;
+}
+
+function BillingActions({ site }: { site: SiteRow }) {
+  const [loading, setLoading] = useState<"checkout" | "portal" | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSendBillingLink() {
+    setLoading("checkout");
+    setError(null);
+    try {
+      const res = await fetch("/api/billing/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId: site.id }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setError(data.error ?? "Failed to create billing link.");
+      } else {
+        setCheckoutUrl(data.url);
+      }
+    } catch {
+      setError("Network error.");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleBillingPortal() {
+    setLoading("portal");
+    setError(null);
+    try {
+      const res = await fetch("/api/billing/create-portal-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId: site.id }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setError(data.error ?? "Failed to open billing portal.");
+        setLoading(null);
+      } else {
+        window.open(data.url, "_blank");
+        setLoading(null);
+      }
+    } catch {
+      setError("Network error.");
+      setLoading(null);
+    }
+  }
+
+  function copyUrl(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="xs"
+        disabled={loading !== null}
+        onClick={handleSendBillingLink}
+        title="Generate a checkout link to share with the subscriber"
+      >
+        <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+        <span className="hidden sm:inline">Billing Link</span>
+      </Button>
+
+      {site.stripeCustomerId && (
+        <Button
+          variant="ghost"
+          size="xs"
+          disabled={loading !== null}
+          onClick={handleBillingPortal}
+          title="Open Stripe customer portal"
+        >
+          <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+          <span className="hidden sm:inline">Portal</span>
+        </Button>
+      )}
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+
+      <Dialog open={!!checkoutUrl} onOpenChange={(open) => !open && setCheckoutUrl(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Billing Link — {site.displayName}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Share this one-time checkout link with the subscriber. It expires after 24 hours.
+          </p>
+          <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-2 text-xs break-all">
+            <span className="flex-1 font-mono">{checkoutUrl}</span>
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => copyUrl(checkoutUrl!)}
+              className="shrink-0"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              {copied ? "Copied!" : "Copy"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
@@ -94,12 +249,8 @@ export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-muted-foreground" />
-          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">
-            Sites
-          </h1>
-          <span className="text-sm text-muted-foreground">
-            ({sites.length})
-          </span>
+          <h1 className="font-semibold text-lg md:text-2xl tracking-tight">Sites</h1>
+          <span className="text-sm text-muted-foreground">({sites.length})</span>
         </div>
         <Button asChild size="sm">
           <Link href="/admin/sites/new">
@@ -148,6 +299,7 @@ export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
                     <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} />
                   </button>
                 </TableHead>
+                <TableHead className="hidden lg:table-cell">Billing</TableHead>
                 <TableHead className="hidden sm:table-cell">Live Site</TableHead>
                 <TableHead className="hidden md:table-cell">
                   <button
@@ -170,27 +322,22 @@ export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
                     <TableCell>
                       <div>
                         <p className="font-medium">{site.displayName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {site.githubRepoName}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{site.githubRepoName}</p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {site.status === "provisioning" && (
+                      {site.status === "provisioning" ? (
                         <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium">
-                          Awaiting Setup
+                          {siteStatusLabel.provisioning}
                         </span>
-                      )}
-                      {site.status === "active" && (
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
-                          Active
-                        </span>
-                      )}
-                      {site.status === "suspended" && (
-                        <Badge variant="destructive">
-                          Suspended
+                      ) : (
+                        <Badge variant={siteStatusVariant[site.status]}>
+                          {siteStatusLabel[site.status]}
                         </Badge>
                       )}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <SubBadge status={site.subscriptionStatus} />
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {(site.customDomain || site.cfPagesUrl) ? (() => {
@@ -218,6 +365,7 @@ export function SuperAdminDashboard({ sites }: { sites: SiteRow[] }) {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <BillingActions site={site} />
                         <Button asChild variant="ghost" size="xs">
                           <Link href={`/admin/sites/${site.id}/portal`}>
                             <LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
