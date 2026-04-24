@@ -11,7 +11,7 @@ import YAML from "yaml";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
-import { hasCollectionAccess } from "@/lib/utils/access-control";
+import { hasScope, isAdminUser } from "@/lib/utils/access-control";
 import { handleRouteError } from "@/lib/utils/apiError";
 import { updateFileCache } from "@/lib/githubCache";
 import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
@@ -34,7 +34,7 @@ export async function POST(
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });
-    if (!hasCollectionAccess(user, "sermons")) return new Response(null, { status: 403 });
+    if (!hasScope(user, "collection:sermons") && !isAdminUser(user)) return new Response(null, { status: 403 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");
@@ -119,6 +119,14 @@ export async function POST(
       path: finalPath,
       content: fileContent,
       sha: response.data.content.sha!,
+      size: response.data.content.size,
+      downloadUrl: response.data.content.download_url ?? undefined,
+      commit: {
+        sha: response.data.commit.sha!,
+        timestamp: new Date(
+          response.data.commit.committer?.date ?? new Date().toISOString()
+        ).getTime(),
+      },
     });
 
     bumpLastCmsEditAt(params.owner, params.repo);

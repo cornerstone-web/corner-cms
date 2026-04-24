@@ -3,7 +3,7 @@ import YAML from "yaml";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
-import { hasCollectionAccess } from "@/lib/utils/access-control";
+import { hasScope, isAdminUser } from "@/lib/utils/access-control";
 import { handleRouteError } from "@/lib/utils/apiError";
 
 /**
@@ -27,7 +27,7 @@ export async function GET(
   try {
     const { user } = await getAuth();
     if (!user) return new Response(null, { status: 401 });
-    if (!hasCollectionAccess(user, "sermons")) return new Response(null, { status: 403 });
+    if (!hasScope(user, "collection:sermons") && !isAdminUser(user)) return new Response(null, { status: 403 });
 
     const token = await getToken(user, params.owner, params.repo);
     if (!token) throw new Error("Token not found");

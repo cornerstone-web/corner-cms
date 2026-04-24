@@ -169,7 +169,6 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
     const next = reviewIndex + 1;
     if (next >= reviewQueue.length) {
       setStep("done");
-      onSuccess();
     } else {
       setReviewIndex(next);
       setCurrentDraft(reviewQueue[next]);
@@ -256,9 +255,13 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
         {step === "done" && (
           <DoneStep
             results={results}
-            onClose={() => onOpenChange(false)}
+            onClose={() => {
+              onOpenChange(false);
+              onSuccess();
+            }}
             onNavigate={(path) => {
               onOpenChange(false);
+              onSuccess();
               router.push(`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/sermons/edit/${encodeURIComponent(path)}`);
             }}
           />

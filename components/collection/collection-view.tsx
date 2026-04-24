@@ -616,7 +616,10 @@ export function CollectionView({
               <YouTubeSyncModal
                 open={youtubeModalOpen}
                 onOpenChange={setYoutubeModalOpen}
-                onSuccess={() => fetchCollectionData(path || schema.path)}
+                onSuccess={async () => {
+                  const refreshed = await fetchCollectionData(path || schema.path);
+                  if (refreshed) setData(refreshed);
+                }}
               />
             </>
           )}
