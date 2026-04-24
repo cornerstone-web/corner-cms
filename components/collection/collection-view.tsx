@@ -21,6 +21,7 @@ import { FolderCreate} from "@/components/folder-create";
 import { Message } from "@/components/message";
 import { PathBreadcrumb } from "@/components/path-breadcrumb";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { YouTubeSyncModal } from "./youtube-sync-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +58,7 @@ export function CollectionView({
   const [data, setData] = useState<Record<string, any>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -598,6 +600,24 @@ export function CollectionView({
               >
                 <Plus className="h-4 w-4"/>
               </Link>
+            </>
+          )}
+          {name === "sermons" && (!user || hasScope(user, `collection:${name}`)) && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex shrink-0"
+                onClick={() => setYoutubeModalOpen(true)}
+              >
+                YouTube Sync
+              </Button>
+              <YouTubeSyncModal
+                open={youtubeModalOpen}
+                onOpenChange={setYoutubeModalOpen}
+                onSuccess={() => fetchCollectionData(path || schema.path)}
+              />
             </>
           )}
         </header>
