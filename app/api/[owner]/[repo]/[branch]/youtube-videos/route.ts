@@ -6,6 +6,16 @@ import { getToken } from "@/lib/token";
 import { hasCollectionAccess } from "@/lib/utils/access-control";
 import { handleRouteError } from "@/lib/utils/apiError";
 
+/**
+ * Fetch YouTube videos available for sermon import.
+ *
+ * GET /api/[owner]/[repo]/[branch]/youtube-videos
+ *
+ * Returns { status: "unconfigured" } if YouTube API key/channel is not set in site config.
+ * Returns { status: "success", data: { videos: YouTubeVideo[] } } otherwise.
+ * Requires authentication and collection:sermons access.
+ */
+
 const SITE_CONFIG_PATH = "src/config/site.config.yaml";
 const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 
@@ -68,7 +78,6 @@ async function getExistingSermonVideoIds(
   branch: string
 ): Promise<Set<string>> {
   const videoIds = new Set<string>();
-  const YOUTUBE_ID_REGEX = /youtube\.com\/(?:watch\?v=|embed\/)([a-zA-Z0-9_-]{11})|youtu\.be\/([a-zA-Z0-9_-]{11})/g;
 
   try {
     const dirResponse = await octokit.rest.repos.getContent({
@@ -94,11 +103,11 @@ async function getExistingSermonVideoIds(
         const data = result.value.data;
         if (Array.isArray(data) || data.type !== "file") continue;
         const text = Buffer.from(data.content, "base64").toString();
+        const youtubeIdRegex = /youtube\.com\/(?:watch\?v=|embed\/)([a-zA-Z0-9_-]{11})|youtu\.be\/([a-zA-Z0-9_-]{11})/g;
         let match: RegExpExecArray | null;
-        while ((match = YOUTUBE_ID_REGEX.exec(text)) !== null) {
+        while ((match = youtubeIdRegex.exec(text)) !== null) {
           videoIds.add(match[1] || match[2]);
         }
-        YOUTUBE_ID_REGEX.lastIndex = 0;
       }
     }
   } catch {
