@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useConfig } from "@/contexts/config-context";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,10 @@ function toSermonDraft(video: YouTubeVideo): SermonDraft {
   const date = new Date(video.publishedAt).toISOString().split("T")[0];
   const description = video.description
     ? video.description.length > 200
-      ? video.description.substring(0, video.description.lastIndexOf(" ", 200)) + "..."
+      ? (() => {
+          const cutPoint = video.description.lastIndexOf(" ", 200);
+          return (cutPoint > 0 ? video.description.substring(0, cutPoint) : video.description.substring(0, 200)) + "...";
+        })()
       : video.description
     : "";
   return {
@@ -95,13 +99,13 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [results, setResults] = useState<SyncResult[]>([]);
 
-  if (!config) return null;
-
-  const apiBase = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}`;
+  const apiBase = config
+    ? `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}`
+    : "";
 
   // Fetch videos when opening
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const fetchVideos = useCallback(async (lsOnly: boolean) => {
+    if (!apiBase) return;
     setIsLoading(true);
     setUnconfigured(false);
     try {
@@ -122,19 +126,19 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
     }
   }, [apiBase]);
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
-    if (!open) return;
+    if (!open || !config) return;
     setStep("select");
     setSelected(new Set());
     setResults([]);
     setSearch("");
     setLivestreamsOnly(false);
     fetchVideos(false);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, fetchVideos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleLivestreams = (checked: boolean) => {
     setLivestreamsOnly(checked);
+    setSelected(new Set());
     fetchVideos(checked);
   };
 
@@ -217,6 +221,8 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
     }
   };
 
+  if (!config) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -295,9 +301,9 @@ function SelectStep({
           <p className="text-sm text-muted-foreground">
             YouTube integration is not configured. Add your API key and channel ID in Site Settings.
           </p>
-          <a href={settingsUrl} className="text-sm underline text-primary">
+          <Link href={settingsUrl} className="text-sm underline text-primary">
             Go to Site Settings →
-          </a>
+          </Link>
         </div>
       ) : (
         <>
@@ -413,6 +419,7 @@ function ReviewStep({ draft, setDraft, index, total, isSaving, onDiscard, onSave
         <div className="rounded-md border overflow-hidden aspect-video bg-black">
           <iframe
             src={`https://www.youtube.com/embed/${draft.videoId}`}
+            title={`YouTube preview: ${draft.title}`}
             className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
