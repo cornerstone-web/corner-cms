@@ -42,11 +42,15 @@ export async function POST(
     const body: SyncPayload = await request.json();
     const { title, date, speaker, series, description, videoUrl, draft } = body;
 
-    if (!title || !date || !videoUrl) {
+    if (!title?.trim() || !date?.trim() || !videoUrl?.trim()) {
       return Response.json(
         { status: "error", message: "title, date, and videoUrl are required" },
         { status: 400 }
       );
+    }
+
+    if (!videoUrl.startsWith("https://www.youtube.com/watch?v=") && !videoUrl.startsWith("https://youtu.be/")) {
+      return Response.json({ status: "error", message: "videoUrl must be a YouTube URL" }, { status: 400 });
     }
 
     const slug = slugify(title);
@@ -106,20 +110,22 @@ export async function POST(
       }
     }
 
-    const fileSha = response?.data.content?.sha ?? "";
+    if (!response?.data.content || !response?.data.commit) {
+      throw new Error("Failed to create file");
+    }
 
     await updateFileCache("collection", params.owner, params.repo, params.branch, {
       type: "add",
       path: finalPath,
       content: fileContent,
-      sha: fileSha,
+      sha: response.data.content.sha!,
     });
 
     bumpLastCmsEditAt(params.owner, params.repo);
 
     return Response.json({
       status: "success",
-      data: { path: finalPath, sha: fileSha },
+      data: { path: finalPath, sha: response.data.content.sha },
     });
   } catch (error) {
     return handleRouteError(error);
@@ -127,11 +133,12 @@ export async function POST(
 }
 
 function slugify(text: string): string {
-  return text
+  const slug = text
     .toLowerCase()
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .substring(0, 80); // cap length
+    .substring(0, 80);
+  return slug || `sermon-${Date.now()}`;
 }
