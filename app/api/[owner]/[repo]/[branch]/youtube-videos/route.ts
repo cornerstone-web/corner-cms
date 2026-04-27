@@ -5,6 +5,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { hasScope, isAdminUser } from "@/lib/utils/access-control";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { getSeriesTitles } from "@/lib/utils/series";
 
 /**
  * Fetch YouTube videos available for sermon import.
@@ -55,10 +56,11 @@ export async function GET(
       return Response.json({ status: "unconfigured" });
     }
 
-    // 2. Fetch existing sermon files to detect already-imported video IDs and available series
-    const { videoIds: existingVideoIds, series } = await getExistingSermonData(
-      octokit, params.owner, params.repo, params.branch
-    );
+    // 2. Fetch existing sermon files for already-imported video IDs, and series collection for series list
+    const [{ videoIds: existingVideoIds }, series] = await Promise.all([
+      getExistingSermonData(octokit, params.owner, params.repo, params.branch),
+      getSeriesTitles(params.owner, params.repo, params.branch, token),
+    ]);
 
     // 3. Fetch YouTube videos
     const livestreamsOnly = request.nextUrl.searchParams.get("livestreamsOnly") === "true";
@@ -76,15 +78,14 @@ async function getExistingSermonData(
   owner: string,
   repo: string,
   branch: string
-): Promise<{ videoIds: Set<string>; series: string[] }> {
+): Promise<{ videoIds: Set<string> }> {
   const videoIds = new Set<string>();
-  const seriesSet = new Set<string>();
 
   try {
     const dirResponse = await octokit.rest.repos.getContent({
       owner, repo, path: "src/content/sermons", ref: branch,
     });
-    if (!Array.isArray(dirResponse.data)) return { videoIds, series: [] };
+    if (!Array.isArray(dirResponse.data)) return { videoIds };
 
     const mdFiles = dirResponse.data.filter(
       (f) => f.type === "file" && f.name.endsWith(".md")
@@ -109,15 +110,13 @@ async function getExistingSermonData(
         while ((match = youtubeIdRegex.exec(text)) !== null) {
           videoIds.add(match[1] || match[2]);
         }
-        const seriesMatch = text.match(/^series:\s*["']?(.+?)["']?\s*$/m);
-        if (seriesMatch?.[1]?.trim()) seriesSet.add(seriesMatch[1].trim());
       }
     }
   } catch {
     // If directory doesn't exist yet, return empty results
   }
 
-  return { videoIds, series: Array.from(seriesSet).sort() };
+  return { videoIds };
 }
 
 interface YouTubeVideo {

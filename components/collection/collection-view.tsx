@@ -22,6 +22,7 @@ import { Message } from "@/components/message";
 import { PathBreadcrumb } from "@/components/path-breadcrumb";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { YouTubeSyncModal } from "./youtube-sync-modal";
+import { SeriesAssignModal } from "./series-assign-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +60,7 @@ export function CollectionView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
+  const [seriesAssignModalOpen, setSeriesAssignModalOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -616,6 +618,27 @@ export function CollectionView({
               <YouTubeSyncModal
                 open={youtubeModalOpen}
                 onOpenChange={setYoutubeModalOpen}
+                onSuccess={async () => {
+                  const refreshed = await fetchCollectionData(path || schema.path);
+                  if (refreshed) setData(refreshed);
+                }}
+              />
+            </>
+          )}
+          {name === "series" && (!user || hasScope(user, "collection:sermons")) && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex shrink-0"
+                onClick={() => setSeriesAssignModalOpen(true)}
+              >
+                Assign Sermons
+              </Button>
+              <SeriesAssignModal
+                open={seriesAssignModalOpen}
+                onOpenChange={setSeriesAssignModalOpen}
                 onSuccess={async () => {
                   const refreshed = await fetchCollectionData(path || schema.path);
                   if (refreshed) setData(refreshed);
