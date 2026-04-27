@@ -55,8 +55,8 @@ export async function GET(
       return Response.json({ status: "unconfigured" });
     }
 
-    // 2. Fetch existing sermon files to detect already-imported video IDs
-    const existingVideoIds = await getExistingSermonVideoIds(
+    // 2. Fetch existing sermon files to detect already-imported video IDs and available series
+    const { videoIds: existingVideoIds, series } = await getExistingSermonData(
       octokit, params.owner, params.repo, params.branch
     );
 
@@ -64,26 +64,27 @@ export async function GET(
     const livestreamsOnly = request.nextUrl.searchParams.get("livestreamsOnly") === "true";
     const videos = await fetchYouTubeVideos(apiKey, channelId, livestreamsOnly, existingVideoIds);
 
-    return Response.json({ status: "success", data: { videos } });
+    return Response.json({ status: "success", data: { videos, series } });
   } catch (error) {
     return handleRouteError(error);
   }
 }
 
 // Fetches all .md files in src/content/sermons and extracts YouTube video IDs
-async function getExistingSermonVideoIds(
+async function getExistingSermonData(
   octokit: ReturnType<typeof createOctokitInstance>,
   owner: string,
   repo: string,
   branch: string
-): Promise<Set<string>> {
+): Promise<{ videoIds: Set<string>; series: string[] }> {
   const videoIds = new Set<string>();
+  const seriesSet = new Set<string>();
 
   try {
     const dirResponse = await octokit.rest.repos.getContent({
       owner, repo, path: "src/content/sermons", ref: branch,
     });
-    if (!Array.isArray(dirResponse.data)) return videoIds;
+    if (!Array.isArray(dirResponse.data)) return { videoIds, series: [] };
 
     const mdFiles = dirResponse.data.filter(
       (f) => f.type === "file" && f.name.endsWith(".md")
@@ -108,13 +109,15 @@ async function getExistingSermonVideoIds(
         while ((match = youtubeIdRegex.exec(text)) !== null) {
           videoIds.add(match[1] || match[2]);
         }
+        const seriesMatch = text.match(/^series:\s*["']?(.+?)["']?\s*$/m);
+        if (seriesMatch?.[1]?.trim()) seriesSet.add(seriesMatch[1].trim());
       }
     }
   } catch {
-    // If directory doesn't exist yet, return empty set
+    // If directory doesn't exist yet, return empty results
   }
 
-  return videoIds;
+  return { videoIds, series: Array.from(seriesSet).sort() };
 }
 
 interface YouTubeVideo {

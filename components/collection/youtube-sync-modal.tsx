@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Youtube, Search } from "lucide-react";
 
@@ -92,6 +93,7 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
 
   const [step, setStep] = useState<ModalStep>("select");
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+  const [availableSeries, setAvailableSeries] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [unconfigured, setUnconfigured] = useState(false);
   const [search, setSearch] = useState("");
@@ -124,6 +126,7 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
         setVideos([]);
       } else {
         setVideos(json.data?.videos ?? []);
+        setAvailableSeries(json.data?.series ?? []);
       }
     } catch {
       toast.error("Failed to fetch YouTube videos");
@@ -255,6 +258,7 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
           <ReviewStep
             draft={currentDraft}
             setDraft={setCurrentDraft}
+            availableSeries={availableSeries}
             index={reviewIndex}
             total={reviewQueue.length}
             isSaving={isSaving}
@@ -403,6 +407,7 @@ function SelectStep({
 interface ReviewStepProps {
   draft: SermonDraft;
   setDraft: (d: SermonDraft) => void;
+  availableSeries: string[];
   index: number;
   total: number;
   isSaving: boolean;
@@ -411,7 +416,7 @@ interface ReviewStepProps {
   onPublish: () => void;
 }
 
-function ReviewStep({ draft, setDraft, index, total, isSaving, onDiscard, onSaveDraft, onPublish }: ReviewStepProps) {
+function ReviewStep({ draft, setDraft, availableSeries, index, total, isSaving, onDiscard, onSaveDraft, onPublish }: ReviewStepProps) {
   const field = (key: keyof SermonDraft) => (value: string) =>
     setDraft({ ...draft, [key]: value });
 
@@ -450,7 +455,22 @@ function ReviewStep({ draft, setDraft, index, total, isSaving, onDiscard, onSave
           </div>
           <div className="col-span-2 space-y-1">
             <Label>Series <span className="text-muted-foreground">(optional)</span></Label>
-            <Input placeholder="Series slug or name" value={draft.series} onChange={(e) => field("series")(e.target.value)} />
+            {availableSeries.length > 0 ? (
+              <Select value={draft.series || "__none__"} onValueChange={(v) => field("series")(v === "__none__" ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No series" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No series</SelectItem>
+                  {availableSeries.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-muted-foreground py-2">No series found in existing sermons.</p>
+            )}
+            <p className="text-xs text-muted-foreground">New series cannot be created through the sync tool.</p>
           </div>
           <div className="col-span-2 space-y-1">
             <Label>Description</Label>
