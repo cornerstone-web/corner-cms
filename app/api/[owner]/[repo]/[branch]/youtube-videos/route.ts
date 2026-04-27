@@ -154,11 +154,23 @@ async function fetchYouTubeVideos(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data.items ?? []).map((item: any): YouTubeVideo => ({
     id: item.id.videoId,
-    title: item.snippet.title,
-    description: item.snippet.description ?? "",
+    title: decodeHtmlEntities(item.snippet.title),
+    description: decodeHtmlEntities(item.snippet.description ?? ""),
     publishedAt: item.snippet.publishedAt,
     thumbnailUrl: item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? "",
     isLiveRecording: item.snippet.liveBroadcastContent === "completed" || livestreamsOnly,
     alreadyImported: existingVideoIds.has(item.id.videoId),
   }));
+}
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ");
 }

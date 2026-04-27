@@ -53,7 +53,10 @@ interface Props {
 
 // ---- Helpers ----
 function toSermonDraft(video: YouTubeVideo): SermonDraft {
-  const date = new Date(video.publishedAt).toISOString().split("T")[0];
+  // Use local date methods so evening US streams (which are midnight+ UTC)
+  // don't shift to the next calendar day.
+  const d = new Date(video.publishedAt);
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const description = video.description
     ? video.description.length > 200
       ? (() => {
