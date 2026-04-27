@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useConfig } from "@/contexts/config-context";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -44,6 +43,7 @@ interface SyncResult {
   title: string;
   status: "draft" | "published" | "discarded" | "error";
   path?: string;
+  editUrl?: string;
   error?: string;
 }
 
@@ -89,7 +89,6 @@ function formatDate(iso: string) {
 // ---- Main Component ----
 export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
   const { config } = useConfig();
-  const router = useRouter();
 
   const [step, setStep] = useState<ModalStep>("select");
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
@@ -207,6 +206,7 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
           title: currentDraft.title,
           status: draft ? "draft" : "published",
           path: json.data.path,
+          editUrl: `/${config!.owner}/${config!.repo}/${encodeURIComponent(config!.branch)}/collection/sermons/edit/${encodeURIComponent(json.data.path)}`,
         });
       } else {
         toast.error(json.message ?? "Failed to create sermon");
@@ -269,11 +269,6 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
             onClose={() => {
               onOpenChange(false);
               onSuccess();
-            }}
-            onNavigate={(path) => {
-              onOpenChange(false);
-              onSuccess();
-              router.push(`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/sermons/edit/${encodeURIComponent(path)}`);
             }}
           />
         )}
@@ -510,10 +505,9 @@ function ReviewStep({ draft, setDraft, index, total, isSaving, onDiscard, onSave
 interface DoneStepProps {
   results: SyncResult[];
   onClose: () => void;
-  onNavigate: (path: string) => void;
 }
 
-function DoneStep({ results, onClose, onNavigate }: DoneStepProps) {
+function DoneStep({ results, onClose }: DoneStepProps) {
   const created = results.filter((r) => r.status === "draft" || r.status === "published");
   const discarded = results.filter((r) => r.status === "discarded");
   const errors = results.filter((r) => r.status === "error");
@@ -531,13 +525,10 @@ function DoneStep({ results, onClose, onNavigate }: DoneStepProps) {
               <Badge variant={r.status === "published" ? "default" : "secondary"}>
                 {r.status === "published" ? "Published" : "Draft"}
               </Badge>
-              {r.path && (
-                <button
-                  className="text-xs underline text-primary"
-                  onClick={() => onNavigate(r.path!)}
-                >
+              {r.editUrl && (
+                <Link href={r.editUrl} className="text-xs underline text-primary">
                   Open →
-                </button>
+                </Link>
               )}
             </div>
           </div>

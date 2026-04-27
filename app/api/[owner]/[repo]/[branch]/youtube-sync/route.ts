@@ -79,7 +79,7 @@ export async function POST(
               existingSha = existing.data.sha;
             }
           } catch { /* file doesn't exist yet */ }
-          await octokit.rest.repos.createOrUpdateFileContents({
+          const imageUploadRes = await octokit.rest.repos.createOrUpdateFileContents({
             owner: params.owner,
             repo: params.repo,
             path: imageRepoPath,
@@ -90,6 +90,21 @@ export async function POST(
             ...(author ? { author, committer: author } : {}),
           });
           imagePath = `/uploads/sermons/${videoId}.jpg`;
+          // Update media cache so the uploads health bar and media tab pick up the new file immediately
+          if (imageUploadRes.data.content?.sha) {
+            await updateFileCache("media", params.owner, params.repo, params.branch, {
+              type: "add",
+              path: imageRepoPath,
+              content: "",
+              sha: imageUploadRes.data.content.sha,
+              size: imageUploadRes.data.content.size,
+              downloadUrl: imageUploadRes.data.content.download_url ?? undefined,
+              commit: imageUploadRes.data.commit ? {
+                sha: imageUploadRes.data.commit.sha!,
+                timestamp: new Date(imageUploadRes.data.commit.committer?.date ?? new Date().toISOString()).getTime(),
+              } : undefined,
+            });
+          }
         }
       } catch { /* thumbnail upload failure is non-fatal */ }
     }
