@@ -157,7 +157,7 @@ async function fetchYouTubeVideos(
     title: decodeHtmlEntities(item.snippet.title),
     description: decodeHtmlEntities(item.snippet.description ?? ""),
     publishedAt: item.snippet.publishedAt,
-    thumbnailUrl: item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? "",
+    thumbnailUrl: item.snippet.thumbnails?.high?.url ?? item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? "",
     isLiveRecording: item.snippet.liveBroadcastContent === "completed" || livestreamsOnly,
     alreadyImported: existingVideoIds.has(item.id.videoId),
   }));

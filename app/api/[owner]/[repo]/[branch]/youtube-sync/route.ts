@@ -24,6 +24,7 @@ interface SyncPayload {
   description: string;
   videoUrl: string;    // https://www.youtube.com/watch?v={id}
   draft: boolean;      // true = save as draft, false = publish
+  thumbnailUrl?: string;
 }
 
 export async function POST(
@@ -40,7 +41,7 @@ export async function POST(
     if (!token) throw new Error("Token not found");
 
     const body: SyncPayload = await request.json();
-    const { title, date, speaker, series, description, videoUrl, draft } = body;
+    const { title, date, speaker, series, description, videoUrl, draft, thumbnailUrl } = body;
 
     if (!title?.trim() || !date?.trim() || !videoUrl?.trim()) {
       return Response.json(
@@ -56,6 +57,43 @@ export async function POST(
     const slug = slugify(title);
     const filePath = `src/content/sermons/${slug}.md`;
 
+    const octokit = createOctokitInstance(token, { retry: { doNotRetry: [409] } });
+    const author =
+      user.name && user.email ? { name: user.name, email: user.email } : undefined;
+
+    // Upload YouTube thumbnail as sermon image (non-fatal if it fails)
+    let imagePath: string | undefined;
+    if (thumbnailUrl) {
+      try {
+        const videoId = new URL(videoUrl).searchParams.get("v") ?? slug;
+        const imageRepoPath = `public/uploads/sermons/${videoId}.jpg`;
+        const thumbRes = await fetch(thumbnailUrl);
+        if (thumbRes.ok) {
+          const thumbBase64 = Buffer.from(await thumbRes.arrayBuffer()).toString("base64");
+          let existingSha: string | undefined;
+          try {
+            const existing = await octokit.rest.repos.getContent({
+              owner: params.owner, repo: params.repo, path: imageRepoPath, ref: params.branch,
+            });
+            if (!Array.isArray(existing.data) && existing.data.type === "file") {
+              existingSha = existing.data.sha;
+            }
+          } catch { /* file doesn't exist yet */ }
+          await octokit.rest.repos.createOrUpdateFileContents({
+            owner: params.owner,
+            repo: params.repo,
+            path: imageRepoPath,
+            message: `Add thumbnail for ${slug} (via Cornerstone CMS)`,
+            content: thumbBase64,
+            branch: params.branch,
+            ...(existingSha ? { sha: existingSha } : {}),
+            ...(author ? { author, committer: author } : {}),
+          });
+          imagePath = `/uploads/sermons/${videoId}.jpg`;
+        }
+      } catch { /* thumbnail upload failure is non-fatal */ }
+    }
+
     const frontmatter = {
       title,
       template: "sermon",
@@ -63,6 +101,7 @@ export async function POST(
       speaker: speaker || "",
       ...(series ? { series } : {}),
       description: description || "",
+      ...(imagePath ? { image: imagePath } : {}),
       draft,
       passwordProtected: false,
       blocks: [
@@ -81,10 +120,6 @@ export async function POST(
 
     const fileContent = `---\n${YAML.stringify(frontmatter)}---\n`;
     const contentBase64 = Buffer.from(fileContent).toString("base64");
-
-    const octokit = createOctokitInstance(token, { retry: { doNotRetry: [409] } });
-    const author =
-      user.name && user.email ? { name: user.name, email: user.email } : undefined;
 
     // Handle duplicate slugs by appending suffix
     let finalPath = filePath;

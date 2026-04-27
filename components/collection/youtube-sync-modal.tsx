@@ -33,6 +33,8 @@ interface SermonDraft {
   series: string;
   description: string;
   videoUrl: string;
+  thumbnailUrl: string;
+  useThumbnail: boolean;
 }
 
 type ModalStep = "select" | "review" | "done";
@@ -73,6 +75,8 @@ function toSermonDraft(video: YouTubeVideo): SermonDraft {
     series: "",
     description,
     videoUrl: `https://www.youtube.com/watch?v=${video.id}`,
+    thumbnailUrl: video.thumbnailUrl,
+    useThumbnail: !!video.thumbnailUrl,
   };
 }
 
@@ -190,7 +194,11 @@ export function YouTubeSyncModal({ open, onOpenChange, onSuccess }: Props) {
       const res = await fetch(`${apiBase}/youtube-sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...currentDraft, draft }),
+        body: JSON.stringify({
+          ...currentDraft,
+          draft,
+          thumbnailUrl: currentDraft.useThumbnail ? currentDraft.thumbnailUrl : undefined,
+        }),
       });
       const json = await res.json();
       if (json.status === "success") {
@@ -457,6 +465,27 @@ function ReviewStep({ draft, setDraft, index, total, isSaving, onDiscard, onSave
               onChange={(e) => field("description")(e.target.value)}
             />
           </div>
+          {draft.thumbnailUrl && (
+            <div className="col-span-2 space-y-2">
+              <Label>Sermon Image</Label>
+              <div className="flex items-start gap-3">
+                <img
+                  src={draft.thumbnailUrl}
+                  alt="YouTube thumbnail"
+                  className="w-32 h-20 object-cover rounded border shrink-0"
+                />
+                <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-input accent-primary"
+                    checked={draft.useThumbnail}
+                    onChange={(e) => setDraft({ ...draft, useThumbnail: e.target.checked })}
+                  />
+                  Save as sermon image
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
