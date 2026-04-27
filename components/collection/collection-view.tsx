@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
+import { useSiteFeatures } from "@/hooks/use-site-features";
 import { hasCollectionAccess, hasScope } from "@/lib/utils/access-control";
 import {
   getParentPath,
@@ -70,6 +71,7 @@ export function CollectionView({
   if (!config) throw new Error(`Configuration not found.`);
 
   const { user } = useUser();
+  const { features } = useSiteFeatures();
 
   const schema = useMemo(() => getSchemaByName(config?.object, name), [config, name]);
   if (!schema) throw new Error(`Schema not found for "${name}".`);
@@ -120,8 +122,10 @@ export function CollectionView({
       });
     }
 
-    return pathAndFieldArray;
-  }, [schema]);
+    return pathAndFieldArray.filter(
+      ({ field }: any) => !field.featureFlag || features[field.featureFlag] !== false
+    );
+  }, [schema, features]);
 
   const primaryField = useMemo(() => getPrimaryField(schema) ?? "name", [schema]);
 

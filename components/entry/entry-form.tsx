@@ -1186,6 +1186,7 @@ const EntryForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingNavUrl, setPendingNavUrl] = useState<string | null>(null);
   const router = useRouter();
+  const { features } = useSiteFeatures();
   const slugRef = useRef<string | undefined>(undefined);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(
     null,
@@ -1339,6 +1340,7 @@ const EntryForm = ({
 
       return fields.map((field) => {
         if (!field || field.hidden) return null;
+        if (field.featureFlag && features[field.featureFlag] === false) return null;
 
         // Skip fields that are controlled by a toggle (they render as part of the group)
         if (controlledFieldNames.has(field.name)) return null;
@@ -1414,7 +1416,7 @@ const EntryForm = ({
         );
       });
     },
-    [isTemplateMode],
+    [isTemplateMode, features],
   );
 
   const handleSubmit = async (values: any) => {
