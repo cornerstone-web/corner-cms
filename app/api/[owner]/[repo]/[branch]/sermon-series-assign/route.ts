@@ -42,6 +42,12 @@ export async function POST(
     if (!Array.isArray(paths) || paths.length === 0) {
       return Response.json({ status: "error", message: "paths must be a non-empty array" }, { status: 400 });
     }
+    const invalidPaths = paths.filter(
+      (p) => typeof p !== "string" || !p.startsWith("src/content/sermons/") || !p.endsWith(".md")
+    );
+    if (invalidPaths.length > 0) {
+      return Response.json({ status: "error", message: "invalid path(s) in request" }, { status: 400 });
+    }
 
     const octokit = createOctokitInstance(token);
     const author =

@@ -289,7 +289,7 @@ export function SeriesAssignModal({ open, onOpenChange, onSuccess }: Props) {
               </Button>
               <Button size="sm" onClick={handleConfirm} disabled={isAssigning}>
                 {isAssigning
-                  ? `Assigning… (0 / ${selectedPaths.size})`
+                  ? "Assigning…"
                   : `Assign to ${selectedPaths.size} Sermon${selectedPaths.size !== 1 ? "s" : ""}`}
               </Button>
             </div>

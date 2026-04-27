@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfig } from "@/contexts/config-context";
+import { useSiteFeaturesContext } from "@/contexts/site-features-context";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -376,13 +377,13 @@ function SelectStep({
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium leading-snug truncate">{video.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatDate(video.publishedAt)}
-                      {video.isLiveRecording && <span className="ml-2 text-red-500">● Live</span>}
+                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center flex-wrap gap-x-1">
+                      <span>{formatDate(video.publishedAt)}</span>
+                      {video.isLiveRecording && <span className="text-red-500">● Live</span>}
                       {video.alreadyImported && (
-                        <Badge variant="secondary" className="ml-2 text-[10px] py-0">Already imported</Badge>
+                        <Badge variant="secondary" className="text-[10px] py-0">Already imported</Badge>
                       )}
-                    </p>
+                    </div>
                   </div>
                 </label>
               ))
@@ -417,6 +418,8 @@ interface ReviewStepProps {
 }
 
 function ReviewStep({ draft, setDraft, availableSeries, index, total, isSaving, onDiscard, onSaveDraft, onPublish }: ReviewStepProps) {
+  const { features } = useSiteFeaturesContext();
+  const seriesEnabled = features.series !== false;
   const field = (key: keyof SermonDraft) => (value: string) =>
     setDraft({ ...draft, [key]: value });
 
@@ -453,25 +456,27 @@ function ReviewStep({ draft, setDraft, availableSeries, index, total, isSaving, 
             <Label>Speaker</Label>
             <Input placeholder="Speaker name" value={draft.speaker} onChange={(e) => field("speaker")(e.target.value)} />
           </div>
-          <div className="col-span-2 space-y-1">
-            <Label>Series <span className="text-muted-foreground">(optional)</span></Label>
-            {availableSeries.length > 0 ? (
-              <Select value={draft.series || "__none__"} onValueChange={(v) => field("series")(v === "__none__" ? "" : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="No series" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No series</SelectItem>
-                  {availableSeries.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-sm text-muted-foreground py-2">No series found in existing sermons.</p>
-            )}
-            <p className="text-xs text-muted-foreground">New series cannot be created through the sync tool.</p>
-          </div>
+          {seriesEnabled && (
+            <div className="col-span-2 space-y-1">
+              <Label>Series <span className="text-muted-foreground">(optional)</span></Label>
+              {availableSeries.length > 0 ? (
+                <Select value={draft.series || "__none__"} onValueChange={(v) => field("series")(v === "__none__" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="No series" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No series</SelectItem>
+                    {availableSeries.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">No series found in existing sermons.</p>
+              )}
+              <p className="text-xs text-muted-foreground">New series cannot be created through the sync tool.</p>
+            </div>
+          )}
           <div className="col-span-2 space-y-1">
             <Label>Description</Label>
             <Textarea

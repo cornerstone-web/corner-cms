@@ -5,6 +5,7 @@ import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
 import { hasScope, isAdminUser } from "@/lib/utils/access-control";
 import { handleRouteError } from "@/lib/utils/apiError";
+import { getCollectionCache } from "@/lib/githubCache";
 import { getSeriesTitles } from "@/lib/utils/series";
 
 /**
@@ -58,7 +59,7 @@ export async function GET(
 
     // 2. Fetch existing sermon files for already-imported video IDs, and series collection for series list
     const [{ videoIds: existingVideoIds }, series] = await Promise.all([
-      getExistingSermonData(octokit, params.owner, params.repo, params.branch),
+      getExistingSermonData(params.owner, params.repo, params.branch, token),
       getSeriesTitles(params.owner, params.repo, params.branch, token),
     ]);
 
@@ -72,48 +73,27 @@ export async function GET(
   }
 }
 
-// Fetches all .md files in src/content/sermons and extracts YouTube video IDs
+// Scans the cached sermon collection for already-imported YouTube video IDs
 async function getExistingSermonData(
-  octokit: ReturnType<typeof createOctokitInstance>,
   owner: string,
   repo: string,
-  branch: string
+  branch: string,
+  token: string
 ): Promise<{ videoIds: Set<string> }> {
   const videoIds = new Set<string>();
 
   try {
-    const dirResponse = await octokit.rest.repos.getContent({
-      owner, repo, path: "src/content/sermons", ref: branch,
-    });
-    if (!Array.isArray(dirResponse.data)) return { videoIds };
-
-    const mdFiles = dirResponse.data.filter(
-      (f) => f.type === "file" && f.name.endsWith(".md")
-    );
-
-    // Batch-fetch content in groups of 10 to avoid rate limits
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < mdFiles.length; i += BATCH_SIZE) {
-      const batch = mdFiles.slice(i, i + BATCH_SIZE);
-      const contents = await Promise.allSettled(
-        batch.map((f) =>
-          octokit.rest.repos.getContent({ owner, repo, path: f.path, ref: branch })
-        )
-      );
-      for (const result of contents) {
-        if (result.status !== "fulfilled") continue;
-        const data = result.value.data;
-        if (Array.isArray(data) || data.type !== "file") continue;
-        const text = Buffer.from(data.content, "base64").toString();
-        const youtubeIdRegex = /youtube\.com\/(?:watch\?v=|embed\/)([a-zA-Z0-9_-]{11})|youtu\.be\/([a-zA-Z0-9_-]{11})/g;
-        let match: RegExpExecArray | null;
-        while ((match = youtubeIdRegex.exec(text)) !== null) {
-          videoIds.add(match[1] || match[2]);
-        }
+    const entries = await getCollectionCache(owner, repo, branch, "src/content/sermons", token);
+    for (const entry of entries) {
+      if (entry.type !== "file" || !entry.name.endsWith(".md") || !entry.content) continue;
+      const youtubeIdRegex = /youtube\.com\/(?:watch\?v=|embed\/)([a-zA-Z0-9_-]{11})|youtu\.be\/([a-zA-Z0-9_-]{11})/g;
+      let match: RegExpExecArray | null;
+      while ((match = youtubeIdRegex.exec(entry.content)) !== null) {
+        videoIds.add(match[1] || match[2]);
       }
     }
   } catch {
-    // If directory doesn't exist yet, return empty results
+    // If collection doesn't exist yet, return empty results
   }
 
   return { videoIds };

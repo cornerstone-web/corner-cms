@@ -7,7 +7,7 @@
  * Returns: { status: "success", data: { path, sha } }
  * Requires authentication and collection:sermons access.
  */
-import YAML from "yaml";
+import { stringify } from "@/lib/serialization";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getAuth } from "@/lib/auth";
 import { getToken } from "@/lib/token";
@@ -56,6 +56,9 @@ export async function POST(
     if (!videoUrl.startsWith("https://www.youtube.com/watch?v=") && !videoUrl.startsWith("https://youtu.be/")) {
       return Response.json({ status: "error", message: "videoUrl must be a YouTube URL" }, { status: 400 });
     }
+    if (typeof draft !== "boolean") {
+      return Response.json({ status: "error", message: "draft must be a boolean" }, { status: 400 });
+    }
 
     const slug = slugify(title);
     const filePath = `src/content/sermons/${slug}.md`;
@@ -69,6 +72,8 @@ export async function POST(
     let thumbnailUploaded = false;
     if (thumbnailUrl) {
       try {
+        const thumbHost = new URL(thumbnailUrl).hostname;
+        if (!thumbHost.endsWith(".ytimg.com")) throw new Error("Unexpected thumbnail host");
         const videoId = new URL(videoUrl).searchParams.get("v") ?? slug;
         const imageRepoPath = `public/uploads/sermons/${videoId}.jpg`;
         const thumbRes = await fetch(thumbnailUrl);
@@ -153,7 +158,7 @@ export async function POST(
       detailBarColor: "default",
     };
 
-    const fileContent = `---\n${YAML.stringify(frontmatter)}---\n`;
+    const fileContent = stringify({ ...frontmatter, body: "" }, { format: "yaml-frontmatter" });
     const contentBase64 = Buffer.from(fileContent).toString("base64");
 
     // Handle duplicate slugs by appending suffix
