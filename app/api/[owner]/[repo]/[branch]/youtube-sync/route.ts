@@ -14,6 +14,9 @@ import { getToken } from "@/lib/token";
 import { hasScope, isAdminUser } from "@/lib/utils/access-control";
 import { handleRouteError } from "@/lib/utils/apiError";
 import { updateFileCache } from "@/lib/githubCache";
+import { db } from "@/db";
+import { cacheFileTable } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
 
 interface SyncPayload {
@@ -63,6 +66,7 @@ export async function POST(
 
     // Upload YouTube thumbnail as sermon image (non-fatal if it fails)
     let imagePath: string | undefined;
+    let thumbnailUploaded = false;
     if (thumbnailUrl) {
       try {
         const videoId = new URL(videoUrl).searchParams.get("v") ?? slug;
@@ -90,7 +94,7 @@ export async function POST(
             ...(author ? { author, committer: author } : {}),
           });
           imagePath = `/uploads/sermons/${videoId}.jpg`;
-          // Update media cache so the uploads health bar and media tab pick up the new file immediately
+          thumbnailUploaded = true;
           if (imageUploadRes.data.content?.sha) {
             await updateFileCache("media", params.owner, params.repo, params.branch, {
               type: "add",
@@ -107,6 +111,22 @@ export async function POST(
           }
         }
       } catch { /* thumbnail upload failure is non-fatal */ }
+    }
+
+    // When a thumbnail was uploaded to a new public/uploads/sermons/ subdirectory,
+    // invalidate the public/uploads cache so the next media load re-fetches from
+    // GitHub and discovers the new directory instead of returning stale entries.
+    if (thumbnailUploaded) {
+      try {
+        await db.delete(cacheFileTable).where(
+          and(
+            eq(cacheFileTable.owner, params.owner.toLowerCase()),
+            eq(cacheFileTable.repo, params.repo.toLowerCase()),
+            eq(cacheFileTable.branch, params.branch),
+            eq(cacheFileTable.parentPath, "public/uploads")
+          )
+        );
+      } catch { /* non-fatal */ }
     }
 
     const frontmatter = {
