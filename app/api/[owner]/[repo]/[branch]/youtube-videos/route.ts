@@ -153,7 +153,6 @@ async function fetchYouTubeVideos(
   }
 
   const data = await response.json();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data.items ?? []).map((item: any): YouTubeVideo => ({
     id: item.id.videoId,
     title: decodeHtmlEntities(item.snippet.title),
