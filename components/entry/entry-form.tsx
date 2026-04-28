@@ -469,7 +469,11 @@ function applyDefaultFrom(
   siteDefaults: Record<string, unknown>
 ): void {
   for (const f of fields) {
-    if (f.type === "object" && f.fields) {
+    // For list-of-object fields, `f.fields` describes per-item shape; descending
+    // here would overwrite the list value with a single {}, breaking array
+    // validation. List items don't get defaultFrom applied at block-select time —
+    // they're added later via addItem and use field.default.
+    if (f.type === "object" && f.fields && !f.list) {
       const sub = defaults[f.name] && typeof defaults[f.name] === "object" ? defaults[f.name] : {};
       applyDefaultFrom(f.fields as Field[], sub, siteDefaults);
       defaults[f.name] = sub;
