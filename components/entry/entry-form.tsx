@@ -1299,6 +1299,12 @@ const EntryForm = ({
     control: form.control,
   });
 
+  // When template defaults load after initial mount (new entries only), reset
+  // the form so the populated defaultValues are reflected in the fields.
+  useEffect(() => {
+    if (!isDirty) form.reset(defaultValues);
+  }, [defaultValues]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Warn on browser close / hard refresh when there are unsaved changes
   useEffect(() => {
     if (!isDirty) return;
