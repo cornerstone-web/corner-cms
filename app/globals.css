@@ -62,6 +62,17 @@
   scrollbar-width: thin;
 }
 
+/*
+ * macOS native scrollbars on nested overflow:auto containers paint above
+ * sibling DOM regardless of z-index, so when "Always show scrollbars" is on
+ * (or a mouse is connected), the entry-form scroll panel's scrollbar leaks
+ * through Radix Dialog overlays. Radix sets data-scroll-locked on <body>
+ * while a dialog is open — use that to suppress the leaking scrollbar.
+ */
+body[data-scroll-locked] .modal-aware-scroll {
+  overflow: hidden !important;
+}
+
 .sonner-spinner {
   @apply !left-0 !top-0 !animate-spin;
   background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%230a0a0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader"%3E%3Cpath d="M12 2v4"/%3E%3Cpath d="m16.2 7.8 2.9-2.9"/%3E%3Cpath d="M18 12h4"/%3E%3Cpath d="m16.2 16.2 2.9 2.9"/%3E%3Cpath d="M12 18v4"/%3E%3Cpath d="m4.9 19.1 2.9-2.9"/%3E%3Cpath d="M2 12h4"/%3E%3Cpath d="m4.9 4.9 2.9 2.9"/%3E%3C/svg%3E');

@@ -1657,7 +1657,7 @@ const EntryForm = ({
                   ? { width: `${leftWidth}%`, minWidth: 280 }
                   : { flex: "1 1 0%", minWidth: 0 }
               }
-              className="overflow-y-auto shrink-0 overflow-hidden"
+              className="overflow-y-auto shrink-0 overflow-hidden modal-aware-scroll"
               ref={leftPanelRef}
             >
               {!leftCollapsed && (

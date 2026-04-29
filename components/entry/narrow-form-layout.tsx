@@ -357,7 +357,7 @@ export function NarrowFormLayout({
         </div>
 
         {/* Drill content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto modal-aware-scroll">
           {topFrame.kind === "page-settings" ? (
             <div className="p-4 grid gap-4">
               {filePath && <div className="space-y-2 overflow-hidden">{filePath}</div>}
@@ -421,7 +421,7 @@ export function NarrowFormLayout({
           </div>
 
           {/* Block rows */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto modal-aware-scroll">
             {blocksValue.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-sm gap-2 px-6 text-center">
                 <p>No blocks yet. Add one below.</p>
@@ -562,7 +562,7 @@ export function NarrowFormLayout({
           )}
 
           {/* Fields — drill-worthy fields (columns, nested block lists) become tappable rows */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto modal-aware-scroll">
             {blocksValue.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-3 p-6 text-center">
                 <p>No blocks yet.</p>
