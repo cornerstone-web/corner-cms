@@ -24,8 +24,7 @@ type Site = {
   cfPagesUrl: string | null;
   cfPagesProjectName: string | null;
   customDomain: string | null;
-  status: "provisioning" | "active" | "suspended";
-  plan: string;
+  status: "provisioning" | "active" | "paused";
   createdAt: Date;
   updatedAt: Date;
   lastCmsEditAt: Date | null;
@@ -42,7 +41,7 @@ type RoleRow = {
 const statusVariant: Record<Site["status"], "default" | "secondary" | "destructive"> = {
   active: "default",
   provisioning: "secondary",
-  suspended: "destructive",
+  paused: "destructive",
 };
 
 export function SiteManagement({ site, users }: { site: Site; users: RoleRow[] }) {
@@ -51,7 +50,7 @@ export function SiteManagement({ site, users }: { site: Site; users: RoleRow[] }
   const [error, setError] = useState<string | null>(null);
   const [owner, repo] = site.githubRepoName.split("/");
 
-  function handleStatusChange(status: "active" | "suspended" | "provisioning") {
+  function handleStatusChange(status: "active" | "paused" | "provisioning") {
     setError(null);
     startTransition(async () => {
       const result = await updateSiteStatus(site.id, status);
@@ -109,9 +108,6 @@ export function SiteManagement({ site, users }: { site: Site; users: RoleRow[] }
             <span className="text-muted-foreground">—</span>
           )}
         </Row>
-        <Row label="Plan">
-          <span className="text-muted-foreground capitalize">{site.plan}</span>
-        </Row>
         <Row label="Created">
           <span className="text-muted-foreground">
             {new Date(site.createdAt).toLocaleDateString()}
@@ -160,12 +156,12 @@ export function SiteManagement({ site, users }: { site: Site; users: RoleRow[] }
             size="sm"
             variant="destructive"
             disabled={isPending}
-            onClick={() => handleStatusChange("suspended")}
+            onClick={() => handleStatusChange("paused")}
           >
             Suspend
           </Button>
         )}
-        {site.status === "suspended" && (
+        {site.status === "paused" && (
           <Button
             size="sm"
             variant="outline"

@@ -100,7 +100,7 @@ export async function provisionSite(
 
 export async function updateSiteStatus(
   siteId: string,
-  status: "active" | "suspended" | "provisioning",
+  status: "active" | "paused" | "provisioning",
 ): Promise<{ ok: boolean; error?: string }> {
   const { user } = await getAuth();
   if (!user?.isSuperAdmin) return { ok: false, error: "Unauthorized." };

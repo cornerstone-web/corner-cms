@@ -16,7 +16,7 @@ import {
 export const siteStatusEnum = pgEnum("site_status", [
   "provisioning",
   "active",
-  "suspended",
+  "paused",
 ]);
 
 export const siteTypeEnum = pgEnum("site_type", [
@@ -37,7 +37,6 @@ export const sitesTable = pgTable("sites", {
   customDomain: text("custom_domain"),
   status: siteStatusEnum("status").notNull().default("provisioning"),
   siteType: siteTypeEnum("site_type").notNull().default("church"),
-  plan: text("plan").notNull().default("free"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   lastCmsEditAt: timestamp("last_cms_edit_at"),
@@ -94,6 +93,25 @@ export const siteWizardStepsTable = pgTable("site_wizard_steps", {
 }, (t) => [
   uniqueIndex("site_wizard_steps_site_step_idx").on(t.siteId, t.stepKey),
   index("site_wizard_steps_site_id_idx").on(t.siteId),
+]);
+
+// ─── Stripe subscription billing ──────────────────────────────────────────────
+
+export const siteSubscriptionsTable = pgTable("site_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  siteId: uuid("site_id").notNull().references(() => sitesTable.id),
+  stripeCustomerId: text("stripe_customer_id").notNull(),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripePriceId: text("stripe_price_id"),
+  status: text("status").notNull().default("incomplete"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("idx_site_subscriptions_site_id").on(t.siteId),
+  uniqueIndex("idx_site_subscriptions_customer").on(t.stripeCustomerId),
+  index("idx_site_subscriptions_subscription").on(t.stripeSubscriptionId),
 ]);
 
 // ─── GitHub App installation token cache ──────────────────────────────────────
