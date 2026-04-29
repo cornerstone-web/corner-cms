@@ -236,10 +236,12 @@ const generateZodSchema = (
       if (field.type === 'object') {
         // Object field — if controlled by a toggle, strip required from children
         // and bubble those constraints up as conditional rules on the parent scope.
-        // Skip this for list fields: per-item validation is handled by Zod's array
-        // schema, and path traversal doesn't work on arrays.
+        // For list fields, path traversal via superRefine doesn't work on arrays,
+        // so we still strip required from children (preventing false positives when
+        // the list is hidden) but skip the conditional rule registration.
         const isControlledObject = !!field.controlledBy && !field.list;
-        const childFields = isControlledObject
+        const shouldStripChildren = !!field.controlledBy;
+        const childFields = shouldStripChildren
           ? stripRequiredDeep(field.fields || [])
           : (field.fields || []);
         const nested = buildSchemaObject(childFields);

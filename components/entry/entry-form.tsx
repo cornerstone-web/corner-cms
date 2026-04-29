@@ -469,7 +469,11 @@ function applyDefaultFrom(
   siteDefaults: Record<string, unknown>
 ): void {
   for (const f of fields) {
-    if (f.type === "object" && f.fields) {
+    // For list-of-object fields, `f.fields` describes per-item shape; descending
+    // here would overwrite the list value with a single {}, breaking array
+    // validation. List items don't get defaultFrom applied at block-select time —
+    // they're added later via addItem and use field.default.
+    if (f.type === "object" && f.fields && !f.list) {
       const sub = defaults[f.name] && typeof defaults[f.name] === "object" ? defaults[f.name] : {};
       applyDefaultFrom(f.fields as Field[], sub, siteDefaults);
       defaults[f.name] = sub;
@@ -1186,6 +1190,7 @@ const EntryForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingNavUrl, setPendingNavUrl] = useState<string | null>(null);
   const router = useRouter();
+  const { features } = useSiteFeatures();
   const slugRef = useRef<string | undefined>(undefined);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(
     null,
@@ -1298,6 +1303,12 @@ const EntryForm = ({
     control: form.control,
   });
 
+  // When template defaults load after initial mount (new entries only), reset
+  // the form so the populated defaultValues are reflected in the fields.
+  useEffect(() => {
+    if (!isDirty) form.reset(defaultValues);
+  }, [defaultValues]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Warn on browser close / hard refresh when there are unsaved changes
   useEffect(() => {
     if (!isDirty) return;
@@ -1339,6 +1350,7 @@ const EntryForm = ({
 
       return fields.map((field) => {
         if (!field || field.hidden) return null;
+        if (field.featureFlag && features[field.featureFlag] === false) return null;
 
         // Skip fields that are controlled by a toggle (they render as part of the group)
         if (controlledFieldNames.has(field.name)) return null;
@@ -1414,7 +1426,7 @@ const EntryForm = ({
         );
       });
     },
-    [isTemplateMode],
+    [isTemplateMode, features],
   );
 
   const handleSubmit = async (values: any) => {
@@ -1645,7 +1657,7 @@ const EntryForm = ({
                   ? { width: `${leftWidth}%`, minWidth: 280 }
                   : { flex: "1 1 0%", minWidth: 0 }
               }
-              className="overflow-y-auto shrink-0 overflow-hidden"
+              className="overflow-y-auto shrink-0 overflow-hidden modal-aware-scroll"
               ref={leftPanelRef}
             >
               {!leftCollapsed && (

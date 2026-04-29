@@ -140,9 +140,9 @@ export function EntryEditor({
       const defaults: Record<string, any> = {};
       for (const { name: fieldName, template: templateName } of fieldsWithTemplate) {
         try {
-          const templatePath = `src/content/templates/${templateName}.yaml`;
+          const templatePath = `src/content/templates/${templateName}.md`;
           const response = await fetch(
-            `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/entries/${encodeURIComponent(templatePath)}`
+            `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/entries/${encodeURIComponent(templatePath)}?name=templates`
           );
           if (response.ok) {
             const data = await response.json();

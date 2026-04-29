@@ -3,7 +3,7 @@
  */
 
 import { db } from "@/db";
-import { eq, and, inArray, count, min } from "drizzle-orm";
+import { eq, and, inArray, count, min, sql } from "drizzle-orm";
 import { cacheFileTable } from "@/db/schema";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getParentPath } from "@/lib/utils/file";
@@ -876,9 +876,21 @@ const getMediaCache = async (
     }));
 
     if (!nocache && githubEntries.length > 0) {
-      // Cache the entries
+      // Cache the entries; use upsert to handle any pre-existing rows that were
+      // inserted by updateParentFolderCache before this directory was first fetched.
       entries = await db.insert(cacheFileTable)
         .values(mappedEntries)
+        .onConflictDoUpdate({
+          target: [cacheFileTable.owner, cacheFileTable.repo, cacheFileTable.branch, cacheFileTable.path],
+          set: {
+            name: sql`excluded.name`,
+            type: sql`excluded.type`,
+            sha: sql`excluded.sha`,
+            size: sql`excluded.size`,
+            downloadUrl: sql`excluded.download_url`,
+            lastUpdated: sql`excluded.last_updated`,
+          },
+        })
         .returning();
     } else {
       // When `nocache`, we don't cache the entries

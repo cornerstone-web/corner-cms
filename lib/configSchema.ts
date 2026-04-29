@@ -222,6 +222,9 @@ const generateFieldObjectSchema = (isComponent?: boolean, isBlock?: boolean): z.
         }).optional(),
         defaultFrom: z.string({
           message: "'defaultFrom' must be a dot-path string (e.g. 'integrations.giving.url')."
+        }).optional(),
+        featureFlag: z.string({
+          message: "'featureFlag' must be a string matching a site features key."
         }).optional()
       },
       ...baseObjectSchema

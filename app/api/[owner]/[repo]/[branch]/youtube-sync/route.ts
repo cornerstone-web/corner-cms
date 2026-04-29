@@ -1,0 +1,227 @@
+/**
+ * Create a sermon entry from a YouTube video.
+ *
+ * POST /api/[owner]/[repo]/[branch]/youtube-sync
+ *
+ * Body: { title, date, speaker, series, description, videoUrl, draft }
+ * Returns: { status: "success", data: { path, sha } }
+ * Requires authentication and collection:sermons access.
+ */
+import { stringify } from "@/lib/serialization";
+import { createOctokitInstance } from "@/lib/utils/octokit";
+import { getAuth } from "@/lib/auth";
+import { getToken } from "@/lib/token";
+import { hasScope, isAdminUser } from "@/lib/utils/access-control";
+import { handleRouteError } from "@/lib/utils/apiError";
+import { updateFileCache } from "@/lib/githubCache";
+import { db } from "@/db";
+import { cacheFileTable } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+import { bumpLastCmsEditAt } from "@/lib/utils/bumpLastCmsEditAt";
+
+interface SyncPayload {
+  title: string;
+  date: string;        // YYYY-MM-DD
+  speaker: string;
+  series: string;
+  description: string;
+  videoUrl: string;    // https://www.youtube.com/watch?v={id}
+  draft: boolean;      // true = save as draft, false = publish
+  thumbnailUrl?: string;
+}
+
+export async function POST(
+  request: Request,
+  props: { params: Promise<{ owner: string; repo: string; branch: string }> }
+) {
+  const params = await props.params;
+  try {
+    const { user } = await getAuth();
+    if (!user) return new Response(null, { status: 401 });
+    if (!hasScope(user, "collection:sermons") && !isAdminUser(user)) return new Response(null, { status: 403 });
+
+    const token = await getToken(user, params.owner, params.repo);
+    if (!token) throw new Error("Token not found");
+
+    const body: SyncPayload = await request.json();
+    const { title, date, speaker, series, description, videoUrl, draft, thumbnailUrl } = body;
+
+    if (!title?.trim() || !date?.trim() || !videoUrl?.trim()) {
+      return Response.json(
+        { status: "error", message: "title, date, and videoUrl are required" },
+        { status: 400 }
+      );
+    }
+
+    if (!videoUrl.startsWith("https://www.youtube.com/watch?v=") && !videoUrl.startsWith("https://youtu.be/")) {
+      return Response.json({ status: "error", message: "videoUrl must be a YouTube URL" }, { status: 400 });
+    }
+    if (typeof draft !== "boolean") {
+      return Response.json({ status: "error", message: "draft must be a boolean" }, { status: 400 });
+    }
+
+    const slug = slugify(title);
+    const filePath = `src/content/sermons/${slug}.md`;
+
+    const octokit = createOctokitInstance(token, { retry: { doNotRetry: [409] } });
+    const author =
+      user.name && user.email ? { name: user.name, email: user.email } : undefined;
+
+    // Upload YouTube thumbnail as sermon image (non-fatal if it fails)
+    let imagePath: string | undefined;
+    let thumbnailUploaded = false;
+    if (thumbnailUrl) {
+      try {
+        const thumbHost = new URL(thumbnailUrl).hostname;
+        if (!thumbHost.endsWith(".ytimg.com")) throw new Error("Unexpected thumbnail host");
+        const videoId = new URL(videoUrl).searchParams.get("v") ?? slug;
+        const imageRepoPath = `public/uploads/sermons/${videoId}.jpg`;
+        const thumbRes = await fetch(thumbnailUrl);
+        if (thumbRes.ok) {
+          const thumbBase64 = Buffer.from(await thumbRes.arrayBuffer()).toString("base64");
+          let existingSha: string | undefined;
+          try {
+            const existing = await octokit.rest.repos.getContent({
+              owner: params.owner, repo: params.repo, path: imageRepoPath, ref: params.branch,
+            });
+            if (!Array.isArray(existing.data) && existing.data.type === "file") {
+              existingSha = existing.data.sha;
+            }
+          } catch { /* file doesn't exist yet */ }
+          const imageUploadRes = await octokit.rest.repos.createOrUpdateFileContents({
+            owner: params.owner,
+            repo: params.repo,
+            path: imageRepoPath,
+            message: `Add thumbnail for ${slug} (via Cornerstone CMS)`,
+            content: thumbBase64,
+            branch: params.branch,
+            ...(existingSha ? { sha: existingSha } : {}),
+            ...(author ? { author, committer: author } : {}),
+          });
+          imagePath = `/uploads/sermons/${videoId}.jpg`;
+          thumbnailUploaded = true;
+          if (imageUploadRes.data.content?.sha) {
+            await updateFileCache("media", params.owner, params.repo, params.branch, {
+              type: "add",
+              path: imageRepoPath,
+              content: "",
+              sha: imageUploadRes.data.content.sha,
+              size: imageUploadRes.data.content.size,
+              downloadUrl: imageUploadRes.data.content.download_url ?? undefined,
+              commit: imageUploadRes.data.commit ? {
+                sha: imageUploadRes.data.commit.sha!,
+                timestamp: new Date(imageUploadRes.data.commit.committer?.date ?? new Date().toISOString()).getTime(),
+              } : undefined,
+            });
+          }
+        }
+      } catch { /* thumbnail upload failure is non-fatal */ }
+    }
+
+    // When a thumbnail was uploaded to a new public/uploads/sermons/ subdirectory,
+    // invalidate the public/uploads cache so the next media load re-fetches from
+    // GitHub and discovers the new directory instead of returning stale entries.
+    if (thumbnailUploaded) {
+      try {
+        await db.delete(cacheFileTable).where(
+          and(
+            eq(cacheFileTable.owner, params.owner.toLowerCase()),
+            eq(cacheFileTable.repo, params.repo.toLowerCase()),
+            eq(cacheFileTable.branch, params.branch),
+            eq(cacheFileTable.parentPath, "public/uploads")
+          )
+        );
+      } catch { /* non-fatal */ }
+    }
+
+    const frontmatter = {
+      title,
+      template: "sermon",
+      date,
+      speaker: speaker || "",
+      ...(series ? { series } : {}),
+      description: description || "",
+      ...(imagePath ? { image: imagePath } : {}),
+      draft,
+      passwordProtected: false,
+      blocks: [
+        {
+          type: "video-embed",
+          useYoutubeLive: false,
+          url: videoUrl,
+          aspectRatio: "16:9",
+          showTitle: true,
+          title,
+        },
+      ],
+      showDetailBar: true,
+      detailBarColor: "default",
+    };
+
+    const fileContent = stringify({ ...frontmatter, body: "" }, { format: "yaml-frontmatter" });
+    const contentBase64 = Buffer.from(fileContent).toString("base64");
+
+    // Handle duplicate slugs by appending suffix
+    let finalPath = filePath;
+    let response;
+    for (let attempt = 0; attempt <= 3; attempt++) {
+      try {
+        const attemptPath =
+          attempt === 0 ? filePath : filePath.replace(".md", `-${attempt}.md`);
+        finalPath = attemptPath;
+        response = await octokit.rest.repos.createOrUpdateFileContents({
+          owner: params.owner,
+          repo: params.repo,
+          path: attemptPath,
+          message: `Create ${attemptPath} (via Cornerstone CMS)`,
+          content: contentBase64,
+          branch: params.branch,
+          ...(author ? { author, committer: author } : {}),
+        });
+        break;
+      } catch (err: any) {
+        if (err.status === 422 && attempt < 3) continue;
+        throw err;
+      }
+    }
+
+    if (!response?.data.content || !response?.data.commit) {
+      throw new Error("Failed to create file");
+    }
+
+    await updateFileCache("collection", params.owner, params.repo, params.branch, {
+      type: "add",
+      path: finalPath,
+      content: fileContent,
+      sha: response.data.content.sha!,
+      size: response.data.content.size,
+      downloadUrl: response.data.content.download_url ?? undefined,
+      commit: {
+        sha: response.data.commit.sha!,
+        timestamp: new Date(
+          response.data.commit.committer?.date ?? new Date().toISOString()
+        ).getTime(),
+      },
+    });
+
+    bumpLastCmsEditAt(params.owner, params.repo);
+
+    return Response.json({
+      status: "success",
+      data: { path: finalPath, sha: response.data.content.sha },
+    });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
+
+function slugify(text: string): string {
+  const slug = text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .substring(0, 80);
+  return slug || `sermon-${Date.now()}`;
+}

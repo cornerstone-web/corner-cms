@@ -24,6 +24,8 @@ export type Field = {
   category?: string;
   // Dot-path into site config used as default when creating a new block (e.g. "integrations.giving.url")
   defaultFrom?: string;
+  // Site feature key: field is hidden when features[featureFlag] === false
+  featureFlag?: string;
 };
 
 export type BlockCategory = {
