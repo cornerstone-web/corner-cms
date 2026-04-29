@@ -38,6 +38,7 @@ interface BlockUsage {
 
 const allFeatureLabels: Record<string, string> = {
   articles: "Articles",
+  bulletins: "Bulletins",
   events: "Events",
   ministries: "Ministries",
   series: "Series",
@@ -45,7 +46,7 @@ const allFeatureLabels: Record<string, string> = {
   staff: "Staff",
 };
 
-const churchOnlyFeatures = new Set(["sermons", "series"]);
+const churchOnlyFeatures = new Set(["bulletins", "sermons", "series"]);
 
 export function FeaturesSection({ control, onSaveAndReload }: FeaturesSectionProps) {
   const { config } = useConfig();

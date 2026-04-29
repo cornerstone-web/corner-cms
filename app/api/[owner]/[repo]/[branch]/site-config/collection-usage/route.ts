@@ -15,11 +15,13 @@ const blockCollectionMap: Record<string, string[]> = {
   "ministry-links": ["ministries"],
   "team-grid": ["staff"],
   "series-grid": ["series"],
+  "bulletin-list": ["bulletins"],
 };
 
 /** All toggleable collection names. */
 const allCollections = [
   "articles",
+  "bulletins",
   "events",
   "ministries",
   "series",

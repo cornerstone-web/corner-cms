@@ -48,14 +48,11 @@ const customThemeSchema = z.object({
   border: z.string().optional(),
 });
 
-const serviceTimeSchema = z.preprocess(
-  (v: any) => v && !v.name && v.label ? { ...v, name: v.label } : v,
-  z.object({
-    day: z.string().min(1, "Day is required"),
-    time: z.string().min(1, "Time is required"),
-    name: z.string().min(1, "Name is required"),
-  })
-);
+const serviceTimeSchema = z.object({
+  day: z.string().min(1, "Day is required"),
+  time: z.string().min(1, "Time is required"),
+  name: z.string().min(1, "Name is required"),
+});
 
 export const siteConfigSchema = z.object({
   previewUrl: z.string().url().optional(),
@@ -117,11 +114,19 @@ export const siteConfigSchema = z.object({
   serviceTimes: z.array(serviceTimeSchema).default([]),
 
   integrations: z.object({
-    youtubeApiKey: z.string().default(""),
-  }),
+    youtube: z.object({
+      apiKey: z.string().optional(),
+      channelId: z.string().optional(),
+    }).default({}),
+    giving: z.object({
+      url: z.string().optional(),
+      iframe: z.string().optional(),
+    }).default({}),
+  }).default({}),
 
   features: z.object({
     articles: z.boolean().default(true),
+    bulletins: z.boolean().default(false),
     events: z.boolean().default(true),
     ministries: z.boolean().default(true),
     series: z.boolean().default(true),

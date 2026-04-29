@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
+import { useSiteFeatures } from "@/hooks/use-site-features";
 import { hasCollectionAccess, hasScope } from "@/lib/utils/access-control";
 import {
   getParentPath,
@@ -21,6 +22,8 @@ import { FolderCreate} from "@/components/folder-create";
 import { Message } from "@/components/message";
 import { PathBreadcrumb } from "@/components/path-breadcrumb";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { YouTubeSyncModal } from "./youtube-sync-modal";
+import { SeriesAssignModal } from "./series-assign-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +60,8 @@ export function CollectionView({
   const [data, setData] = useState<Record<string, any>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
+  const [seriesAssignModalOpen, setSeriesAssignModalOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -66,6 +71,7 @@ export function CollectionView({
   if (!config) throw new Error(`Configuration not found.`);
 
   const { user } = useUser();
+  const { features } = useSiteFeatures();
 
   const schema = useMemo(() => getSchemaByName(config?.object, name), [config, name]);
   if (!schema) throw new Error(`Schema not found for "${name}".`);
@@ -116,8 +122,10 @@ export function CollectionView({
       });
     }
 
-    return pathAndFieldArray;
-  }, [schema]);
+    return pathAndFieldArray.filter(
+      ({ field }: any) => !field.featureFlag || features[field.featureFlag] !== false
+    );
+  }, [schema, features]);
 
   const primaryField = useMemo(() => getPrimaryField(schema) ?? "name", [schema]);
 
@@ -598,6 +606,48 @@ export function CollectionView({
               >
                 <Plus className="h-4 w-4"/>
               </Link>
+            </>
+          )}
+          {name === "sermons" && (!user || hasScope(user, `collection:${name}`)) && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex shrink-0"
+                onClick={() => setYoutubeModalOpen(true)}
+              >
+                YouTube Sync
+              </Button>
+              <YouTubeSyncModal
+                open={youtubeModalOpen}
+                onOpenChange={setYoutubeModalOpen}
+                onSuccess={async () => {
+                  const refreshed = await fetchCollectionData(path || schema.path);
+                  if (refreshed) setData(refreshed);
+                }}
+              />
+            </>
+          )}
+          {name === "series" && (!user || hasScope(user, "collection:sermons")) && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex shrink-0"
+                onClick={() => setSeriesAssignModalOpen(true)}
+              >
+                Assign Sermons
+              </Button>
+              <SeriesAssignModal
+                open={seriesAssignModalOpen}
+                onOpenChange={setSeriesAssignModalOpen}
+                onSuccess={async () => {
+                  const refreshed = await fetchCollectionData(path || schema.path);
+                  if (refreshed) setData(refreshed);
+                }}
+              />
             </>
           )}
         </header>

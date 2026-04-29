@@ -461,6 +461,32 @@ const ListField = ({
   );
 };
 
+const siteDefaultsCache = new Map<string, Record<string, unknown>>();
+
+function applyDefaultFrom(
+  fields: Field[],
+  defaults: Record<string, any>,
+  siteDefaults: Record<string, unknown>
+): void {
+  for (const f of fields) {
+    // For list-of-object fields, `f.fields` describes per-item shape; descending
+    // here would overwrite the list value with a single {}, breaking array
+    // validation. List items don't get defaultFrom applied at block-select time —
+    // they're added later via addItem and use field.default.
+    if (f.type === "object" && f.fields && !f.list) {
+      const sub = defaults[f.name] && typeof defaults[f.name] === "object" ? defaults[f.name] : {};
+      applyDefaultFrom(f.fields as Field[], sub, siteDefaults);
+      defaults[f.name] = sub;
+    } else if (f.defaultFrom && (defaults[f.name] === undefined || defaults[f.name] === "")) {
+      const value = f.defaultFrom.split(".").reduce<unknown>(
+        (acc, key) => acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined,
+        siteDefaults
+      );
+      if (value !== undefined && value !== "") defaults[f.name] = value;
+    }
+  }
+}
+
 const BlocksField = forwardRef((props: any, ref) => {
   const {
     field,
@@ -503,6 +529,25 @@ const BlocksField = forwardRef((props: any, ref) => {
 
   // Filter out blocks whose collection dependencies are disabled
   const { config: repoConfig } = useConfig();
+
+  // Fetch site config once per repo/branch so defaultFrom fields can inherit integration values
+  const [siteDefaults, setSiteDefaults] = useState<Record<string, unknown>>({});
+  useEffect(() => {
+    if (!repoConfig) return;
+    const cacheKey = `${repoConfig.owner}/${repoConfig.repo}/${repoConfig.branch}`;
+    const cached = siteDefaultsCache.get(cacheKey);
+    if (cached) { setSiteDefaults(cached); return; }
+    fetch(`/api/${repoConfig.owner}/${repoConfig.repo}/${encodeURIComponent(repoConfig.branch)}/site-config`)
+      .then((r) => r.json())
+      .then((result) => {
+        if (result.status === "success") {
+          const config = result.data.config ?? {};
+          siteDefaultsCache.set(cacheKey, config);
+          setSiteDefaults(config);
+        }
+      })
+      .catch(() => {});
+  }, [repoConfig]);
   const { features } = useSiteFeatures();
   const availableBlocks = useMemo(() => {
     if (!repoConfig?.object?.components) return blocks;
@@ -527,6 +572,7 @@ const BlocksField = forwardRef((props: any, ref) => {
     let initialState: Record<string, any> = { [blockKey]: blockName };
     if (selectedBlockDef.fields) {
       const choiceDefaults = initializeState(selectedBlockDef.fields, {});
+      applyDefaultFrom(selectedBlockDef.fields as Field[], choiceDefaults, siteDefaults);
       initialState = { ...initialState, ...choiceDefaults };
     }
     onChange(initialState);
@@ -1144,6 +1190,7 @@ const EntryForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingNavUrl, setPendingNavUrl] = useState<string | null>(null);
   const router = useRouter();
+  const { features } = useSiteFeatures();
   const slugRef = useRef<string | undefined>(undefined);
   const [previewBlockIndex, setPreviewBlockIndex] = useState<number | null>(
     null,
@@ -1256,6 +1303,12 @@ const EntryForm = ({
     control: form.control,
   });
 
+  // When template defaults load after initial mount (new entries only), reset
+  // the form so the populated defaultValues are reflected in the fields.
+  useEffect(() => {
+    if (!isDirty) form.reset(defaultValues);
+  }, [defaultValues]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Warn on browser close / hard refresh when there are unsaved changes
   useEffect(() => {
     if (!isDirty) return;
@@ -1297,6 +1350,7 @@ const EntryForm = ({
 
       return fields.map((field) => {
         if (!field || field.hidden) return null;
+        if (field.featureFlag && features[field.featureFlag] === false) return null;
 
         // Skip fields that are controlled by a toggle (they render as part of the group)
         if (controlledFieldNames.has(field.name)) return null;
@@ -1372,7 +1426,7 @@ const EntryForm = ({
         );
       });
     },
-    [isTemplateMode],
+    [isTemplateMode, features],
   );
 
   const handleSubmit = async (values: any) => {
@@ -1603,7 +1657,7 @@ const EntryForm = ({
                   ? { width: `${leftWidth}%`, minWidth: 280 }
                   : { flex: "1 1 0%", minWidth: 0 }
               }
-              className="overflow-y-auto shrink-0 overflow-hidden"
+              className="overflow-y-auto shrink-0 overflow-hidden modal-aware-scroll"
               ref={leftPanelRef}
             >
               {!leftCollapsed && (
