@@ -124,10 +124,31 @@ function ObjectListDrillSection({
   const { watch } = useFormContext();
   const fullPath = parentName ? `${parentName}.${field.name}` : field.name;
   const items: any[] = watch(fullPath) ?? [];
+  const { append, remove } = useFieldArray({ name: fullPath });
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const blockKey = (field as any).blockKey || "_block";
+
+  const { config: repoConfig } = useConfig();
+  const { features } = useSiteFeatures();
+  const availableBlocks: Field[] = useMemo(() => {
+    if (field.type !== "block") return [];
+    const blocks: Field[] = (field as any).blocks ?? [];
+    if (!repoConfig?.object?.components) return blocks;
+    return blocks.filter((blockDef) => {
+      const componentName =
+        blockDef.name
+          .split("-")
+          .map((part, i) => (i === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+          .join("") + "Block";
+      const componentDef = repoConfig.object.components?.[componentName];
+      const deps: Array<{ name: string }> = componentDef?.collections || [];
+      return deps.every((dep) => features[dep.name] !== false);
+    });
+  }, [field, repoConfig, features]);
 
   const getItemLabel = (item: any, index: number): string => {
     if (field.type === "block") {
-      const blockKey = (field as any).blockKey || "_block";
       return formatBlockType(String(item?.[blockKey] ?? "Block"));
     }
     // For object lists, use the first non-empty string value as a label
@@ -139,13 +160,39 @@ function ObjectListDrillSection({
 
   const getItemFields = (item: any): Field[] => {
     if (field.type === "block") {
-      const blockKey = (field as any).blockKey || "_block";
       const blockType = item?.[blockKey];
       const blockDef = ((field as any).blocks ?? []).find((b: Field) => b.name === blockType);
       return (blockDef as any)?.fields ?? [];
     }
     return (field as any).fields ?? [];
   };
+
+  const handleAddObject = () => {
+    append(initializeState((field as any).fields ?? [], {}));
+  };
+
+  const handleAddBlock = (blockName: string) => {
+    const blockDef = ((field as any).blocks ?? []).find((b: Field) => b.name === blockName);
+    if (!blockDef) return;
+    const initialState: Record<string, any> = { [blockKey]: blockName };
+    if ((blockDef as any).fields) {
+      Object.assign(initialState, initializeState((blockDef as any).fields, {}));
+    }
+    append(initialState);
+    setPickerOpen(false);
+  };
+
+  const max =
+    typeof field.list === "object" && field.list?.max ? field.list.max : undefined;
+  const atMax = max !== undefined && items.length >= max;
+
+  const itemNoun = (() => {
+    if (field.type === "block") return "block";
+    const raw = String((field as any).label || field.name);
+    const singular = raw.endsWith("s") ? raw.slice(0, -1) : raw;
+    return singular.toLowerCase();
+  })();
+  const addLabel = `Add ${itemNoun}`;
 
   return (
     <div className="grid gap-2">
@@ -159,20 +206,65 @@ function ObjectListDrillSection({
             const itemFields = getItemFields(item);
             const itemParentName = `${fullPath}.${index}`;
             return (
-              <button
-                key={index}
-                type="button"
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
-                onClick={() =>
-                  onDrillPush({ kind: "fields", label, fields: itemFields, parentName: itemParentName })
-                }
-              >
-                <span className="flex-1 text-sm capitalize">{label}</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </button>
+              <div key={index} className="flex items-center">
+                <button
+                  type="button"
+                  className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                  onClick={() =>
+                    onDrillPush({ kind: "fields", label, fields: itemFields, parentName: itemParentName })
+                  }
+                >
+                  <span className="flex-1 text-sm capitalize truncate">{label}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="px-3 py-2.5 text-muted-foreground hover:text-destructive transition-colors"
+                      aria-label={`Remove ${itemNoun}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove {itemNoun}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove <span className="font-medium capitalize">{label}</span>.
+                        This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => remove(index)}>Remove</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             );
           })}
         </div>
+      )}
+      {!atMax && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-x-2 w-full"
+          onClick={field.type === "block" ? () => setPickerOpen(true) : handleAddObject}
+        >
+          <Plus className="h-4 w-4" />
+          {addLabel}
+        </Button>
+      )}
+      {field.type === "block" && (
+        <BlockPickerModal
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          availableBlocks={availableBlocks}
+          onSelect={handleAddBlock}
+        />
       )}
     </div>
   );
