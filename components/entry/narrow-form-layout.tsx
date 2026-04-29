@@ -36,8 +36,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, GripVertical, Plus, Settings2, Trash2 } from "lucide-react";
-import { initializeState } from "@/lib/schema";
+import { ChevronLeft, ChevronRight, Copy, GripVertical, Plus, Settings2, Trash2 } from "lucide-react";
+import { initializeState, interpolate } from "@/lib/schema";
 import { BlockPickerModal } from "./block-picker-modal";
 import { useConfig } from "@/contexts/config-context";
 import { useSiteFeatures } from "@/hooks/use-site-features";
@@ -71,7 +71,17 @@ function formatBlockType(type: string): string {
 
 // ─── SortableBlockRow ─────────────────────────────────────────────────────────
 
-function SortableBlockRow({ id, label, onRemove }: { id: string; label: string; onRemove: () => void }) {
+function SortableBlockRow({
+  id,
+  label,
+  hasError = false,
+  onRemove,
+}: {
+  id: string;
+  label: string;
+  hasError?: boolean;
+  onRemove: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
     <div
@@ -85,7 +95,7 @@ function SortableBlockRow({ id, label, onRemove }: { id: string; label: string; 
       <button type="button" className="p-1 cursor-grab touch-none text-muted-foreground" {...attributes} {...listeners}>
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="text-sm capitalize flex-1">{label}</span>
+      <span className={cn("text-sm capitalize flex-1", hasError && "text-red-500")}>{label}</span>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <button type="button" className="p-1 text-muted-foreground hover:text-destructive transition-colors">
@@ -109,6 +119,43 @@ function SortableBlockRow({ id, label, onRemove }: { id: string; label: string; 
   );
 }
 
+// ─── SortableDrillRow ─────────────────────────────────────────────────────────
+// Used during reorder mode inside ObjectListDrillSection.
+
+function SortableDrillRow({
+  id,
+  label,
+  hasError,
+}: {
+  id: string;
+  label: string;
+  hasError: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "flex items-center gap-3 px-2 py-3",
+        isDragging && "opacity-50 bg-muted",
+      )}
+    >
+      <button
+        type="button"
+        className="p-1 cursor-grab touch-none text-muted-foreground"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className={cn("text-sm capitalize flex-1 truncate", hasError && "text-red-500")}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 // ─── ObjectListDrillSection ───────────────────────────────────────────────────
 // Renders an object-list or block-list field as a labeled section of tappable rows.
 
@@ -121,11 +168,22 @@ function ObjectListDrillSection({
   parentName: string;
   onDrillPush: (frame: DrillFrame) => void;
 }) {
-  const { watch } = useFormContext();
+  const {
+    watch,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
   const fullPath = parentName ? `${parentName}.${field.name}` : field.name;
   const items: any[] = watch(fullPath) ?? [];
-  const { append, remove } = useFieldArray({ name: fullPath });
+  const {
+    fields: arrayFields,
+    append,
+    remove,
+    insert,
+    move,
+  } = useFieldArray({ name: fullPath });
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
 
   const blockKey = (field as any).blockKey || "_block";
 
@@ -147,11 +205,36 @@ function ObjectListDrillSection({
     });
   }, [field, repoConfig, features]);
 
+  // Walk the errors tree along a dotted path; return true if any error exists at or below.
+  const hasErrorAtPath = (path: string): boolean => {
+    let curr: any = errors;
+    for (const part of path.split(".")) {
+      if (curr == null) return false;
+      curr = curr[part];
+    }
+    return !!curr;
+  };
+  const sectionHasError = hasErrorAtPath(fullPath);
+
+  const summaryTemplate = (() => {
+    const collapsible = (field as any).list?.collapsible;
+    if (collapsible && typeof collapsible === "object" && typeof collapsible.summary === "string") {
+      return collapsible.summary as string;
+    }
+    return null;
+  })();
+
   const getItemLabel = (item: any, index: number): string => {
     if (field.type === "block") {
       return formatBlockType(String(item?.[blockKey] ?? "Block"));
     }
-    // For object lists, use the first non-empty string value as a label
+    if (summaryTemplate) {
+      const interpolated = interpolate(summaryTemplate, {
+        index: `${index + 1}`,
+        fields: item,
+      });
+      if (interpolated && interpolated.trim().length > 0) return interpolated;
+    }
     const firstString = Object.values(item ?? {}).find(
       (v) => typeof v === "string" && (v as string).length > 0,
     );
@@ -182,6 +265,29 @@ function ObjectListDrillSection({
     setPickerOpen(false);
   };
 
+  const handleDuplicate = (index: number) => {
+    const original = items[index];
+    if (original === undefined) return;
+    const cloned = JSON.parse(JSON.stringify(original));
+    insert(index + 1, cloned);
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const modifiers = [restrictToVerticalAxis, restrictToParentElement];
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = arrayFields.findIndex((f) => f.id === active.id);
+    const newIndex = arrayFields.findIndex((f) => f.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    move(oldIndex, newIndex);
+    setValue(fullPath, arrayMove(items, oldIndex, newIndex));
+  };
+
   const max =
     typeof field.list === "object" && field.list?.max ? field.list.max : undefined;
   const atMax = max !== undefined && items.length >= max;
@@ -196,17 +302,62 @@ function ObjectListDrillSection({
 
   return (
     <div className="grid gap-2">
-      <div className="text-sm font-medium">{(field as any).label || field.name}</div>
-      {items.length === 0 ? (
+      <div className="flex items-center gap-2">
+        <span className={cn("text-sm font-medium", sectionHasError && "text-red-500")}>
+          {(field as any).label || field.name}
+        </span>
+        {arrayFields.length > 1 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-7 px-2 text-xs"
+            onClick={() => setIsReordering((v) => !v)}
+          >
+            {isReordering ? "Done" : "Reorder"}
+          </Button>
+        )}
+      </div>
+      {arrayFields.length === 0 ? (
         <div className="text-sm text-muted-foreground py-1">No items</div>
+      ) : isReordering ? (
+        <div className="border rounded-lg divide-y overflow-hidden">
+          <DndContext
+            sensors={sensors}
+            modifiers={modifiers}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={arrayFields.map((f) => f.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {arrayFields.map((arrayField, index) => {
+                const item = items[index];
+                const label = getItemLabel(item, index);
+                const rowHasError = hasErrorAtPath(`${fullPath}.${index}`);
+                return (
+                  <SortableDrillRow
+                    key={arrayField.id}
+                    id={arrayField.id}
+                    label={label}
+                    hasError={rowHasError}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
+        </div>
       ) : (
         <div className="border rounded-lg divide-y overflow-hidden">
-          {items.map((item, index) => {
+          {arrayFields.map((arrayField, index) => {
+            const item = items[index];
             const label = getItemLabel(item, index);
             const itemFields = getItemFields(item);
             const itemParentName = `${fullPath}.${index}`;
+            const rowHasError = hasErrorAtPath(itemParentName);
             return (
-              <div key={index} className="flex items-center">
+              <div key={arrayField.id} className="flex items-center">
                 <button
                   type="button"
                   className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
@@ -214,14 +365,24 @@ function ObjectListDrillSection({
                     onDrillPush({ kind: "fields", label, fields: itemFields, parentName: itemParentName })
                   }
                 >
-                  <span className="flex-1 text-sm capitalize truncate">{label}</span>
+                  <span className={cn("flex-1 text-sm capitalize truncate", rowHasError && "text-red-500")}>
+                    {label}
+                  </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+                <button
+                  type="button"
+                  className="px-2.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={`Duplicate ${itemNoun}`}
+                  onClick={() => handleDuplicate(index)}
+                >
+                  <Copy className="h-4 w-4" />
                 </button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button
                       type="button"
-                      className="px-3 py-2.5 text-muted-foreground hover:text-destructive transition-colors"
+                      className="px-2.5 py-2.5 text-muted-foreground hover:text-destructive transition-colors"
                       aria-label={`Remove ${itemNoun}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -246,7 +407,7 @@ function ObjectListDrillSection({
           })}
         </div>
       )}
-      {!atMax && (
+      {!atMax && !isReordering && (
         <Button
           type="button"
           variant="outline"
@@ -320,7 +481,22 @@ export function NarrowFormLayout({
   filePath,
   pageSettings,
 }: NarrowFormLayoutProps) {
-  const { watch, setValue } = useFormContext();
+  const {
+    watch,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
+
+  // Walk the errors tree along a dotted path; true if any error exists at or below.
+  const hasErrorAtPath = (path: string): boolean => {
+    if (!path) return false;
+    let curr: any = errors;
+    for (const part of path.split(".")) {
+      if (curr == null) return false;
+      curr = curr[part];
+    }
+    return !!curr;
+  };
 
   // ── Find the block field ──────────────────────────────────────────────────
   const blockField = useMemo(
@@ -534,6 +710,7 @@ export function NarrowFormLayout({
                         key={arrayField.id}
                         id={arrayField.id}
                         label={formatBlockType(String(typeName))}
+                        hasError={hasErrorAtPath(`${blockFieldName}.${index}`)}
                         onRemove={() => {
                           remove(index);
                           if (selectedIndex >= index) setSelectedIndex((i) => Math.max(0, i - 1));
@@ -549,6 +726,7 @@ export function NarrowFormLayout({
                   const block = blocksValue[index];
                   const typeName = block?.[blockKey] ?? "Block";
                   const summary = getBlockSummary(block, blockKey);
+                  const rowHasError = hasErrorAtPath(`${blockFieldName}.${index}`);
                   return (
                     <button
                       key={arrayField.id}
@@ -560,7 +738,7 @@ export function NarrowFormLayout({
                       onClick={() => handleSelectBlock(index)}
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium capitalize">
+                        <div className={cn("text-sm font-medium capitalize", rowHasError && "text-red-500")}>
                           {formatBlockType(String(typeName))}
                         </div>
                         {summary && (
@@ -633,7 +811,12 @@ export function NarrowFormLayout({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="flex-1 text-center text-sm capitalize truncate px-1">
+              <span
+                className={cn(
+                  "flex-1 text-center text-sm capitalize truncate px-1",
+                  hasErrorAtPath(`${blockFieldName}.${selectedIndex}`) && "text-red-500",
+                )}
+              >
                 {formatBlockType(String(selectedBlock?.[blockKey] ?? "Block"))}
                 {blocksValue.length > 1 && (
                   <span className="text-xs text-muted-foreground/60 ml-1.5">
