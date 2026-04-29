@@ -596,11 +596,13 @@ export function NarrowFormLayout({
 
   // ── No block field → plain scrollable form ────────────────────────────────
   if (!blockField) {
+    const rendered = renderFields(fields).filter(Boolean);
     return (
       <div className="p-4 grid items-start gap-6">
         {filePath && <div className="space-y-2 overflow-hidden">{filePath}</div>}
-        {pageSettings}
-        {renderFields(fields)}
+        {pageSettings && rendered.length > 0
+          ? [rendered[0], pageSettings, ...rendered.slice(1)]
+          : pageSettings ?? rendered}
       </div>
     );
   }
@@ -629,8 +631,16 @@ export function NarrowFormLayout({
           {topFrame.kind === "page-settings" ? (
             <div className="p-4 grid gap-4">
               {filePath && <div className="space-y-2 overflow-hidden">{filePath}</div>}
-              {pageSettings}
-              {nonBlockFields.length > 0 && renderFields(nonBlockFields)}
+              {(() => {
+                const rendered = nonBlockFields.length > 0
+                  ? renderFields(nonBlockFields).filter(Boolean)
+                  : [];
+                if (pageSettings && rendered.length > 0) {
+                  return [rendered[0], pageSettings, ...rendered.slice(1)];
+                }
+                if (pageSettings) return pageSettings;
+                return rendered;
+              })()}
             </div>
           ) : (
             <DrillContent
