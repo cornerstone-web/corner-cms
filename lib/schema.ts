@@ -565,6 +565,33 @@ function getDateFromFilename(filename: string) {
   return undefined;
 }
 
+// Walks a field schema, populating any field with a `defaultFrom` directive from the
+// provided site-defaults object. Mutates `defaults` in place. Used when adding new
+// blocks/objects so things like color tokens inherit from site.config.yaml.
+function applyDefaultFrom(
+  fields: Field[],
+  defaults: Record<string, any>,
+  siteDefaults: Record<string, unknown>
+): void {
+  for (const f of fields) {
+    // For list-of-object fields, `f.fields` describes per-item shape; descending
+    // here would overwrite the list value with a single {}, breaking array
+    // validation. List items don't get defaultFrom applied at block-select time —
+    // they're added later via addItem and use field.default.
+    if (f.type === "object" && f.fields && !f.list) {
+      const sub = defaults[f.name] && typeof defaults[f.name] === "object" ? defaults[f.name] : {};
+      applyDefaultFrom(f.fields as Field[], sub, siteDefaults);
+      defaults[f.name] = sub;
+    } else if (f.defaultFrom && (defaults[f.name] === undefined || defaults[f.name] === "")) {
+      const value = f.defaultFrom.split(".").reduce<unknown>(
+        (acc, key) => acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined,
+        siteDefaults
+      );
+      if (value !== undefined && value !== "") defaults[f.name] = value;
+    }
+  }
+}
+
 export {
   deepMap,
   initializeState,
@@ -578,5 +605,6 @@ export {
   getDateFromFilename,
   generateZodSchema,
   safeAccess,
-  interpolate
+  interpolate,
+  applyDefaultFrom
 };

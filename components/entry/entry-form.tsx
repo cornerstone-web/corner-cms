@@ -100,7 +100,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { interpolate } from "@/lib/schema";
+import { interpolate, applyDefaultFrom } from "@/lib/schema";
+import { useSiteDefaults } from "@/hooks/use-site-defaults";
 import { BlockPreview, BlockPreviewHandle } from "./block-preview";
 import { PagePreview, PagePreviewHandle } from "./page-preview";
 import { NarrowFormLayout } from "./narrow-form-layout";
@@ -461,32 +462,6 @@ const ListField = ({
   );
 };
 
-const siteDefaultsCache = new Map<string, Record<string, unknown>>();
-
-function applyDefaultFrom(
-  fields: Field[],
-  defaults: Record<string, any>,
-  siteDefaults: Record<string, unknown>
-): void {
-  for (const f of fields) {
-    // For list-of-object fields, `f.fields` describes per-item shape; descending
-    // here would overwrite the list value with a single {}, breaking array
-    // validation. List items don't get defaultFrom applied at block-select time —
-    // they're added later via addItem and use field.default.
-    if (f.type === "object" && f.fields && !f.list) {
-      const sub = defaults[f.name] && typeof defaults[f.name] === "object" ? defaults[f.name] : {};
-      applyDefaultFrom(f.fields as Field[], sub, siteDefaults);
-      defaults[f.name] = sub;
-    } else if (f.defaultFrom && (defaults[f.name] === undefined || defaults[f.name] === "")) {
-      const value = f.defaultFrom.split(".").reduce<unknown>(
-        (acc, key) => acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined,
-        siteDefaults
-      );
-      if (value !== undefined && value !== "") defaults[f.name] = value;
-    }
-  }
-}
-
 const BlocksField = forwardRef((props: any, ref) => {
   const {
     field,
@@ -529,25 +504,7 @@ const BlocksField = forwardRef((props: any, ref) => {
 
   // Filter out blocks whose collection dependencies are disabled
   const { config: repoConfig } = useConfig();
-
-  // Fetch site config once per repo/branch so defaultFrom fields can inherit integration values
-  const [siteDefaults, setSiteDefaults] = useState<Record<string, unknown>>({});
-  useEffect(() => {
-    if (!repoConfig) return;
-    const cacheKey = `${repoConfig.owner}/${repoConfig.repo}/${repoConfig.branch}`;
-    const cached = siteDefaultsCache.get(cacheKey);
-    if (cached) { setSiteDefaults(cached); return; }
-    fetch(`/api/${repoConfig.owner}/${repoConfig.repo}/${encodeURIComponent(repoConfig.branch)}/site-config`)
-      .then((r) => r.json())
-      .then((result) => {
-        if (result.status === "success") {
-          const config = result.data.config ?? {};
-          siteDefaultsCache.set(cacheKey, config);
-          setSiteDefaults(config);
-        }
-      })
-      .catch(() => {});
-  }, [repoConfig]);
+  const siteDefaults = useSiteDefaults();
   const { features } = useSiteFeatures();
   const availableBlocks = useMemo(() => {
     if (!repoConfig?.object?.components) return blocks;

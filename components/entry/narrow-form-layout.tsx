@@ -37,10 +37,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Copy, GripVertical, Plus, Settings2, Trash2 } from "lucide-react";
-import { initializeState, interpolate } from "@/lib/schema";
+import { initializeState, interpolate, applyDefaultFrom } from "@/lib/schema";
 import { BlockPickerModal } from "./block-picker-modal";
 import { useConfig } from "@/contexts/config-context";
 import { useSiteFeatures } from "@/hooks/use-site-features";
+import { useSiteDefaults } from "@/hooks/use-site-defaults";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -189,6 +190,7 @@ function ObjectListDrillSection({
 
   const { config: repoConfig } = useConfig();
   const { features } = useSiteFeatures();
+  const siteDefaults = useSiteDefaults();
   const availableBlocks: Field[] = useMemo(() => {
     if (field.type !== "block") return [];
     const blocks: Field[] = (field as any).blocks ?? [];
@@ -205,16 +207,24 @@ function ObjectListDrillSection({
     });
   }, [field, repoConfig, features]);
 
-  // Walk the errors tree along a dotted path; return true if any error exists at or below.
-  const hasErrorAtPath = (path: string): boolean => {
+  // Walk the errors tree along a dotted path; return the node if present.
+  const getErrorAtPath = (path: string): any => {
     let curr: any = errors;
     for (const part of path.split(".")) {
-      if (curr == null) return false;
+      if (curr == null) return null;
       curr = curr[part];
     }
-    return !!curr;
+    return curr ?? null;
   };
-  const sectionHasError = hasErrorAtPath(fullPath);
+  const hasErrorAtPath = (path: string): boolean => !!getErrorAtPath(path);
+  const sectionError = getErrorAtPath(fullPath);
+  const sectionHasError = !!sectionError;
+  const sectionMessage =
+    typeof sectionError?.message === "string"
+      ? sectionError.message
+      : typeof sectionError?.root?.message === "string"
+        ? sectionError.root.message
+        : null;
 
   const summaryTemplate = (() => {
     const collapsible = (field as any).list?.collapsible;
@@ -259,7 +269,9 @@ function ObjectListDrillSection({
     if (!blockDef) return;
     const initialState: Record<string, any> = { [blockKey]: blockName };
     if ((blockDef as any).fields) {
-      Object.assign(initialState, initializeState((blockDef as any).fields, {}));
+      const choiceDefaults = initializeState((blockDef as any).fields, {});
+      applyDefaultFrom((blockDef as any).fields as Field[], choiceDefaults, siteDefaults);
+      Object.assign(initialState, choiceDefaults);
     }
     append(initialState);
     setPickerOpen(false);
@@ -306,6 +318,11 @@ function ObjectListDrillSection({
         <span className={cn("text-sm font-medium", sectionHasError && "text-red-500")}>
           {(field as any).label || field.name}
         </span>
+        {field.required && (
+          <span className="inline-flex items-center rounded-full bg-muted border px-2 h-5 text-xs font-medium">
+            Required
+          </span>
+        )}
         {arrayFields.length > 1 && (
           <Button
             type="button"
@@ -318,6 +335,9 @@ function ObjectListDrillSection({
           </Button>
         )}
       </div>
+      {sectionMessage && (
+        <p className="text-sm font-medium text-red-500">{sectionMessage}</p>
+      )}
       {arrayFields.length === 0 ? (
         <div className="text-sm text-muted-foreground py-1">No items</div>
       ) : isReordering ? (
@@ -546,6 +566,7 @@ export function NarrowFormLayout({
   // ── Available blocks (respects feature flags) ─────────────────────────────
   const { config: repoConfig } = useConfig();
   const { features } = useSiteFeatures();
+  const siteDefaults = useSiteDefaults();
   const availableBlocks: Field[] = useMemo(() => {
     const blocks: Field[] = (blockField as any)?.blocks ?? [];
     if (!repoConfig?.object?.components) return blocks;
@@ -582,7 +603,9 @@ export function NarrowFormLayout({
     if (!blockDef) return;
     const initialState: Record<string, any> = { [blockKey]: blockName };
     if ((blockDef as any).fields) {
-      Object.assign(initialState, initializeState((blockDef as any).fields, {}));
+      const choiceDefaults = initializeState((blockDef as any).fields, {});
+      applyDefaultFrom((blockDef as any).fields as Field[], choiceDefaults, siteDefaults);
+      Object.assign(initialState, choiceDefaults);
     }
     append(initialState);
     setSelectedIndex(blocksValue.length);
