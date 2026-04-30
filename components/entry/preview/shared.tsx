@@ -19,6 +19,22 @@ import {
 } from '@/components/ui/tooltip';
 
 /**
+ * Resolve the targetOrigin for postMessage to a preview iframe.
+ * Falls back to "*" (with a console.warn) on missing or malformed URLs so a bad
+ * site.config.yaml doesn't break the preview entirely — but logs the regression
+ * so it's discoverable in dev tools instead of failing silently.
+ */
+export const getPreviewOrigin = (url: string | null | undefined): string => {
+  if (!url) return '*';
+  try {
+    return new URL(url).origin;
+  } catch (e) {
+    console.warn('Invalid preview URL — falling back to wildcard postMessage origin:', url, e);
+    return '*';
+  }
+};
+
+/**
  * Transform media paths from CMS format (public/<dir>/...) to preview-accessible format (/<dir>/...)
  * Handles all media directories: uploads, files, bulletins, and any future additions.
  */

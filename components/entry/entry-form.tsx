@@ -106,9 +106,7 @@ import { BlockPreview, BlockPreviewHandle } from "./block-preview";
 import { PagePreview, PagePreviewHandle } from "./page-preview";
 import { NarrowFormLayout } from "./narrow-form-layout";
 import {
-  transformImagePaths,
   ExpandedPreviewModal,
-  IFrameWrapper,
   PreviewToolbar,
 } from "./preview/shared";
 import {
@@ -1153,9 +1151,6 @@ const EntryForm = ({
     null,
   );
   const [showMobilePreview, setShowMobilePreview] = useState(false);
-  const [mobilePreviewLoaded, setMobilePreviewLoaded] = useState(false);
-  const [mobilePreviewKey, setMobilePreviewKey] = useState(0);
-  const mobilePreviewIframeRef = useRef<HTMLIFrameElement>(null);
   // Desktop preview panel state
   const [previewMode, setPreviewMode] = useState<"page" | "block">("page");
   const [previewIsLoaded, setPreviewIsLoaded] = useState(false);
@@ -1177,6 +1172,12 @@ const EntryForm = ({
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+  // If a user opens the mobile modal then drags the viewport wider than 1024px,
+  // close the modal so the desktop preview pane can take over without rendering
+  // two PagePreview instances (and two collection fetches) at once.
+  useEffect(() => {
+    if (isDesktop) setShowMobilePreview(false);
+  }, [isDesktop]);
   const [leftWidth, setLeftWidth] = useState(50); // percentage 20–80
   useEffect(() => {
     const stored = localStorage.getItem("preview-split-width");
@@ -1430,57 +1431,8 @@ const EntryForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- blocksValueKey is serialized blocksValue to detect mutations
   }, [blocksValueKey, previewBlockIndex, blockFieldInfo]);
 
-  // Mobile preview URL and data
-  const mobilePreviewData = useMemo(() => {
-    if (!previewUrl || !blocksValue || !blockFieldInfo) return null;
-    const transformedBlocks = blocksValue.map(
-      (block: Record<string, unknown>) => transformImagePaths(block),
-    );
-    const data = {
-      blocks: transformedBlocks,
-      blockKey: blockFieldInfo.blockKey,
-    };
-    return {
-      url: `${previewUrl}/preview/page?data=${encodeURIComponent(JSON.stringify(data))}`,
-      blocks: transformedBlocks,
-      blockKey: blockFieldInfo.blockKey,
-    };
-  }, [previewUrl, blocksValue, blockFieldInfo]);
-
-  // Send updates to mobile preview iframe
-  useEffect(() => {
-    if (
-      showMobilePreview &&
-      mobilePreviewLoaded &&
-      mobilePreviewIframeRef.current?.contentWindow &&
-      mobilePreviewData
-    ) {
-      mobilePreviewIframeRef.current.contentWindow.postMessage(
-        {
-          type: "UPDATE_PAGE_PREVIEW",
-          blocks: mobilePreviewData.blocks,
-          blockKey: mobilePreviewData.blockKey,
-        },
-        "*",
-      );
-    }
-  }, [showMobilePreview, mobilePreviewLoaded, mobilePreviewData]);
-
-  const handleMobilePreviewLoad = () => {
-    setMobilePreviewLoaded(true);
-    setTimeout(() => {
-      if (mobilePreviewIframeRef.current?.contentWindow && mobilePreviewData) {
-        mobilePreviewIframeRef.current.contentWindow.postMessage(
-          {
-            type: "UPDATE_PAGE_PREVIEW",
-            blocks: mobilePreviewData.blocks,
-            blockKey: mobilePreviewData.blockKey,
-          },
-          "*",
-        );
-      }
-    }, 150);
-  };
+  // Show the mobile preview button when the entry has a block list and a preview URL.
+  const canShowMobilePreview = Boolean(previewUrl && blockFieldInfo && blocksValue);
 
   const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -1508,22 +1460,6 @@ const EntryForm = ({
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
   }, []);
-
-  const handleCloseMobilePreview = () => {
-    setShowMobilePreview(false);
-    setMobilePreviewLoaded(false);
-  };
-
-  const handleMobilePreviewReload = () => {
-    setMobilePreviewLoaded(false);
-    setMobilePreviewKey((k) => k + 1);
-  };
-
-  const handleMobilePreviewOpenNewTab = () => {
-    if (mobilePreviewData) {
-      window.open(mobilePreviewData.url, "_blank");
-    }
-  };
 
   return (
     <BlockListControlsContext.Provider value={blockListContextValue}>
@@ -1709,8 +1645,11 @@ const EntryForm = ({
               </div>
             )}
 
-            {/* RIGHT: full-height preview panel (desktop only, when previewUrl exists) */}
-            {previewUrl && (
+            {/* RIGHT: full-height preview panel (desktop only, when previewUrl exists)
+                Gated on isDesktop (not just CSS) so mobile doesn't mount the
+                inner <PagePreview>/<BlockPreview>, which would load a hidden
+                iframe and run a duplicate collection-fetch alongside the mobile modal. */}
+            {previewUrl && isDesktop && (
               <div
                 style={
                   rightCollapsed
@@ -1975,7 +1914,7 @@ const EntryForm = ({
                 <TooltipContent>View history</TooltipContent>
               </Tooltip>
             )}
-            {mobilePreviewData && (
+            {canShowMobilePreview && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -1999,8 +1938,9 @@ const EntryForm = ({
             </Button>
           </div>
 
-          {/* Mobile full-page preview modal */}
-          {showMobilePreview && mobilePreviewData && (
+          {/* Mobile full-page preview modal — reuses PagePreview so collection-backed
+              blocks (sermon-grid, event-list, etc.) render real data, not placeholders. */}
+          {showMobilePreview && canShowMobilePreview && (
             <ExpandedPreviewModal
               headerContent={
                 <div className="flex items-center justify-between px-3 py-2 bg-background/80 backdrop-blur-sm border-b">
@@ -2009,25 +1949,31 @@ const EntryForm = ({
                     {blocksValue?.length === 1 ? "block" : "blocks"})
                   </span>
                   <PreviewToolbar
-                    onReload={handleMobilePreviewReload}
-                    onOpenNewTab={handleMobilePreviewOpenNewTab}
-                    onToggleExpand={handleCloseMobilePreview}
+                    onReload={() => pagePreviewRef.current?.reload()}
+                    onOpenNewTab={() => pagePreviewRef.current?.openNewTab()}
+                    onToggleExpand={() => setShowMobilePreview(false)}
                     isExpanded={true}
-                    isLoaded={mobilePreviewLoaded}
+                    isLoaded={previewIsLoaded}
                   />
                 </div>
               }
               iframeContent={
-                <IFrameWrapper
-                  url={mobilePreviewData.url}
-                  title="Full page preview"
-                  onLoad={handleMobilePreviewLoad}
-                  isLoaded={mobilePreviewLoaded}
-                  iframeRef={mobilePreviewIframeRef}
-                  refreshKey={mobilePreviewKey}
+                <PagePreview
+                  ref={pagePreviewRef}
+                  blocks={blocksValue ?? []}
+                  blockKey={blockFieldInfo!.blockKey}
+                  previewBaseUrl={previewUrl!}
+                  isCollapsed={false}
+                  onToggleCollapse={() => {}}
+                  entryContext={collectionName && path ? {
+                    collection: collectionName,
+                    slug: path.split('/').pop()?.replace(/\.[^/.]+$/, '') || '',
+                  } : undefined}
+                  fullPanel
+                  onLoadedChange={setPreviewIsLoaded}
                 />
               }
-              onClose={handleCloseMobilePreview}
+              onClose={() => setShowMobilePreview(false)}
             />
           )}
         </form>

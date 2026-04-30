@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo, useCallback, forwardRef, useImper
 import { useConfig } from "@/contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
 import {
+  getPreviewOrigin,
   transformImagePaths,
   PreviewToolbar,
   PreviewFrame,
@@ -220,6 +221,9 @@ const PagePreviewInner = (
   // Preview URLs
   const basePreviewUrl = `${previewBaseUrl}/preview/page`;
   const iframeUrl = `${basePreviewUrl}?data=${initialDataParam}`;
+  // Restrict postMessage to the church site's origin so editor data isn't
+  // broadcast cross-origin if the iframe ever navigates away.
+  const previewOrigin = useMemo(() => getPreviewOrigin(previewBaseUrl), [previewBaseUrl]);
 
   // Send data to iframe for live updates via postMessage
   useEffect(() => {
@@ -232,10 +236,10 @@ const PagePreviewInner = (
           collections: filteredCollectionData,
           entryContext,
         },
-        "*",
+        previewOrigin,
       );
     }
-  }, [transformedBlocks, blockKey, filteredCollectionData, isLoaded, entryContext]);
+  }, [transformedBlocks, blockKey, filteredCollectionData, isLoaded, entryContext, previewOrigin]);
 
   // Handle iframe load
   const handleLoad = () => {
@@ -251,7 +255,7 @@ const PagePreviewInner = (
             collections: filteredCollectionData,
             entryContext,
           },
-          "*",
+          previewOrigin,
         );
       }
     }, 300);

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useConfig } from "@/contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
 import {
+  getPreviewOrigin,
   transformImagePaths,
   PreviewToolbar,
   PreviewFrame,
@@ -224,6 +225,9 @@ const BlockPreviewInner = (
   const basePreviewUrl = `${previewBaseUrl}/preview/${normalizedBlockType}`;
   // Iframe URL with initial data (stable)
   const iframeUrl = `${basePreviewUrl}?data=${initialDataParam}`;
+  // Restrict postMessage to the church site's origin so editor data isn't
+  // broadcast cross-origin if the iframe ever navigates away.
+  const previewOrigin = useMemo(() => getPreviewOrigin(previewBaseUrl), [previewBaseUrl]);
 
   // Send data to iframe for live updates via postMessage
   useEffect(() => {
@@ -234,10 +238,10 @@ const BlockPreviewInner = (
           blockData: transformedData,
           collections: filteredCollectionData,
         },
-        "*",
+        previewOrigin,
       );
     }
-  }, [transformedData, filteredCollectionData, isLoaded]);
+  }, [transformedData, filteredCollectionData, isLoaded, previewOrigin]);
 
   // When blocks are added back after being empty, refresh the iframe with new data
   useEffect(() => {
@@ -266,7 +270,7 @@ const BlockPreviewInner = (
             blockData: transformedData,
             collections: filteredCollectionData,
           },
-          "*",
+          previewOrigin,
         );
       }
     }, 300);

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader, Save } from "lucide-react";
+import { Eye, Loader, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";
@@ -13,6 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Form } from "@/components/ui/form";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  getPreviewOrigin,
   IFrameWrapper,
   PreviewToolbar,
   ExpandedPreviewModal,
@@ -94,8 +100,18 @@ export function SiteConfigEditor() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
-  const previewOrigin = previewUrl ? new URL(previewUrl).origin : null;
+  // Memoize so a malformed previewUrl doesn't fire console.warn on every keystroke
+  // (this component re-renders via useWatch on every form change).
+  const previewOrigin = useMemo(() => getPreviewOrigin(previewUrl), [previewUrl]);
 
   const form = useForm<SiteConfigFormValues>({
     resolver: zodResolver(siteConfigSchema),
@@ -142,7 +158,7 @@ export function SiteConfigEditor() {
 
     iframeRef.current.contentWindow.postMessage(
       { type: "UPDATE_SITE_CONFIG", config: watchedValues },
-      previewOrigin!
+      previewOrigin
     );
   }, [watchedValues, isLoaded, previewOrigin]);
 
@@ -196,7 +212,7 @@ export function SiteConfigEditor() {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
           { type: "UPDATE_SITE_CONFIG", config: form.getValues() },
-          previewOrigin!
+          previewOrigin
         );
       }
     }, 300);
@@ -243,13 +259,35 @@ export function SiteConfigEditor() {
         <h1 className="text-lg font-semibold">Settings</h1>
         <div className="flex items-center gap-2">
           {iframeUrl && (
-            <PreviewToolbar
-              onReload={handleReload}
-              onOpenNewTab={handleOpenNewTab}
-              onToggleExpand={() => setIsExpanded(!isExpanded)}
-              isExpanded={isExpanded}
-              isLoaded={isLoaded}
-            />
+            <>
+              {/* Desktop: full toolbar — operates on the inline preview pane. */}
+              <div className="hidden lg:flex">
+                <PreviewToolbar
+                  onReload={handleReload}
+                  onOpenNewTab={handleOpenNewTab}
+                  onToggleExpand={() => setIsExpanded(!isExpanded)}
+                  isExpanded={isExpanded}
+                  isLoaded={isLoaded}
+                />
+              </div>
+              {/* Mobile: single eye button — there's no inline pane to act on, so
+                  reload/new-tab/minimize would all be no-ops. The expanded modal
+                  has its own toolbar with those controls. */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="lg:hidden"
+                    onClick={() => setIsExpanded(true)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Open preview</TooltipContent>
+              </Tooltip>
+            </>
           )}
           <Button
             onClick={form.handleSubmit(handleSave, handleValidationError)}
@@ -346,8 +384,9 @@ export function SiteConfigEditor() {
           </Form>
         </div>
 
-        {/* Preview panel */}
-        {iframeUrl && (
+        {/* Preview panel — desktop only. Gated on isDesktop (not just CSS) so
+            mobile doesn't load a hidden iframe. */}
+        {iframeUrl && isDesktop && (
           <div className="hidden lg:flex flex-col w-1/2 border-l bg-muted/30">
             <div className="flex-1 p-4">
               <div className="h-full rounded-lg overflow-hidden border bg-white">
